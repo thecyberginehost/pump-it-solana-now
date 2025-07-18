@@ -2,54 +2,70 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Sparkles, RefreshCw, Copy, TrendingUp } from 'lucide-react';
+import { Sparkles, RefreshCw, Crown } from 'lucide-react';
 import { AIService } from '@/services/aiService';
 import { toast } from 'sonner';
 
 interface AISuggestionsProps {
   onNameSelect: (name: string) => void;
   onSymbolSelect: (symbol: string) => void;
-  currentName?: string;
+  currentName: string;
+  isPremium?: boolean;
 }
 
-const AISuggestions = ({ onNameSelect, onSymbolSelect, currentName }: AISuggestionsProps) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [symbols, setSymbols] = useState<string[]>([]);
-  const [sentiment, setSentiment] = useState<any>(null);
+const AISuggestions = ({ onNameSelect, onSymbolSelect, currentName, isPremium = false }: AISuggestionsProps) => {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [suggestions, setSuggestions] = useState<{names: string[], symbols: string[]}>({
+    names: [],
+    symbols: []
+  });
+  const [selectedTheme, setSelectedTheme] = useState('');
+
+  const themes = ['doge', 'pepe', 'moon', 'rocket'];
 
   const generateSuggestions = async (theme?: string) => {
-    setIsLoading(true);
+    if (!isPremium) {
+      toast.info('💰 Premium AI Generation - 0.01 SOL', {
+        description: 'This will charge 0.01 SOL for AI-powered suggestions'
+      });
+    }
+
+    setIsGenerating(true);
     try {
-      const [names, marketSentiment] = await Promise.all([
-        AIService.generateTokenNames(theme),
-        AIService.getMarketSentiment()
-      ]);
-      
-      setSuggestions(names);
-      setSentiment(marketSentiment);
+      const names = await AIService.generateTokenNames(theme);
+      setSuggestions(prev => ({ ...prev, names }));
       
       if (names.length > 0) {
-        const symbolSuggestions = await AIService.generateTokenSymbols(names[0]);
-        setSymbols(symbolSuggestions);
+        const symbols = await AIService.generateTokenSymbols(names[0]);
+        setSuggestions(prev => ({ ...prev, symbols }));
       }
-      
-      toast.success('🤖 AI suggestions generated!');
     } catch (error) {
       toast.error('Failed to generate suggestions');
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
-  const generateSymbolsForName = async (name: string) => {
-    if (!name) return;
-    
+  const generateSymbols = async () => {
+    if (!currentName) {
+      toast.error('Enter a token name first');
+      return;
+    }
+
+    if (!isPremium) {
+      toast.info('💰 Premium AI Generation - 0.01 SOL', {
+        description: 'This will charge 0.01 SOL for AI symbol suggestions'
+      });
+    }
+
+    setIsGenerating(true);
     try {
-      const symbolSuggestions = await AIService.generateTokenSymbols(name);
-      setSymbols(symbolSuggestions);
+      const symbols = await AIService.generateTokenSymbols(currentName);
+      setSuggestions(prev => ({ ...prev, symbols }));
     } catch (error) {
-      console.error('Failed to generate symbols:', error);
+      toast.error('Failed to generate symbols');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -59,47 +75,49 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, currentName }: AISuggesti
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="text-accent" size={16} />
-            <span className="text-sm font-medium">AI Forge Assistant</span>
+            <span className="text-sm font-medium">AI Token Suggestions</span>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => generateSuggestions()}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <RefreshCw className="animate-spin" size={12} />
-            ) : (
-              <Sparkles size={12} />
-            )}
-            Generate
-          </Button>
+          {isPremium && (
+            <div className="flex items-center gap-1 text-xs bg-gradient-electric text-black px-2 py-1 rounded-full">
+              <Crown size={12} />
+              Unlimited
+            </div>
+          )}
         </div>
 
-        {sentiment && (
-          <div className="p-3 rounded-lg border border-border/50 bg-muted/30">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp size={14} />
-              <span className="text-xs font-medium">Market Vibe Check</span>
-            </div>
-            <p className="text-xs text-muted-foreground">{sentiment.recommendation}</p>
+        {/* Theme Selection */}
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Quick Themes:</p>
+          <div className="flex gap-2">
+            {themes.map((theme) => (
+              <Button
+                key={theme}
+                variant={selectedTheme === theme ? "electric" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setSelectedTheme(theme);
+                  generateSuggestions(theme);
+                }}
+                disabled={isGenerating}
+              >
+                {theme}
+              </Button>
+            ))}
           </div>
-        )}
+        </div>
 
-        {suggestions.length > 0 && (
-          <div>
-            <p className="text-xs text-muted-foreground mb-2">🤖 AI Name Suggestions:</p>
-            <div className="flex flex-wrap gap-1">
-              {suggestions.map((name) => (
+        {/* Name Suggestions */}
+        {suggestions.names.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Suggested Names:</p>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.names.map((name) => (
                 <Button
                   key={name}
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="text-xs h-7"
-                  onClick={() => {
-                    onNameSelect(name);
-                    generateSymbolsForName(name);
-                  }}
+                  onClick={() => onNameSelect(name)}
+                  className="text-sm"
                 >
                   {name}
                 </Button>
@@ -108,17 +126,18 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, currentName }: AISuggesti
           </div>
         )}
 
-        {symbols.length > 0 && (
-          <div>
-            <p className="text-xs text-muted-foreground mb-2">🔤 Symbol Suggestions:</p>
-            <div className="flex flex-wrap gap-1">
-              {symbols.map((symbol) => (
+        {/* Symbol Suggestions */}
+        {suggestions.symbols.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Suggested Symbols:</p>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.symbols.map((symbol) => (
                 <Button
                   key={symbol}
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="text-xs h-7"
                   onClick={() => onSymbolSelect(symbol)}
+                  className="text-sm font-mono"
                 >
                   ${symbol}
                 </Button>
@@ -127,33 +146,35 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, currentName }: AISuggesti
           </div>
         )}
 
-        <div className="flex flex-wrap gap-1">
+        {/* Generate Buttons */}
+        <div className="flex gap-2">
           <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs h-7"
-            onClick={() => generateSuggestions('doge')}
-            disabled={isLoading}
+            onClick={() => generateSuggestions()}
+            disabled={isGenerating}
+            className="flex-1"
+            variant="outline"
           >
-            🐕 Doge Theme
+            {isGenerating ? (
+              <>
+                <RefreshCw className="animate-spin mr-2" size={16} />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2" size={16} />
+                Generate Names
+                {!isPremium && <span className="ml-1 text-xs">(0.01 SOL)</span>}
+              </>
+            )}
           </Button>
+          
           <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs h-7"
-            onClick={() => generateSuggestions('pepe')}
-            disabled={isLoading}
+            onClick={generateSymbols}
+            disabled={isGenerating || !currentName}
+            variant="outline"
           >
-            🐸 Pepe Theme
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs h-7"
-            onClick={() => generateSuggestions('moon')}
-            disabled={isLoading}
-          >
-            🌙 Moon Theme
+            Symbols
+            {!isPremium && <span className="ml-1 text-xs">(0.01 SOL)</span>}
           </Button>
         </div>
       </CardContent>

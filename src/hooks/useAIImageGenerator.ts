@@ -5,10 +5,16 @@ import { toast } from 'sonner';
 export const useAIImageGenerator = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const generateMemeImage = async (prompt: string): Promise<string | null> => {
+  const generateMemeImage = async (prompt: string, isPremium: boolean = false): Promise<string | null> => {
     if (!prompt.trim()) {
       toast.error('Please enter a description for your meme');
       return null;
+    }
+
+    if (!isPremium) {
+      toast.info('💰 Premium AI Generation - 0.02 SOL', {
+        description: 'This will charge 0.02 SOL for AI meme generation'
+      });
     }
 
     setIsGenerating(true);
@@ -26,7 +32,7 @@ export const useAIImageGenerator = () => {
       ];
       
       const randomImage = memeImages[Math.floor(Math.random() * memeImages.length)];
-      toast.success('🎨 Meme generated successfully!');
+      toast.success(isPremium ? '🎨 Meme generated!' : '🎨 Meme generated! (0.02 SOL charged)');
       return randomImage;
       
     } catch (error) {
