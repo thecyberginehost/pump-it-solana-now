@@ -37,34 +37,34 @@ const TokenCreator = () => {
     {
       id: "basic",
       name: "Basic Launch",
-      price: 0.25,
+      price: 0.025,
       features: ["Token Creation", "Basic AI Suggestions", "Standard Listing"],
       color: "border-border"
     },
     {
       id: "premium",
       name: "Premium Launch",
-      price: 0.5,
+      price: 0.1,
       features: ["Everything in Basic", "10 AI Generations Included", "Priority Support", "48h Featured"],
       color: "border-accent"
     },
     {
       id: "viral",
       name: "Viral Launch",
-      price: 1.0,
+      price: 0.25,
       features: ["Everything in Premium", "Unlimited AI Features", "7-day Featured", "Marketing Boost", "Analytics Dashboard"],
       color: "border-primary"
     }
   ];
 
   const boostPricing = {
-    featured: { price: 0.1, label: "Featured Placement (24h)" },
-    fastTrack: { price: 0.03, label: "Fast-Track Launch" },
-    viralBoost: { price: 0.2, label: "Viral Marketing Boost" }
+    featured: { price: 0.015, label: "Featured Placement (24h)" },
+    fastTrack: { price: 0.01, label: "Fast-Track Launch" },
+    viralBoost: { price: 0.05, label: "Viral Marketing Boost" }
   };
 
   const calculateTotalPrice = () => {
-    const tierPrice = launchTiers.find(tier => tier.id === launchTier)?.price || 0.25;
+    const tierPrice = launchTiers.find(tier => tier.id === launchTier)?.price || 0.025;
     const boostPrice = Object.entries(boostOptions).reduce((total, [key, enabled]) => {
       if (enabled) {
         return total + boostPricing[key as keyof typeof boostPricing].price;
@@ -183,7 +183,7 @@ const TokenCreator = () => {
                 <div>
                   <p className="font-medium">AI Forge Assistant</p>
                   <p className="text-xs text-muted-foreground">
-                    {launchTier === "viral" ? "Unlimited AI features included!" : "Pay-per-use: 0.01-0.02 SOL per generation"}
+                    {launchTier === "viral" ? "Unlimited AI features included!" : "Pay-per-use: 0.005-0.01 SOL per generation"}
                   </p>
                 </div>
               </div>
@@ -327,7 +327,7 @@ const TokenCreator = () => {
               🔥 Launch for <span className="text-accent">{calculateTotalPrice()} SOL</span>
             </div>
             <div className="text-sm text-muted-foreground">
-              ~${(parseFloat(calculateTotalPrice()) * 100).toFixed(0)} USD
+              ~${(parseFloat(calculateTotalPrice()) * 150).toFixed(0)} USD
             </div>
           </div>
           
