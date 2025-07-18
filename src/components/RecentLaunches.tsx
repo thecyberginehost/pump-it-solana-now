@@ -192,9 +192,14 @@ const RecentLaunches = () => {
                     </div>
                   </div>
 
-                  <Button variant="electric" size="sm" className="w-full">
-                    Trade Now
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="electric" size="sm" className="flex-1">
+                      Trade Now
+                    </Button>
+                    <Button size="sm" variant="outline">
+                      Share
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}

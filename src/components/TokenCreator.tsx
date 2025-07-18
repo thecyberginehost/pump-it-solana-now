@@ -23,7 +23,8 @@ const TokenCreator = () => {
     featured: false,
     fastTrack: false,
     viralBoost: false,
-    trending: false
+    trending: false,
+    viralPackage: false
   });
 
   const [showAIFeatures, setShowAIFeatures] = useState(false);
@@ -62,7 +63,8 @@ const TokenCreator = () => {
     featured: { price: 0.015, label: "Featured Placement (24h)" },
     fastTrack: { price: 0.01, label: "Fast-Track Launch" },
     viralBoost: { price: 0.05, label: "Viral Marketing Boost" },
-    trending: { price: 0.08, label: "Trending Launch (7 days)" }
+    trending: { price: 0.08, label: "Trending Launch (7 days)" },
+    viralPackage: { price: 0.25, label: "Viral Package (30 days)" }
   };
 
   const calculateTotalPrice = () => {
