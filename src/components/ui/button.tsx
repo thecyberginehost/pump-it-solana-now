@@ -18,11 +18,16 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Pump.fun inspired variants
+        pump: "gradient-pump text-white font-bold shadow-pump hover:shadow-neon transition-all duration-300 hover:scale-105 animate-glow",
+        electric: "gradient-electric text-black font-bold shadow-neon hover:scale-110 transition-all duration-200",
+        neon: "bg-accent text-accent-foreground font-bold border-2 border-accent shadow-neon hover:glow-electric transition-all duration-300",
       },
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
+        xl: "h-14 rounded-lg px-12 text-lg font-bold",
         icon: "h-10 w-10",
       },
     },

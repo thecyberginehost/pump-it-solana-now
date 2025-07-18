@@ -63,6 +63,14 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+			fontFamily: {
+				'pump': ['Inter', 'system-ui', 'sans-serif'],
+			},
+			backgroundImage: {
+				'gradient-pump': 'var(--gradient-pump)',
+				'gradient-electric': 'var(--gradient-electric)',
+				'gradient-neon': 'var(--gradient-neon)',
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
