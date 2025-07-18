@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { TrendingUp, ExternalLink, Copy } from "lucide-react";
+import { TrendingUp, ExternalLink, Copy, Crown } from "lucide-react";
 
 interface LaunchData {
   id: string;
@@ -44,6 +44,28 @@ const RecentLaunches = () => {
     }
   ]);
 
+  // Featured/Trending tokens that appear at the top
+  const [trendingLaunches] = useState<LaunchData[]>([
+    {
+      id: "trending-1",
+      name: "VIRAL COIN",
+      symbol: "VIRAL",
+      creator: "0xaaaa...bbbb",
+      marketCap: "$2.5M",
+      change24h: 5000.0,
+      image: "🔥"
+    },
+    {
+      id: "trending-2",
+      name: "TREND SETTER",
+      symbol: "TREND", 
+      creator: "0xcccc...dddd",
+      marketCap: "$1.8M",
+      change24h: 3200.0,
+      image: "⭐"
+    }
+  ]);
+
   const [timeLeft, setTimeLeft] = useState(5);
 
   useEffect(() => {
@@ -69,50 +91,114 @@ const RecentLaunches = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {launches.map((launch) => (
-            <Card key={launch.id} className="border-border/50 hover:shadow-neon transition-all duration-300 hover:scale-105">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="text-4xl">{launch.image}</div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg">{launch.name}</h3>
-                    <p className="text-sm text-muted-foreground">${launch.symbol}</p>
-                  </div>
-                  <Button variant="ghost" size="icon">
-                    <ExternalLink size={16} />
-                  </Button>
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Market Cap</span>
-                    <span className="font-medium">{launch.marketCap}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">24h Change</span>
-                    <span className="font-medium text-accent flex items-center gap-1">
-                      <TrendingUp size={14} />
-                      +{launch.change24h}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Creator</span>
-                    <div className="flex items-center gap-1">
-                      <span className="font-mono text-xs">{launch.creator}</span>
-                      <Button variant="ghost" size="icon" className="h-4 w-4">
-                        <Copy size={12} />
+        {/* Trending/Featured Section */}
+        {trendingLaunches.length > 0 && (
+          <div className="mb-16">
+            <div className="flex items-center gap-2 mb-8">
+              <Crown className="text-accent animate-pulse" size={24} />
+              <h3 className="text-2xl font-bold text-gradient">🔥 Trending Now</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {trendingLaunches.map((launch) => (
+                <Card key={launch.id} className="border-accent/50 bg-gradient-electric/20 hover:shadow-neon transition-all duration-300 hover:scale-105">
+                  <CardContent className="p-6 relative">
+                    <div className="absolute top-2 right-2">
+                      <div className="bg-accent text-accent-foreground text-xs px-2 py-1 rounded-full font-bold">
+                        TRENDING
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="text-4xl">{launch.image}</div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg">{launch.name}</h3>
+                        <p className="text-sm text-muted-foreground">${launch.symbol}</p>
+                      </div>
+                      <Button variant="ghost" size="icon">
+                        <ExternalLink size={16} />
                       </Button>
                     </div>
-                  </div>
-                </div>
 
-                <Button variant="electric" size="sm" className="w-full">
-                  Trade Now
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Market Cap</span>
+                        <span className="font-medium">{launch.marketCap}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">24h Change</span>
+                        <span className="font-medium text-accent flex items-center gap-1">
+                          <TrendingUp size={14} />
+                          +{launch.change24h}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Creator</span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-xs">{launch.creator}</span>
+                          <Button variant="ghost" size="icon" className="h-4 w-4">
+                            <Copy size={12} />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button variant="electric" size="sm" className="w-full">
+                      Trade Now
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Regular Recent Launches */}
+        <div className="mb-8">
+          <h3 className="text-xl font-bold mb-6">Recent Launches</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {launches.map((launch) => (
+              <Card key={launch.id} className="border-border/50 hover:shadow-neon transition-all duration-300 hover:scale-105">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="text-4xl">{launch.image}</div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg">{launch.name}</h3>
+                      <p className="text-sm text-muted-foreground">${launch.symbol}</p>
+                    </div>
+                    <Button variant="ghost" size="icon">
+                      <ExternalLink size={16} />
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Market Cap</span>
+                      <span className="font-medium">{launch.marketCap}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">24h Change</span>
+                      <span className="font-medium text-accent flex items-center gap-1">
+                        <TrendingUp size={14} />
+                        +{launch.change24h}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Creator</span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-mono text-xs">{launch.creator}</span>
+                        <Button variant="ghost" size="icon" className="h-4 w-4">
+                          <Copy size={12} />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button variant="electric" size="sm" className="w-full">
+                    Trade Now
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
 
         <div className="text-center mt-12">
