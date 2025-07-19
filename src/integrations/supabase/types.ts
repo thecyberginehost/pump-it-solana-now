@@ -14,7 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          last_active: string
+          total_tokens_created: number | null
+          total_volume_traded: number | null
+          username: string | null
+          wallet_address: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          last_active?: string
+          total_tokens_created?: number | null
+          total_volume_traded?: number | null
+          username?: string | null
+          wallet_address: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          last_active?: string
+          total_tokens_created?: number | null
+          total_volume_traded?: number | null
+          username?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

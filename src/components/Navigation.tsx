@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { WalletButton } from "@/components/WalletButton";
 import { 
   Home, 
   Trophy, 
@@ -67,17 +68,9 @@ const Navigation = () => {
             })}
           </div>
 
-          {/* CTA Button */}
+          {/* Wallet Connection */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button 
-              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transition-all duration-300"
-              asChild
-            >
-              <Link to="/">
-                <Zap className="w-4 h-4 mr-2" />
-                Create Token
-              </Link>
-            </Button>
+            <WalletButton />
           </div>
 
           {/* Mobile menu button */}
@@ -121,16 +114,7 @@ const Navigation = () => {
                 );
               })}
               <div className="pt-4">
-                <Button 
-                  className="w-full bg-gradient-to-r from-primary to-primary/80"
-                  asChild
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Link to="/">
-                    <Zap className="w-4 h-4 mr-2" />
-                    Create Token
-                  </Link>
-                </Button>
+                <WalletButton />
               </div>
             </div>
           </div>
