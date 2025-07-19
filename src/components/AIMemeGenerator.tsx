@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent } from './ui/card';
 import { Sparkles, Image, RefreshCw, Crown } from 'lucide-react';
-import { useAIImageGenerator } from '@/hooks/useAIImageGenerator';
+import { useAIServices } from '@/hooks/useAIServices';
 
 interface AIMemeGeneratorProps {
   onImageGenerated: (imageUrl: string) => void;
@@ -13,10 +13,10 @@ interface AIMemeGeneratorProps {
 
 const AIMemeGenerator = ({ onImageGenerated, isPremium = false }: AIMemeGeneratorProps) => {
   const [prompt, setPrompt] = useState('');
-  const { generateMemeImage, isGenerating } = useAIImageGenerator();
+  const { generateImage, isGeneratingImage } = useAIServices();
 
   const handleGenerate = async () => {
-    const imageUrl = await generateMemeImage(prompt, isPremium);
+    const imageUrl = await generateImage(prompt);
     if (imageUrl) {
       onImageGenerated(imageUrl);
       setPrompt('');
@@ -57,11 +57,11 @@ const AIMemeGenerator = ({ onImageGenerated, isPremium = false }: AIMemeGenerato
           
           <Button
             onClick={handleGenerate}
-            disabled={isGenerating || !prompt.trim()}
+            disabled={isGeneratingImage || !prompt.trim()}
             className="w-full"
             variant="outline"
           >
-            {isGenerating ? (
+            {isGeneratingImage ? (
               <>
                 <RefreshCw className="animate-spin mr-2" size={16} />
                 Forging Meme...
