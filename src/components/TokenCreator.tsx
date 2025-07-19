@@ -3,18 +3,24 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Upload, Eye, Wallet, Sparkles } from "lucide-react";
+import { Upload, Eye, Wallet, Sparkles, Loader2 } from "lucide-react";
 import AISuggestions from "./AISuggestions";
 import AIMemeGenerator from "./AIMemeGenerator";
+import { useWalletAuth } from "@/hooks/useWalletAuth";
+import { useTokenCreation } from "@/hooks/useTokenCreation";
+import { toast } from "sonner";
 
 const TokenCreator = () => {
   const [tokenData, setTokenData] = useState({
     name: "",
     symbol: "",
-    image: ""
+    image: "",
+    description: ""
   });
 
   const [showAIFeatures, setShowAIFeatures] = useState(false);
+  const { isAuthenticated, walletAddress } = useWalletAuth();
+  const { createToken, isCreating } = useTokenCreation();
 
   const handleAINameSelect = (name: string) => {
     setTokenData(prev => ({ ...prev, name }));
@@ -26,6 +32,20 @@ const TokenCreator = () => {
 
   const handleAIImageSelect = (imageUrl: string) => {
     setTokenData(prev => ({ ...prev, image: imageUrl }));
+  };
+
+  const handleLaunchToken = async () => {
+    if (!isAuthenticated || !walletAddress) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    if (!tokenData.name || !tokenData.symbol) {
+      toast.error('Please fill in token name and symbol');
+      return;
+    }
+
+    await createToken(tokenData, walletAddress);
   };
 
   return (
@@ -147,10 +167,20 @@ const TokenCreator = () => {
             variant="neon" 
             size="xl" 
             className="w-full h-14 text-lg font-bold"
-            disabled={!tokenData.name || !tokenData.symbol}
+            disabled={!tokenData.name || !tokenData.symbol || isCreating || !isAuthenticated}
+            onClick={handleLaunchToken}
           >
-            <Wallet className="mr-2" size={20} />
-            Launch for 0.02 SOL (~$3)
+            {isCreating ? (
+              <>
+                <Loader2 className="mr-2 animate-spin" size={20} />
+                Creating Token...
+              </>
+            ) : (
+              <>
+                <Wallet className="mr-2" size={20} />
+                {isAuthenticated ? 'Launch for 0.02 SOL (~$3)' : 'Connect Wallet to Launch'}
+              </>
+            )}
           </Button>
           
           <p className="text-xs text-muted-foreground text-center mt-2">

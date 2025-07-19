@@ -44,6 +44,68 @@ export type Database = {
         }
         Relationships: []
       }
+      tokens: {
+        Row: {
+          created_at: string
+          creation_fee: number | null
+          creator_wallet: string
+          description: string | null
+          holder_count: number | null
+          id: string
+          image_url: string | null
+          market_cap: number | null
+          mint_address: string | null
+          name: string
+          price: number | null
+          symbol: string
+          total_supply: number | null
+          updated_at: string
+          volume_24h: number | null
+        }
+        Insert: {
+          created_at?: string
+          creation_fee?: number | null
+          creator_wallet: string
+          description?: string | null
+          holder_count?: number | null
+          id?: string
+          image_url?: string | null
+          market_cap?: number | null
+          mint_address?: string | null
+          name: string
+          price?: number | null
+          symbol: string
+          total_supply?: number | null
+          updated_at?: string
+          volume_24h?: number | null
+        }
+        Update: {
+          created_at?: string
+          creation_fee?: number | null
+          creator_wallet?: string
+          description?: string | null
+          holder_count?: number | null
+          id?: string
+          image_url?: string | null
+          market_cap?: number | null
+          mint_address?: string | null
+          name?: string
+          price?: number | null
+          symbol?: string
+          total_supply?: number | null
+          updated_at?: string
+          volume_24h?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tokens_creator_wallet_fkey"
+            columns: ["creator_wallet"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["wallet_address"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

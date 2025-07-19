@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { TrendingUp, ExternalLink, Copy, Crown } from "lucide-react";
+import { TrendingUp, ExternalLink, Copy, Crown, Loader2 } from "lucide-react";
+import { useRecentTokens } from "@/hooks/useTokens";
+import { toast } from "sonner";
 
 interface LaunchData {
   id: string;
@@ -14,7 +16,10 @@ interface LaunchData {
 }
 
 const RecentLaunches = () => {
-  const [launches] = useState<LaunchData[]>([
+  const { data: tokens, isLoading, error } = useRecentTokens();
+  
+  // Fallback data for when there are no real tokens yet
+  const [fallbackLaunches] = useState<LaunchData[]>([
     {
       id: "1",
       name: "DOGE KILLER",
@@ -43,6 +48,17 @@ const RecentLaunches = () => {
       image: "💎"
     }
   ]);
+
+  // Convert real tokens to LaunchData format
+  const launches = tokens?.map(token => ({
+    id: token.id,
+    name: token.name,
+    symbol: token.symbol,
+    creator: `${token.creator_wallet.slice(0, 6)}...${token.creator_wallet.slice(-4)}`,
+    marketCap: token.market_cap > 0 ? `$${(token.market_cap / 1000).toFixed(0)}K` : '$0',
+    change24h: Math.random() * 500 + 50, // Mock change for now
+    image: token.image_url ? '🎨' : '🚀'
+  })) || fallbackLaunches;
 
   // Featured/Trending tokens that appear at the top
   const [trendingLaunches] = useState<LaunchData[]>([
@@ -154,56 +170,68 @@ const RecentLaunches = () => {
         {/* Regular Recent Launches */}
         <div className="mb-8">
           <h3 className="text-xl font-bold mb-6">Recent Launches</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {launches.map((launch) => (
-              <Card key={launch.id} className="border-border/50 hover:shadow-neon transition-all duration-300 hover:scale-105">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="text-4xl">{launch.image}</div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg">{launch.name}</h3>
-                      <p className="text-sm text-muted-foreground">${launch.symbol}</p>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="animate-spin mr-2" size={24} />
+              <span>Loading recent launches...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <p>Failed to load recent launches</p>
+              <p className="text-sm mt-2">Showing demo data instead</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {launches.map((launch) => (
+                <Card key={launch.id} className="border-border/50 hover:shadow-neon transition-all duration-300 hover:scale-105">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="text-4xl">{launch.image}</div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg">{launch.name}</h3>
+                        <p className="text-sm text-muted-foreground">${launch.symbol}</p>
+                      </div>
+                      <Button variant="ghost" size="icon">
+                        <ExternalLink size={16} />
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="icon">
-                      <ExternalLink size={16} />
-                    </Button>
-                  </div>
 
-                  <div className="space-y-2 mb-4">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Market Cap</span>
-                      <span className="font-medium">{launch.marketCap}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">24h Change</span>
-                      <span className="font-medium text-accent flex items-center gap-1">
-                        <TrendingUp size={14} />
-                        +{launch.change24h}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Creator</span>
-                      <div className="flex items-center gap-1">
-                        <span className="font-mono text-xs">{launch.creator}</span>
-                        <Button variant="ghost" size="icon" className="h-4 w-4">
-                          <Copy size={12} />
-                        </Button>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Market Cap</span>
+                        <span className="font-medium">{launch.marketCap}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">24h Change</span>
+                        <span className="font-medium text-accent flex items-center gap-1">
+                          <TrendingUp size={14} />
+                          +{launch.change24h}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Creator</span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-xs">{launch.creator}</span>
+                          <Button variant="ghost" size="icon" className="h-4 w-4">
+                            <Copy size={12} />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex gap-2">
-                    <Button variant="electric" size="sm" className="flex-1">
-                      Trade Now
-                    </Button>
-                    <Button size="sm" variant="outline">
-                      Share
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <div className="flex gap-2">
+                      <Button variant="electric" size="sm" className="flex-1">
+                        Trade Now
+                      </Button>
+                      <Button size="sm" variant="outline">
+                        Share
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="text-center mt-12">
