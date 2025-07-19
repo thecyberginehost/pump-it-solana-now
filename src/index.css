@@ -50,21 +50,15 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar colors aligned with dark theme */
+    --sidebar-background: 235 39% 8%;
+    --sidebar-foreground: 280 5% 96%;
+    --sidebar-primary: 280 100% 70%;
+    --sidebar-primary-foreground: 235 39% 5%;
+    --sidebar-accent: 235 39% 15%;
+    --sidebar-accent-foreground: 280 5% 96%;
+    --sidebar-border: 235 39% 20%;
+    --sidebar-ring: 280 100% 70%;
   }
 
   .dark {
