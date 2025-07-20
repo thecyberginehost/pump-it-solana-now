@@ -70,28 +70,6 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, currentNam
     }
   };
 
-  const generateSymbols = async () => {
-    if (!currentName) {
-      toast.error('Enter a token name first');
-      return;
-    }
-
-    if (!isPremium) {
-      toast.info('💰 Premium AI Generation - 0.01 SOL', {
-        description: 'This will charge 0.01 SOL for AI symbol suggestions'
-      });
-    }
-
-    setIsGenerating(true);
-    try {
-      const symbols = await AIService.generateTokenSymbols(currentName);
-      setSuggestions(prev => ({ ...prev, symbols }));
-    } catch (error) {
-      toast.error('Failed to generate symbols');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   return (
     <Card className="border-accent/20 bg-card/50">
@@ -199,37 +177,26 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, currentNam
           </div>
         )}
 
-        {/* Generate Buttons */}
-        <div className="flex gap-2">
-          <Button
-            onClick={() => generateSuggestions()}
-            disabled={isGenerating}
-            className="flex-1"
-            variant="outline"
-          >
-            {isGenerating ? (
-              <>
-                <RefreshCw className="animate-spin mr-2" size={16} />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-2" size={16} />
-                Generate Names
-                {!isPremium && <span className="ml-1 text-xs">(0.01 SOL)</span>}
-              </>
-            )}
-          </Button>
-          
-          <Button
-            onClick={generateSymbols}
-            disabled={isGenerating || !currentName}
-            variant="outline"
-          >
-            Symbols
-            {!isPremium && <span className="ml-1 text-xs">(0.01 SOL)</span>}
-          </Button>
-        </div>
+        {/* Generate Button */}
+        <Button
+          onClick={() => generateSuggestions()}
+          disabled={isGenerating}
+          className="w-full"
+          variant="outline"
+        >
+          {isGenerating ? (
+            <>
+              <RefreshCw className="animate-spin mr-2" size={16} />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Sparkles className="mr-2" size={16} />
+              Generate Token Suggestions
+              {!isPremium && <span className="ml-1 text-xs">(0.01 SOL)</span>}
+            </>
+          )}
+        </Button>
       </CardContent>
     </Card>
   );
