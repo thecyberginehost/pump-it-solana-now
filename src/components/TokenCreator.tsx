@@ -3,9 +3,11 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Upload, Eye, Wallet, Sparkles, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Upload, Eye, Wallet, Sparkles, Loader2, Bot } from "lucide-react";
 import AISuggestions from "./AISuggestions";
 import AIMemeGenerator from "./AIMemeGenerator";
+import { DegenCoPilot } from "./DegenCoPilot";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import { useTokenCreation } from "@/hooks/useTokenCreation";
 import { toast } from "sonner";
@@ -19,6 +21,7 @@ const TokenCreator = () => {
   });
 
   const [showAIFeatures, setShowAIFeatures] = useState(false);
+  const [showCoPilot, setShowCoPilot] = useState(false);
   const { isAuthenticated, walletAddress } = useWalletAuth();
   const { createToken, isCreating } = useTokenCreation();
 
@@ -60,30 +63,54 @@ const TokenCreator = () => {
           </p>
         </div>
 
-        {/* AI Features Toggle - Simple */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <Sparkles className="text-accent" size={16} />
-          <span className="text-sm">Use AI Assistant</span>
-          <div className="relative">
-            <input
-              type="checkbox"
-              checked={showAIFeatures}
-              onChange={(e) => setShowAIFeatures(e.target.checked)}
-              className="sr-only"
-            />
-            <div
-              onClick={() => setShowAIFeatures(!showAIFeatures)}
-              className={`w-8 h-4 rounded-full cursor-pointer transition-colors ${
-                showAIFeatures ? 'bg-accent' : 'bg-muted'
-              }`}
-            >
-              <div
-                className={`w-3 h-3 bg-white rounded-full transition-transform ${
-                  showAIFeatures ? 'translate-x-4' : 'translate-x-0.5'
-                } mt-0.5`}
+        {/* AI Features */}
+        <div className="flex items-center justify-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <Sparkles className="text-accent" size={16} />
+            <span className="text-sm">Use AI Tools</span>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={showAIFeatures}
+                onChange={(e) => setShowAIFeatures(e.target.checked)}
+                className="sr-only"
               />
+              <div
+                onClick={() => setShowAIFeatures(!showAIFeatures)}
+                className={`w-8 h-4 rounded-full cursor-pointer transition-colors ${
+                  showAIFeatures ? 'bg-accent' : 'bg-muted'
+                }`}
+              >
+                <div
+                  className={`w-3 h-3 bg-white rounded-full transition-transform ${
+                    showAIFeatures ? 'translate-x-4' : 'translate-x-0.5'
+                  } mt-0.5`}
+                />
+              </div>
             </div>
           </div>
+          
+          {isAuthenticated && (
+            <Dialog open={showCoPilot} onOpenChange={setShowCoPilot}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Bot className="h-4 w-4" />
+                  Degen CoPilot
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-5xl w-[95vw] h-[80vh] p-0">
+                <DialogHeader className="p-6 pb-0">
+                  <DialogTitle>Degen CoPilot - AI Marketing Assistant</DialogTitle>
+                </DialogHeader>
+                <div className="flex-1 p-6 pt-0">
+                  <DegenCoPilot 
+                    tokenName={tokenData.name} 
+                    tokenSymbol={tokenData.symbol}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* AI Features */}
