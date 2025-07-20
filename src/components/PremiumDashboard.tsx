@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,27 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { TrendingUp, DollarSign, Users, Eye, Crown, Zap, Target, Share2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const PremiumDashboard = () => {
   const [activeTab, setActiveTab] = useState("analytics");
+  const [availableTop10Spots, setAvailableTop10Spots] = useState(10);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    fetchAvailableTop10Spots();
+  }, []);
+
+  const fetchAvailableTop10Spots = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_available_top_10_spots');
+      if (error) throw error;
+      setAvailableTop10Spots(data || 10);
+    } catch (error) {
+      console.error('Error fetching available spots:', error);
+      setAvailableTop10Spots(10); // Default to 10 if error
+    }
+  };
 
   const mockTokens = [
     {
@@ -78,10 +96,42 @@ const PremiumDashboard = () => {
     }
   ];
 
-  const handleUpgrade = (boostName: string, price: number) => {
-    toast.success(`🚀 ${boostName} activated! (${price} SOL charged)`, {
-      description: "Your token is now boosted with premium features"
-    });
+  const handleUpgrade = async (boostName: string, price: number) => {
+    // Check if this is the Premium Trending boost and if spots are available
+    if (boostName === "Premium Trending") {
+      if (availableTop10Spots <= 0) {
+        toast.error("❌ Top 10 spots are fully booked!", {
+          description: "All 10 premium trending spots are currently occupied. Try again later."
+        });
+        return;
+      }
+      
+      setIsLoading(true);
+      try {
+        // Mock booking logic - in real implementation, this would:
+        // 1. Process payment
+        // 2. Insert into trending_boosts table with top_10_premium type
+        // 3. Assign position using assign_top_10_position function
+        
+        // For now, just simulate the booking
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Update available spots
+        setAvailableTop10Spots(prev => prev - 1);
+        
+        toast.success(`🚀 ${boostName} activated! (${price} SOL charged)`, {
+          description: `Your token is now in the top 10 trending! ${availableTop10Spots - 1} spots remaining.`
+        });
+      } catch (error) {
+        toast.error("Failed to activate boost. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      toast.success(`🚀 ${boostName} activated! (${price} SOL charged)`, {
+        description: "Your token is now boosted with premium features"
+      });
+    }
   };
 
   return (
@@ -241,22 +291,42 @@ const PremiumDashboard = () => {
                         <CardDescription>{boost.duration}</CardDescription>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        {boost.features.map((feature, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-primary rounded-full" />
-                            <span className="text-sm">{feature}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <Button 
-                        className="w-full" 
-                        onClick={() => handleUpgrade(boost.name, boost.price)}
-                      >
-                        Activate Boost
-                      </Button>
-                    </CardContent>
+                     <CardContent className="space-y-4">
+                       <div className="space-y-2">
+                         {boost.features.map((feature, idx) => (
+                           <div key={idx} className="flex items-center gap-2">
+                             <div className="w-2 h-2 bg-primary rounded-full" />
+                             <span className="text-sm">{feature}</span>
+                           </div>
+                         ))}
+                       </div>
+                       
+                       {/* Show availability for Premium Trending */}
+                       {boost.name === "Premium Trending" && (
+                         <div className="p-3 bg-muted rounded-lg">
+                           <div className="flex items-center justify-between text-sm">
+                             <span className="font-medium">Available Spots:</span>
+                             <Badge variant={availableTop10Spots > 0 ? "default" : "destructive"}>
+                               {availableTop10Spots}/10
+                             </Badge>
+                           </div>
+                           {availableTop10Spots <= 3 && availableTop10Spots > 0 && (
+                             <p className="text-xs text-orange-500 mt-1">⚠️ Limited spots remaining!</p>
+                           )}
+                           {availableTop10Spots === 0 && (
+                             <p className="text-xs text-destructive mt-1">❌ All spots occupied</p>
+                           )}
+                         </div>
+                       )}
+                       
+                       <Button 
+                         className="w-full" 
+                         onClick={() => handleUpgrade(boost.name, boost.price)}
+                         disabled={isLoading || (boost.name === "Premium Trending" && availableTop10Spots <= 0)}
+                       >
+                         {isLoading && boost.name === "Premium Trending" ? "Booking..." : "Activate Boost"}
+                       </Button>
+                     </CardContent>
                   </Card>
                 );
               })}

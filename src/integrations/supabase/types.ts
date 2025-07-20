@@ -261,12 +261,61 @@ export type Database = {
           },
         ]
       }
+      trending_boosts: {
+        Row: {
+          boost_type: string
+          created_at: string
+          creator_wallet: string
+          duration_hours: number
+          expires_at: string
+          id: string
+          position: number | null
+          price_sol: number
+          starts_at: string
+          token_id: string
+          updated_at: string
+        }
+        Insert: {
+          boost_type: string
+          created_at?: string
+          creator_wallet: string
+          duration_hours: number
+          expires_at: string
+          id?: string
+          position?: number | null
+          price_sol: number
+          starts_at?: string
+          token_id: string
+          updated_at?: string
+        }
+        Update: {
+          boost_type?: string
+          created_at?: string
+          creator_wallet?: string
+          duration_hours?: number
+          expires_at?: string
+          id?: string
+          position?: number | null
+          price_sol?: number
+          starts_at?: string
+          token_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      assign_top_10_position: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      get_available_top_10_spots: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
