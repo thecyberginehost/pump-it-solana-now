@@ -4,6 +4,7 @@ import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { SolanaMobileWalletAdapter, createDefaultAuthorizationResultCache, createDefaultAddressSelector } from '@solana-mobile/wallet-adapter-mobile';
 import { clusterApiUrl } from '@solana/web3.js';
 
 // Import wallet adapter CSS
@@ -23,6 +24,15 @@ export const WalletContextProvider = ({ children }: WalletContextProviderProps) 
   // Configure supported wallets
   const wallets = useMemo(
     () => [
+      new SolanaMobileWalletAdapter({
+        appIdentity: { name: 'Pump It Solana', uri: window.location.origin },
+        authorizationResultCache: createDefaultAuthorizationResultCache(),
+        addressSelector: createDefaultAddressSelector(),
+        cluster: 'devnet',
+        onWalletNotFound: async () => {
+          window.open('https://phantom.app/download', '_blank');
+        },
+      }),
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
     ],
