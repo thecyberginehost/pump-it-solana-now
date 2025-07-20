@@ -11,36 +11,22 @@ const QuickStart = () => {
 
   const steps = [
     {
-      title: "Choose Your Strategy",
-      description: "Pick your token launch strategy for maximum success",
+      title: "Connect Wallet",
+      description: "Connect your Solana wallet to get started",
       icon: Rocket,
-      options: [
-        { name: "Meme Token", bonus: "Popular category, high viral potential" },
-        { name: "Utility Token", bonus: "Long-term value, sustainable growth" },
-        { name: "Community Token", bonus: "Strong holder loyalty, organic growth" }
-      ]
+      features: ["Phantom", "Solflare", "Browser wallets"]
     },
     {
-      title: "AI-Powered Creation",
-      description: "Let AI create the perfect name, symbol, and image",
+      title: "AI Creation",
+      description: "Use AI to generate names and symbols",
       icon: Zap,
-      benefits: ["90% higher success rate", "Viral name generation", "Trending meme creation"]
+      features: ["Smart suggestions", "Matching symbols", "Quick generation"]
     },
     {
-      title: "Launch Strategy",
-      description: "Select boosts to maximize your launch impact",
+      title: "Create Token",
+      description: "Deploy your token on Solana blockchain",
       icon: Trophy,
-      boosts: [
-        { name: "Trending Launch", roi: "300% average ROI" },
-        { name: "Viral Package", roi: "500% average ROI" },
-        { name: "Whale Package", roi: "1000%+ average ROI" }
-      ]
-    },
-    {
-      title: "Profit Tracking", 
-      description: "Monitor and optimize your token's performance",
-      icon: DollarSign,
-      features: ["Real-time analytics", "Revenue optimization", "Market insights"]
+      features: ["Instant deployment", "Low fees", "Pump.fun integration"]
     }
   ];
 
@@ -85,7 +71,7 @@ const QuickStart = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {steps.map((step, index) => {
             const IconComponent = step.icon;
             const isCompleted = completedSteps.includes(index);
@@ -124,40 +110,7 @@ const QuickStart = () => {
                     {step.description}
                   </p>
                   
-                  {/* Step-specific content */}
-                  {step.options && (
-                    <div className="space-y-2">
-                      {step.options.map((option, idx) => (
-                        <div key={idx} className="text-xs p-2 bg-muted rounded">
-                          <div className="font-medium">{option.name}</div>
-                          <div className="text-muted-foreground">{option.bonus}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {step.benefits && (
-                    <div className="space-y-1">
-                      {step.benefits.map((benefit, idx) => (
-                        <div key={idx} className="text-xs flex items-center gap-1">
-                          <div className="w-1 h-1 bg-primary rounded-full" />
-                          {benefit}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {step.boosts && (
-                    <div className="space-y-2">
-                      {step.boosts.map((boost, idx) => (
-                        <div key={idx} className="text-xs p-2 bg-muted rounded">
-                          <div className="font-medium">{boost.name}</div>
-                          <div className="text-green-500">{boost.roi}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
+                  {/* Step features */}
                   {step.features && (
                     <div className="space-y-1">
                       {step.features.map((feature, idx) => (
@@ -174,25 +127,22 @@ const QuickStart = () => {
           })}
         </div>
 
-        {/* Success Stories */}
-        <Card className="mb-8 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/20">
+        {/* Platform Features */}
+        <Card className="mb-8 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
           <CardContent className="p-6">
-            <h3 className="text-xl font-bold mb-4 text-center">💰 Success Stories</h3>
+            <h3 className="text-xl font-bold mb-4 text-center">🚀 Platform Features</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold text-green-500">$2.5M</div>
-                <div className="text-sm text-muted-foreground">Highest token market cap</div>
-                <div className="text-xs text-muted-foreground mt-1">Using Viral Package</div>
+                <div className="text-2xl font-bold text-primary">AI-Powered</div>
+                <div className="text-sm text-muted-foreground">Smart token suggestions</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-green-500">1,247%</div>
-                <div className="text-sm text-muted-foreground">Average ROI with boosts</div>
-                <div className="text-xs text-muted-foreground mt-1">Last 30 days</div>
+                <div className="text-2xl font-bold text-primary">Solana</div>
+                <div className="text-sm text-muted-foreground">Fast & low-cost deployment</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-green-500">24h</div>
-                <div className="text-sm text-muted-foreground">Fastest to $100k market cap</div>
-                <div className="text-xs text-muted-foreground mt-1">With AI + Trending boost</div>
+                <div className="text-2xl font-bold text-primary">Pump.fun</div>
+                <div className="text-sm text-muted-foreground">Integrated marketplace</div>
               </div>
             </div>
           </CardContent>
@@ -209,7 +159,7 @@ const QuickStart = () => {
             Start Creating & Earning Now
           </Button>
           <p className="text-xs text-muted-foreground mt-2">
-            Join 10,000+ successful token creators
+            Create your first Solana token in minutes
           </p>
         </div>
       </div>
