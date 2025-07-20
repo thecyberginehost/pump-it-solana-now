@@ -207,9 +207,11 @@ export type Database = {
           name: string
           price: number | null
           symbol: string
+          telegram_url: string | null
           total_supply: number | null
           updated_at: string
           volume_24h: number | null
+          x_url: string | null
         }
         Insert: {
           created_at?: string
@@ -224,9 +226,11 @@ export type Database = {
           name: string
           price?: number | null
           symbol: string
+          telegram_url?: string | null
           total_supply?: number | null
           updated_at?: string
           volume_24h?: number | null
+          x_url?: string | null
         }
         Update: {
           created_at?: string
@@ -241,9 +245,11 @@ export type Database = {
           name?: string
           price?: number | null
           symbol?: string
+          telegram_url?: string | null
           total_supply?: number | null
           updated_at?: string
           volume_24h?: number | null
+          x_url?: string | null
         }
         Relationships: [
           {

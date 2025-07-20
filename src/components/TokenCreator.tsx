@@ -17,7 +17,9 @@ const TokenCreator = () => {
     name: "",
     symbol: "",
     image: "",
-    description: ""
+    description: "",
+    telegram_url: "",
+    x_url: ""
   });
 
   const [showAIFeatures, setShowAIFeatures] = useState(false);
@@ -184,6 +186,41 @@ const TokenCreator = () => {
                   <span className="text-sm text-muted-foreground">Preview</span>
                 </div>
               )}
+            </div>
+
+            {/* Social Media Links */}
+            <div className="space-y-3 pt-2 border-t border-border/50">
+              <Label className="text-sm font-medium text-muted-foreground">
+                Social Links (optional)
+              </Label>
+              
+              <div className="space-y-2">
+                <div className="space-y-2">
+                  <Label htmlFor="telegramUrl" className="text-xs font-medium">
+                    Telegram
+                  </Label>
+                  <Input
+                    id="telegramUrl"
+                    placeholder="https://t.me/your-channel"
+                    value={tokenData.telegram_url}
+                    onChange={(e) => setTokenData(prev => ({ ...prev, telegram_url: e.target.value }))}
+                    className="text-sm"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="xUrl" className="text-xs font-medium">
+                    X (Twitter)
+                  </Label>
+                  <Input
+                    id="xUrl"
+                    placeholder="https://x.com/your-handle"
+                    value={tokenData.x_url}
+                    onChange={(e) => setTokenData(prev => ({ ...prev, x_url: e.target.value }))}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

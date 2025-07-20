@@ -8,6 +8,8 @@ export interface TokenData {
   symbol: string;
   image: string;
   description?: string;
+  telegram_url?: string;
+  x_url?: string;
 }
 
 export const useTokenCreation = () => {
@@ -22,6 +24,8 @@ export const useTokenCreation = () => {
           symbol: tokenData.symbol,
           imageUrl: tokenData.image,
           description: tokenData.description,
+          telegramUrl: tokenData.telegram_url,
+          xUrl: tokenData.x_url,
           walletAddress,
         },
       });

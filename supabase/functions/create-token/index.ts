@@ -35,7 +35,7 @@ serve(async (req) => {
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsdmFrcXVudnZoZWFqd2VqcHptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4OTYxNjksImV4cCI6MjA2ODQ3MjE2OX0.B4G2bqu9muRFuviZRt7bs80UUVEVy5nbO0p55z7vmlQ'
     );
 
-    const { name, symbol, imageUrl, walletAddress, description } = await req.json();
+    const { name, symbol, imageUrl, walletAddress, description, telegramUrl, xUrl } = await req.json();
 
     if (!name || !symbol || !walletAddress) {
       return new Response(
@@ -69,6 +69,8 @@ serve(async (req) => {
         symbol,
         description,
         image_url: imageUrl,
+        telegram_url: telegramUrl,
+        x_url: xUrl,
         mint_address: mockMintAddress,
         total_supply: 1000000000, // 1B tokens
         creation_fee: 0.02,
