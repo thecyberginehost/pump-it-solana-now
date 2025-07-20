@@ -14,6 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
+      community_rewards: {
+        Row: {
+          created_at: string
+          distributed_amount: number
+          id: string
+          remaining_pool: number
+          token_id: string
+          total_pool: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          distributed_amount?: number
+          id?: string
+          remaining_pool?: number
+          token_id: string
+          total_pool?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          distributed_amount?: number
+          id?: string
+          remaining_pool?: number
+          token_id?: string
+          total_pool?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_rewards_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: true
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_earnings: {
+        Row: {
+          claimable_amount: number
+          created_at: string
+          creator_wallet: string
+          id: string
+          last_claim_at: string | null
+          token_id: string
+          total_claimed: number
+          total_earned: number
+          updated_at: string
+        }
+        Insert: {
+          claimable_amount?: number
+          created_at?: string
+          creator_wallet: string
+          id?: string
+          last_claim_at?: string | null
+          token_id: string
+          total_claimed?: number
+          total_earned?: number
+          updated_at?: string
+        }
+        Update: {
+          claimable_amount?: number
+          created_at?: string
+          creator_wallet?: string
+          id?: string
+          last_claim_at?: string | null
+          token_id?: string
+          total_claimed?: number
+          total_earned?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_earnings_creator_wallet_fkey"
+            columns: ["creator_wallet"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["wallet_address"]
+          },
+          {
+            foreignKeyName: "creator_earnings_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fee_transactions: {
+        Row: {
+          community_fee: number
+          created_at: string
+          creator_fee: number
+          creator_wallet: string
+          id: string
+          liquidity_fee: number
+          platform_fee: number
+          token_id: string
+          total_fee: number
+          trade_amount: number
+          trader_wallet: string
+          transaction_type: string
+        }
+        Insert: {
+          community_fee: number
+          created_at?: string
+          creator_fee: number
+          creator_wallet: string
+          id?: string
+          liquidity_fee: number
+          platform_fee: number
+          token_id: string
+          total_fee: number
+          trade_amount: number
+          trader_wallet: string
+          transaction_type: string
+        }
+        Update: {
+          community_fee?: number
+          created_at?: string
+          creator_fee?: number
+          creator_wallet?: string
+          id?: string
+          liquidity_fee?: number
+          platform_fee?: number
+          token_id?: string
+          total_fee?: number
+          trade_amount?: number
+          trader_wallet?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_transactions_creator_wallet_fkey"
+            columns: ["creator_wallet"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["wallet_address"]
+          },
+          {
+            foreignKeyName: "fee_transactions_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

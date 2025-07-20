@@ -54,3 +54,6 @@ verify_jwt = false
 
 [functions.generate-ai-content]
 verify_jwt = false
+
+[functions.process-trading-fees]
+verify_jwt = false
