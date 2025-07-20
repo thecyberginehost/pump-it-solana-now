@@ -35,31 +35,45 @@ interface DegenCoPilotProps {
 const QUICK_PROMPTS = [
   {
     id: 'viral_plan',
-    title: 'Create Viral Plan',
-    description: 'Generate a comprehensive viral marketing strategy',
+    title: 'Viral Launch Strategy',
+    description: 'Comprehensive 72-hour viral marketing plan',
     icon: <Target className="h-4 w-4" />,
-    prompt: "Now that I've launched my token, create a detailed viral marketing plan to get maximum exposure and community growth."
+    prompt: "Create a detailed 72-hour viral marketing strategy for my token launch. Include specific tactics, timing, platforms, and target metrics for maximum viral potential."
   },
   {
     id: 'viral_post',
-    title: 'Viral Twitter Post',
-    description: 'Create engaging Twitter content',
+    title: 'Viral Twitter Content',
+    description: 'High-engagement Twitter posts & threads',
     icon: <MessageSquare className="h-4 w-4" />,
-    prompt: "Create a viral Twitter post for my token that will get maximum engagement and retweets."
+    prompt: "Create 3 different viral Twitter posts for my token: 1) Launch announcement, 2) Community engagement post, 3) FOMO-inducing thread. Include emojis, hashtags, and engagement hooks."
   },
   {
     id: 'trend_research',
-    title: 'Trend Analysis',
-    description: 'Research current crypto trends',
+    title: 'Market Intelligence',
+    description: 'Current trends & positioning opportunities',
     icon: <TrendingUp className="h-4 w-4" />,
-    prompt: "What are the current trending narratives in crypto that I can leverage for my token's marketing?"
+    prompt: "Analyze current crypto market trends and viral narratives. How can I position my token to ride these trends? What opportunities exist in the next 48 hours?"
   },
   {
     id: 'community_strategy',
     title: 'Community Building',
-    description: 'Build engaged community',
+    description: 'Engagement tactics & growth strategies',
     icon: <BarChart3 className="h-4 w-4" />,
-    prompt: "How can I build an engaged, loyal community around my token? Give me specific tactics and milestones."
+    prompt: "Design a community building strategy to grow from 0 to 1000 engaged holders in 30 days. Include Discord/Telegram tactics, holder rewards, and viral mechanics."
+  },
+  {
+    id: 'influencer_outreach',
+    title: 'Influencer Strategy',
+    description: 'KOL outreach & collaboration tactics',
+    icon: <Sparkles className="h-4 w-4" />,
+    prompt: "Create an influencer outreach strategy for my token. Who should I target, what should I offer, and how do I approach them for maximum success?"
+  },
+  {
+    id: 'crisis_management',
+    title: 'Reputation Management',
+    description: 'Handle FUD & negative sentiment',
+    icon: <Bot className="h-4 w-4" />,
+    prompt: "My token is facing negative sentiment/FUD. Create a crisis management plan to turn this around and rebuild community confidence."
   }
 ];
 
@@ -202,24 +216,32 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
 
       <CardContent className="flex-1 flex flex-col gap-4 min-h-0">
         {messages.length === 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {QUICK_PROMPTS.map((prompt) => (
-              <Button
-                key={prompt.id}
-                variant="outline"
-                className="h-auto p-4 flex flex-col items-start gap-2 text-left"
-                onClick={() => handleQuickPrompt(prompt)}
-                disabled={isLoading || creditsRemaining <= 0}
-              >
-                <div className="flex items-center gap-2 w-full">
-                  {prompt.icon}
-                  <span className="font-medium">{prompt.title}</span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {prompt.description}
-                </span>
-              </Button>
-            ))}
+          <div className="space-y-4">
+            <div className="text-center mb-6">
+              <h3 className="text-lg font-semibold mb-2">Choose Your Mission</h3>
+              <p className="text-sm text-muted-foreground">
+                Select a specialized marketing strategy or ask me anything
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {QUICK_PROMPTS.map((prompt) => (
+                <Button
+                  key={prompt.id}
+                  variant="outline"
+                  className="h-auto p-4 flex flex-col items-start gap-2 text-left hover:bg-accent/10 transition-all"
+                  onClick={() => handleQuickPrompt(prompt)}
+                  disabled={isLoading || creditsRemaining <= 0}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    {prompt.icon}
+                    <span className="font-medium text-sm">{prompt.title}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {prompt.description}
+                  </span>
+                </Button>
+              ))}
+            </div>
           </div>
         )}
 

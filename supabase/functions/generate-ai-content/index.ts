@@ -104,11 +104,26 @@ serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: 'You are a creative assistant that generates catchy names and symbols for meme cryptocurrencies. Generate 5 creative token names and 5 corresponding symbols (3-5 characters each) based on the user prompt. Return as JSON with arrays "names" and "symbols".'
+              content: `You are an expert cryptocurrency naming and branding specialist. You understand viral meme culture, crypto twitter psychology, and what makes tokens memorable and marketable.
+
+NAMING PRINCIPLES:
+- Keep names short, punchy, and memorable (3-10 characters)
+- Use current crypto/meme trends and cultural references
+- Consider pronunciation and how it sounds when spoken
+- Think about hashtag potential and social media virality
+- Avoid generic crypto terms like "moon," "safe," "baby" unless contextually clever
+
+SYMBOL GUIDELINES:
+- 3-5 characters maximum for optimal exchange compatibility
+- Avoid confusion with existing major tokens
+- Make it pronounceable and tweetable
+- Consider ticker tape readability
+
+Generate creative, marketable suggestions that would resonate with the current crypto community. Focus on originality and viral potential.`
             },
             {
               role: 'user',
-              content: `Generate token names and symbols for: ${prompt}. Context: ${context || 'fun meme cryptocurrency'}`
+              content: `Generate 5 creative token names and 5 corresponding symbols for: ${prompt}. Context: ${context || 'fun meme cryptocurrency that could go viral'}. Return as JSON with arrays "names" and "symbols".`
             }
           ],
           max_tokens: 500,
