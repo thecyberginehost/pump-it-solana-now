@@ -33,7 +33,13 @@ export const WalletContextProvider = ({ children }: WalletContextProviderProps) 
           window.open('https://phantom.app/download', '_blank');
         },
       }),
-      new PhantomWalletAdapter(),
+      new PhantomWalletAdapter({ 
+        network,
+        config: {
+          deepLinkUrl: 'phantom://dapp',
+          redirectUrl: window.location.origin
+        }
+      }),
       new SolflareWalletAdapter(),
     ],
     []
