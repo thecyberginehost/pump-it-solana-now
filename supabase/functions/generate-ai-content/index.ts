@@ -123,7 +123,9 @@ Generate creative, marketable suggestions that would resonate with the current c
             },
             {
               role: 'user',
-              content: `Generate 5 creative token names and 5 corresponding symbols for: ${prompt}. Context: ${context || 'fun meme cryptocurrency that could go viral'}. Return as JSON with arrays "names" and "symbols".`
+              content: prompt.includes('Generate ticker symbols for token named:') 
+                ? `Generate 5 creative ticker symbols specifically for the token named: ${prompt.replace('Generate ticker symbols for token named: ', '')}. The symbols should be 3-4 characters, relate to the token name, and be memorable. Return as JSON with array "symbols".`
+                : `Generate 5 creative token names and their corresponding ticker symbols for: ${prompt}. Context: ${context || 'fun meme cryptocurrency that could go viral'}. Each name should have a matching symbol that relates to it. Return as JSON with arrays "names" and "symbols" where names[0] matches symbols[0], etc.`
             }
           ],
           max_tokens: 500,
@@ -150,9 +152,22 @@ Generate creative, marketable suggestions that would resonate with the current c
         
         const suggestions = JSON.parse(jsonContent);
         
-        // Validate the response structure
-        if (!suggestions.names || !suggestions.symbols || !Array.isArray(suggestions.names) || !Array.isArray(suggestions.symbols)) {
-          throw new Error('Invalid suggestions format from OpenAI');
+        // Handle different response types
+        if (prompt.includes('Generate ticker symbols for token named:')) {
+          // For symbol-only requests, validate symbols array
+          if (!suggestions.symbols || !Array.isArray(suggestions.symbols)) {
+            throw new Error('Invalid symbols format from OpenAI');
+          }
+        } else {
+          // For name+symbol requests, validate both arrays and ensure they match
+          if (!suggestions.names || !suggestions.symbols || !Array.isArray(suggestions.names) || !Array.isArray(suggestions.symbols)) {
+            throw new Error('Invalid suggestions format from OpenAI');
+          }
+          
+          // Ensure arrays are the same length for proper pairing
+          const minLength = Math.min(suggestions.names.length, suggestions.symbols.length);
+          suggestions.names = suggestions.names.slice(0, minLength);
+          suggestions.symbols = suggestions.symbols.slice(0, minLength);
         }
         
         return new Response(
@@ -163,37 +178,84 @@ Generate creative, marketable suggestions that would resonate with the current c
         console.error('JSON parsing failed:', parseError);
         console.log('Fallback: Generating random suggestions based on prompt');
         
-        // Generate more varied fallback suggestions based on the prompt
-        const timestamp = Date.now().toString().slice(-3);
-        const themes = {
-          doge: [`SuperDoge${timestamp}`, `MegaDoge${timestamp}`, `DogeMoon${timestamp}`],
-          pepe: [`GigaPepe${timestamp}`, `PepeMoon${timestamp}`, `UltraPepe${timestamp}`],
-          moon: [`MoonShot${timestamp}`, `LunarToken${timestamp}`, `MoonForged${timestamp}`],
-          rocket: [`RocketFuel${timestamp}`, `BlastOff${timestamp}`, `ThrusterX${timestamp}`],
-        };
-        
-        const promptLower = prompt.toLowerCase();
-        let fallbackNames = [`ViralCoin${timestamp}`, `MemeForge${timestamp}`, `PumpMaster${timestamp}`];
-        
-        // Choose theme-based names if prompt matches
-        for (const [theme, names] of Object.entries(themes)) {
-          if (promptLower.includes(theme)) {
-            fallbackNames = names;
-            break;
+        // Handle fallback differently based on request type
+        if (prompt.includes('Generate ticker symbols for token named:')) {
+          const tokenName = prompt.replace('Generate ticker symbols for token named: ', '');
+          const nameUpper = tokenName.toUpperCase().replace(/\s+/g, '');
+          const fallbackSymbols = [
+            nameUpper.substring(0, 4),
+            nameUpper.substring(0, 3) + 'X',
+            nameUpper.substring(0, 3) + '1',
+            nameUpper.substring(0, 2) + 'TK',
+            nameUpper.substring(0, 3) + 'Z'
+          ];
+          
+          return new Response(
+            JSON.stringify({ symbols: fallbackSymbols }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          // Generate more varied fallback suggestions based on the prompt
+          const timestamp = Date.now().toString().slice(-3);
+          const themes = {
+            doge: [
+              { name: `SuperDoge`, symbol: 'SDGE' },
+              { name: `MegaDoge`, symbol: 'MDGE' },
+              { name: `DogeMoon`, symbol: 'DMOON' },
+              { name: `AlphaDoge`, symbol: 'ADOG' },
+              { name: `GigaDoge`, symbol: 'GDOG' }
+            ],
+            pepe: [
+              { name: `GigaPepe`, symbol: 'GPEPE' },
+              { name: `PepeMoon`, symbol: 'PMOON' },
+              { name: `UltraPepe`, symbol: 'UPEPE' },
+              { name: `MegaPepe`, symbol: 'MPEPE' },
+              { name: `AlphaPepe`, symbol: 'APEPE' }
+            ],
+            moon: [
+              { name: `MoonShot`, symbol: 'MOON' },
+              { name: `LunarCoin`, symbol: 'LUNAR' },
+              { name: `MoonForge`, symbol: 'MFRG' },
+              { name: `StellarRise`, symbol: 'STAR' },
+              { name: `CosmicCoin`, symbol: 'COSMIC' }
+            ],
+            rocket: [
+              { name: `RocketFuel`, symbol: 'FUEL' },
+              { name: `BlastOff`, symbol: 'BLAST' },
+              { name: `ThrusterX`, symbol: 'THRX' },
+              { name: `LaunchPad`, symbol: 'LAUNCH' },
+              { name: `BoosterCoin`, symbol: 'BOOST' }
+            ],
+          };
+          
+          const promptLower = prompt.toLowerCase();
+          let fallbackPairs = [
+            { name: `ViralCoin`, symbol: 'VIRAL' },
+            { name: `MemeForge`, symbol: 'MFRG' },
+            { name: `PumpMaster`, symbol: 'PUMP' },
+            { name: `DegenCoin`, symbol: 'DEGEN' },
+            { name: `BasedToken`, symbol: 'BASED' }
+          ];
+          
+          // Choose theme-based names if prompt matches
+          for (const [theme, pairs] of Object.entries(themes)) {
+            if (promptLower.includes(theme)) {
+              fallbackPairs = pairs;
+              break;
+            }
           }
+          
+          const fallbackNames = fallbackPairs.map(pair => pair.name);
+          const fallbackSymbols = fallbackPairs.map(pair => pair.symbol);
+          
+          return new Response(
+            JSON.stringify({
+              names: fallbackNames,
+              symbols: fallbackSymbols
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
-        
-        const fallbackSymbols = fallbackNames.map(name => 
-          name.replace(/\d+$/, '').substring(0, 4).toUpperCase()
-        );
-        
-        return new Response(
-          JSON.stringify({
-            names: fallbackNames,
-            symbols: fallbackSymbols
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
       }
     }
 

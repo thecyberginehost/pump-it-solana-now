@@ -35,15 +35,31 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, currentNam
 
     setIsGenerating(true);
     try {
-      const names = await AIService.generateTokenNames(theme);
-      setSuggestions(prev => ({ ...prev, names }));
+      const response = await AIService.generateTokenNames(theme);
       
-      if (names.length > 0) {
+      // If we got back both names and symbols (new format), use them directly
+      if (Array.isArray(response) && typeof response[0] === 'string') {
+        // Old format - just names
+        const names = response;
+        setSuggestions(prev => ({ ...prev, names }));
+        
         // Generate symbols for each name individually
         const symbols = [];
         for (const name of names) {
           const nameSymbols = await AIService.generateTokenSymbols(name);
           symbols.push(nameSymbols[0]); // Take the first/best symbol for each name
+        }
+        setSuggestions(prev => ({ ...prev, symbols }));
+      } else {
+        // New format - matched pairs should come directly from the service
+        const names = response;
+        setSuggestions(prev => ({ ...prev, names }));
+        
+        // Generate matching symbols for all names at once
+        const symbols = [];
+        for (const name of names) {
+          const nameSymbols = await AIService.generateTokenSymbols(name);
+          symbols.push(nameSymbols[0]);
         }
         setSuggestions(prev => ({ ...prev, symbols }));
       }

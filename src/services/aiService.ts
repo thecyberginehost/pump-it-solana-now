@@ -11,13 +11,15 @@ export class AIService {
         body: {
           type: 'suggestions',
           prompt: theme || 'creative meme cryptocurrency',
-          context: 'Generate catchy token names'
+          context: 'Generate catchy token names with matching ticker symbols'
         },
       });
 
       if (error) throw error;
       
-      return data?.names?.slice(0, 3) || ['ViralCoin', 'MemeForge', 'PumpMaster'];
+      // The function should return both names and symbols, but we only return names here
+      // The symbols will be generated separately or accessed via a different method
+      return data?.names?.slice(0, 5) || ['ViralCoin', 'MemeForge', 'PumpMaster'];
     } catch (error) {
       console.error('AI name generation error:', error);
       toast.error('AI service unavailable, using fallback names');
