@@ -69,10 +69,10 @@ const PremiumDashboard = () => {
       color: "text-purple-500"
     },
     {
-      name: "Monthly Trending",
-      price: 5.0,
-      duration: "30 days",
-      features: ["Featured on trending page for 30 days"],
+      name: "Premium Trending",
+      price: 10.0,
+      duration: "2 weeks",
+      features: ["Featured in top 10 trending tokens for 2 weeks"],
       icon: Target,
       color: "text-emerald-500"
     }
