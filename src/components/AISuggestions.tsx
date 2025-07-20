@@ -36,7 +36,12 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, currentName, isPremium = 
       setSuggestions(prev => ({ ...prev, names }));
       
       if (names.length > 0) {
-        const symbols = await AIService.generateTokenSymbols(names[0]);
+        // Generate symbols for each name individually
+        const symbols = [];
+        for (const name of names) {
+          const nameSymbols = await AIService.generateTokenSymbols(name);
+          symbols.push(nameSymbols[0]); // Take the first/best symbol for each name
+        }
         setSuggestions(prev => ({ ...prev, symbols }));
       }
     } catch (error) {
@@ -106,41 +111,33 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, currentName, isPremium = 
           </div>
         </div>
 
-        {/* Name Suggestions */}
+        {/* Token Suggestions - Name/Symbol Pairs */}
         {suggestions.names.length > 0 && (
           <div className="space-y-2">
-            <p className="text-sm font-medium">Suggested Names:</p>
-            <div className="flex flex-wrap gap-2">
-              {suggestions.names.map((name) => (
-                <Button
-                  key={name}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onNameSelect(name)}
-                  className="text-sm"
-                >
-                  {name}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Symbol Suggestions */}
-        {suggestions.symbols.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Suggested Symbols:</p>
-            <div className="flex flex-wrap gap-2">
-              {suggestions.symbols.map((symbol) => (
-                <Button
-                  key={symbol}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onSymbolSelect(symbol)}
-                  className="text-sm font-mono"
-                >
-                  ${symbol}
-                </Button>
+            <p className="text-sm font-medium">Suggested Token Names & Symbols:</p>
+            <div className="space-y-2">
+              {suggestions.names.map((name, index) => (
+                <div key={name} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onNameSelect(name)}
+                    className="text-sm font-medium flex-1 justify-start"
+                  >
+                    {name}
+                  </Button>
+                  <span className="text-muted-foreground">→</span>
+                  {suggestions.symbols[index] && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onSymbolSelect(suggestions.symbols[index])}
+                      className="text-sm font-mono"
+                    >
+                      ${suggestions.symbols[index]}
+                    </Button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
