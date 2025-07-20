@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { Card, CardContent } from './ui/card';
 import { Sparkles, RefreshCw, Crown } from 'lucide-react';
 import { AIService } from '@/services/aiService';
@@ -21,6 +22,7 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, currentNam
     symbols: []
   });
   const [selectedTheme, setSelectedTheme] = useState('');
+  const [customTheme, setCustomTheme] = useState('');
 
   const themes = ['doge', 'pepe', 'moon', 'rocket'];
 
@@ -92,9 +94,9 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, currentNam
         </div>
 
         {/* Theme Selection */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-xs text-muted-foreground">Quick Themes:</p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {themes.map((theme) => (
               <Button
                 key={theme}
@@ -102,6 +104,7 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, currentNam
                 size="sm"
                 onClick={() => {
                   setSelectedTheme(theme);
+                  setCustomTheme('');
                   generateSuggestions(theme);
                 }}
                 disabled={isGenerating}
@@ -109,6 +112,30 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, currentNam
                 {theme}
               </Button>
             ))}
+          </div>
+          
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Custom Theme:</p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g. cyberpunk, space, animals..."
+                value={customTheme}
+                onChange={(e) => {
+                  setCustomTheme(e.target.value);
+                  setSelectedTheme('');
+                }}
+                className="flex-1 text-sm"
+                disabled={isGenerating}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => generateSuggestions(customTheme)}
+                disabled={isGenerating || !customTheme.trim()}
+              >
+                Generate
+              </Button>
+            </div>
           </div>
         </div>
 
