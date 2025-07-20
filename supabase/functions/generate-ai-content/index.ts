@@ -139,18 +139,58 @@ Generate creative, marketable suggestions that would resonate with the current c
 
       try {
         const content = suggestionsData.choices[0].message.content;
-        const suggestions = JSON.parse(content);
+        console.log('Raw OpenAI response:', content);
+        
+        // Try to extract JSON from the content if it's wrapped in markdown or other text
+        let jsonContent = content;
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonContent = jsonMatch[0];
+        }
+        
+        const suggestions = JSON.parse(jsonContent);
+        
+        // Validate the response structure
+        if (!suggestions.names || !suggestions.symbols || !Array.isArray(suggestions.names) || !Array.isArray(suggestions.symbols)) {
+          throw new Error('Invalid suggestions format from OpenAI');
+        }
         
         return new Response(
           JSON.stringify(suggestions),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } catch (parseError) {
-        // Fallback if JSON parsing fails
+        console.error('JSON parsing failed:', parseError);
+        console.log('Fallback: Generating random suggestions based on prompt');
+        
+        // Generate more varied fallback suggestions based on the prompt
+        const timestamp = Date.now().toString().slice(-3);
+        const themes = {
+          doge: [`SuperDoge${timestamp}`, `MegaDoge${timestamp}`, `DogeMoon${timestamp}`],
+          pepe: [`GigaPepe${timestamp}`, `PepeMoon${timestamp}`, `UltraPepe${timestamp}`],
+          moon: [`MoonShot${timestamp}`, `LunarToken${timestamp}`, `MoonForged${timestamp}`],
+          rocket: [`RocketFuel${timestamp}`, `BlastOff${timestamp}`, `ThrusterX${timestamp}`],
+        };
+        
+        const promptLower = prompt.toLowerCase();
+        let fallbackNames = [`ViralCoin${timestamp}`, `MemeForge${timestamp}`, `PumpMaster${timestamp}`];
+        
+        // Choose theme-based names if prompt matches
+        for (const [theme, names] of Object.entries(themes)) {
+          if (promptLower.includes(theme)) {
+            fallbackNames = names;
+            break;
+          }
+        }
+        
+        const fallbackSymbols = fallbackNames.map(name => 
+          name.replace(/\d+$/, '').substring(0, 4).toUpperCase()
+        );
+        
         return new Response(
           JSON.stringify({
-            names: ['CryptoMeme', 'MoonToken', 'DiamondHands', 'RocketCoin', 'LamboToken'],
-            symbols: ['MEME', 'MOON', 'DIAM', 'RCKT', 'LMBO']
+            names: fallbackNames,
+            symbols: fallbackSymbols
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
