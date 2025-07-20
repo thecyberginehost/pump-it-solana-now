@@ -9,11 +9,12 @@ import { toast } from 'sonner';
 interface AISuggestionsProps {
   onNameSelect: (name: string) => void;
   onSymbolSelect: (symbol: string) => void;
+  onTokenSelect?: (name: string, symbol: string) => void;
   currentName: string;
   isPremium?: boolean;
 }
 
-const AISuggestions = ({ onNameSelect, onSymbolSelect, currentName, isPremium = false }: AISuggestionsProps) => {
+const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, currentName, isPremium = false }: AISuggestionsProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [suggestions, setSuggestions] = useState<{names: string[], symbols: string[]}>({
     names: [],
@@ -117,12 +118,18 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, currentName, isPremium = 
             <p className="text-sm font-medium">Suggested Token Names & Symbols:</p>
             <div className="space-y-2">
               {suggestions.names.map((name, index) => (
-                <div key={name} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
+                <div key={name} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onNameSelect(name)}
-                    className="text-sm font-medium flex-1 justify-start"
+                    onClick={() => {
+                      if (onTokenSelect && suggestions.symbols[index]) {
+                        onTokenSelect(name, suggestions.symbols[index]);
+                      } else {
+                        onNameSelect(name);
+                      }
+                    }}
+                    className="text-sm font-medium flex-1 justify-start hover:bg-transparent"
                   >
                     {name}
                   </Button>
@@ -131,8 +138,14 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, currentName, isPremium = 
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onSymbolSelect(suggestions.symbols[index])}
-                      className="text-sm font-mono"
+                      onClick={() => {
+                        if (onTokenSelect) {
+                          onTokenSelect(name, suggestions.symbols[index]);
+                        } else {
+                          onSymbolSelect(suggestions.symbols[index]);
+                        }
+                      }}
+                      className="text-sm font-mono hover:bg-transparent"
                     >
                       ${suggestions.symbols[index]}
                     </Button>

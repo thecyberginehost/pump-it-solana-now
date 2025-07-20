@@ -24,6 +24,7 @@ const TokenCreator = () => {
 
   const [showAIFeatures, setShowAIFeatures] = useState(false);
   const [showCoPilot, setShowCoPilot] = useState(false);
+  const [memePrompt, setMemePrompt] = useState('');
   const { isAuthenticated, walletAddress } = useWalletAuth();
   const { createToken, isCreating } = useTokenCreation();
 
@@ -33,6 +34,31 @@ const TokenCreator = () => {
 
   const handleAISymbolSelect = (symbol: string) => {
     setTokenData(prev => ({ ...prev, symbol }));
+  };
+
+  const handleAITokenSelect = (name: string, symbol: string) => {
+    setTokenData(prev => ({ ...prev, name, symbol }));
+    // Generate a contextual meme prompt based on the token name
+    const contextualPrompt = generateMemePrompt(name);
+    setMemePrompt(contextualPrompt);
+  };
+
+  const generateMemePrompt = (tokenName: string): string => {
+    const name = tokenName.toLowerCase();
+    
+    if (name.includes('doge') || name.includes('dog')) {
+      return `${tokenName} doge with laser eyes and diamond hands`;
+    } else if (name.includes('pepe') || name.includes('frog')) {
+      return `${tokenName} pepe the frog wearing a crown`;
+    } else if (name.includes('moon') || name.includes('lunar')) {
+      return `${tokenName} rocket ship flying to the moon with crypto symbols`;
+    } else if (name.includes('rocket') || name.includes('blast')) {
+      return `${tokenName} rocket launching with fire trails and stars`;
+    } else if (name.includes('cat') || name.includes('kitty')) {
+      return `${tokenName} cool cat with sunglasses holding crypto coins`;
+    } else {
+      return `${tokenName} meme character with diamond hands and rocket background`;
+    }
   };
 
   const handleAIImageSelect = (imageUrl: string) => {
@@ -121,11 +147,14 @@ const TokenCreator = () => {
             <AISuggestions
               onNameSelect={handleAINameSelect}
               onSymbolSelect={handleAISymbolSelect}
+              onTokenSelect={handleAITokenSelect}
               currentName={tokenData.name}
               isPremium={true}
             />
             <AIMemeGenerator 
               onImageGenerated={handleAIImageSelect} 
+              externalPrompt={memePrompt}
+              onPromptChange={setMemePrompt}
               isPremium={true}
             />
           </div>

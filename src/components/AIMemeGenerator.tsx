@@ -8,18 +8,31 @@ import { useAIServices } from '@/hooks/useAIServices';
 
 interface AIMemeGeneratorProps {
   onImageGenerated: (imageUrl: string) => void;
+  externalPrompt?: string;
+  onPromptChange?: (prompt: string) => void;
   isPremium?: boolean;
 }
 
-const AIMemeGenerator = ({ onImageGenerated, isPremium = false }: AIMemeGeneratorProps) => {
-  const [prompt, setPrompt] = useState('');
+const AIMemeGenerator = ({ onImageGenerated, externalPrompt = '', onPromptChange, isPremium = false }: AIMemeGeneratorProps) => {
+  const [internalPrompt, setInternalPrompt] = useState('');
   const { generateImage, isGeneratingImage } = useAIServices();
+
+  // Use external prompt if provided, otherwise use internal state
+  const prompt = externalPrompt || internalPrompt;
+
+  const handlePromptChange = (newPrompt: string) => {
+    if (onPromptChange) {
+      onPromptChange(newPrompt);
+    } else {
+      setInternalPrompt(newPrompt);
+    }
+  };
 
   const handleGenerate = async () => {
     const imageUrl = await generateImage(prompt);
     if (imageUrl) {
       onImageGenerated(imageUrl);
-      setPrompt('');
+      handlePromptChange('');
     }
   };
 
@@ -51,7 +64,7 @@ const AIMemeGenerator = ({ onImageGenerated, isPremium = false }: AIMemeGenerato
           <Input
             placeholder="Describe your meme (e.g., 'doge with laser eyes')"
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={(e) => handlePromptChange(e.target.value)}
             className="bg-input border-border"
           />
           
@@ -85,7 +98,7 @@ const AIMemeGenerator = ({ onImageGenerated, isPremium = false }: AIMemeGenerato
                 variant="ghost"
                 size="sm"
                 className="text-xs h-7"
-                onClick={() => setPrompt(quickPrompt)}
+                onClick={() => handlePromptChange(quickPrompt)}
               >
                 {quickPrompt}
               </Button>
