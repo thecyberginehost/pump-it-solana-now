@@ -35,28 +35,44 @@ const PremiumDashboard = () => {
     }
   ];
 
-  const premiumBoosts = [
+  const trendingBoosts = [
     {
-      name: "Mega Trending",
-      price: 0.15,
-      duration: "14 days",
-      features: ["Top of trending", "Special effects", "Priority support"],
-      icon: Crown,
+      name: "Quick Trending",
+      price: 0.05,
+      duration: "1 hour",
+      features: ["Featured on trending page for 1 hour"],
+      icon: TrendingUp,
+      color: "text-blue-500"
+    },
+    {
+      name: "Half Day Trending",
+      price: 0.2,
+      duration: "12 hours",
+      features: ["Featured on trending page for 12 hours"],
+      icon: TrendingUp,
+      color: "text-green-500"
+    },
+    {
+      name: "Daily Trending",
+      price: 0.35,
+      duration: "24 hours",
+      features: ["Featured on trending page for 24 hours"],
+      icon: TrendingUp,
       color: "text-yellow-500"
     },
     {
-      name: "Viral Push",
-      price: 0.25,
-      duration: "30 days",
-      features: ["Auto social posts", "Influencer network", "Media coverage"],
-      icon: Zap,
+      name: "Weekly Trending",
+      price: 1.5,
+      duration: "1 week",
+      features: ["Featured on trending page for 1 week"],
+      icon: Crown,
       color: "text-purple-500"
     },
     {
-      name: "Whale Package",
-      price: 0.5,
-      duration: "60 days",
-      features: ["All features", "Personal manager", "Custom marketing"],
+      name: "Monthly Trending",
+      price: 5.0,
+      duration: "30 days",
+      features: ["Featured on trending page for 30 days"],
       icon: Target,
       color: "text-emerald-500"
     }
@@ -203,14 +219,14 @@ const PremiumDashboard = () => {
         {activeTab === "boosts" && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-semibold mb-2">Premium Boost Packages</h2>
+              <h2 className="text-2xl font-semibold mb-2">Trending Boost Packages</h2>
               <p className="text-muted-foreground">
-                Supercharge your tokens with our premium marketing packages
+                Get your token featured on the trending page for increased visibility
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {premiumBoosts.map((boost, index) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {trendingBoosts.map((boost, index) => {
                 const IconComponent = boost.icon;
                 return (
                   <Card key={index} className="relative overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-primary/50">
