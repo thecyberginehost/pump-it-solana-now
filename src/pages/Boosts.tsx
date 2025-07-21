@@ -146,19 +146,30 @@ const Boosts = () => {
             </div>
 
             <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-              {degenBoosts.map((boost) => {
+              {degenBoosts.map((boost, index) => {
                 const IconComponent = boost.icon;
+                const isLegendary = boost.id === 'legendary';
                 return (
                   <Card 
                     key={boost.id} 
-                    className="relative border-2 hover:scale-105 transition-all duration-300 border-destructive/30 bg-gradient-to-br from-destructive/5 to-destructive/10 shadow-lg shadow-destructive/20"
+                    className={`relative border-2 hover:scale-105 transition-all duration-300 ${
+                      isLegendary 
+                        ? 'border-primary/50 bg-gradient-to-br from-primary/10 to-accent/10 shadow-lg shadow-primary/20' 
+                        : 'border-accent/50 bg-gradient-to-br from-accent/10 to-muted/20 shadow-lg shadow-accent/20'
+                    }`}
                   >
                     <CardHeader className="text-center">
-                      <div className="w-16 h-16 mx-auto rounded-full bg-destructive/20 flex items-center justify-center mb-4">
-                        <IconComponent className="w-8 h-8 text-destructive" />
+                      <div className={`w-16 h-16 mx-auto rounded-full ${
+                        isLegendary ? 'bg-primary/20' : 'bg-accent/20'
+                      } flex items-center justify-center mb-4`}>
+                        <IconComponent className={`w-8 h-8 ${
+                          isLegendary ? 'text-primary' : 'text-accent'
+                        }`} />
                       </div>
                       <CardTitle className="text-2xl">{boost.name}</CardTitle>
-                      <div className="text-3xl font-bold text-destructive">{boost.price}</div>
+                      <div className={`text-3xl font-bold ${
+                        isLegendary ? 'text-primary' : 'text-accent'
+                      }`}>{boost.price}</div>
                       <p className="text-muted-foreground text-sm">{boost.description}</p>
                     </CardHeader>
 
@@ -166,14 +177,20 @@ const Boosts = () => {
                       <ul className="space-y-3 mb-6">
                         {boost.features.map((feature, index) => (
                           <li key={index} className="flex items-start gap-3">
-                            <CheckCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                            <CheckCircle className={`w-5 h-5 ${
+                              isLegendary ? 'text-primary' : 'text-accent'
+                            } flex-shrink-0 mt-0.5`} />
                             <span className="text-sm">{feature}</span>
                           </li>
                         ))}
                       </ul>
 
                       <Button 
-                        className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold"
+                        className={`w-full font-semibold ${
+                          isLegendary 
+                            ? 'bg-primary hover:bg-primary/90 text-primary-foreground' 
+                            : 'bg-accent hover:bg-accent/90 text-accent-foreground'
+                        }`}
                       >
                         Select {boost.name}
                       </Button>
