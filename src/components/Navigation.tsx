@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WalletButton } from "@/components/WalletButton";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useChatContext } from "@/contexts/ChatContext";
 import { 
   Home, 
   Trophy, 
@@ -16,15 +17,11 @@ import {
   Bot
 } from "lucide-react";
 
-interface NavigationProps {
-  onChatToggle?: () => void;
-  isChatOpen?: boolean;
-}
-
-const Navigation = ({ onChatToggle, isChatOpen }: NavigationProps) => {
+const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { publicKey } = useWallet();
+  const { isChatOpen, toggleChat } = useChatContext();
 
   const navItems = [
     { path: "/", label: "Launch", icon: Home },
@@ -78,11 +75,11 @@ const Navigation = ({ onChatToggle, isChatOpen }: NavigationProps) => {
 
           {/* Wallet Connection & Chat */}
           <div className="hidden md:flex items-center space-x-4">
-            {publicKey && onChatToggle && (
-                <Button
+            {publicKey && (
+              <Button
                 variant={isChatOpen ? "default" : "outline"}
                 size="sm"
-                onClick={onChatToggle}
+                onClick={toggleChat}
                 className="flex items-center space-x-2"
               >
                 <Bot className="w-4 h-4" />
@@ -133,12 +130,12 @@ const Navigation = ({ onChatToggle, isChatOpen }: NavigationProps) => {
                 );
               })}
               <div className="pt-4 space-y-2">
-                {publicKey && onChatToggle && (
-                    <Button
+                {publicKey && (
+                  <Button
                     variant={isChatOpen ? "default" : "outline"}
                     size="sm"
                     onClick={() => {
-                      onChatToggle();
+                      toggleChat();
                       setIsOpen(false);
                     }}
                     className="w-full flex items-center justify-center space-x-2"

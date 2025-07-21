@@ -4,29 +4,56 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { WalletContextProvider } from "@/contexts/WalletContext";
+import { ChatProvider, useChatContext } from "@/contexts/ChatContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import PremiumDashboard from "@/components/PremiumDashboard";
 import Leaderboard from "@/components/Leaderboard";
+import ChatbotSidebar from "@/components/ChatbotSidebar";
 
 const queryClient = new QueryClient();
+
+const AppContent = () => {
+  const { isChatOpen, setIsChatOpen } = useChatContext();
+
+  return (
+    <div className="relative">
+      {/* Main content with dynamic margin when chat is open */}
+      <div 
+        className={`transition-all duration-300 ${
+          isChatOpen ? "mr-80" : "mr-0"
+        }`}
+      >
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/dashboard" element={<PremiumDashboard />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </div>
+
+      {/* Global Chatbot Sidebar */}
+      <ChatbotSidebar 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+      />
+    </div>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <WalletContextProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={<PremiumDashboard />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <ChatProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </TooltipProvider>
+      </ChatProvider>
     </WalletContextProvider>
   </QueryClientProvider>
 );

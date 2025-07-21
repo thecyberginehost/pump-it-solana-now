@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, MessageCircle, Send, Loader2 } from "lucide-react";
+import { X, MessageCircle, Send, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -100,6 +100,24 @@ const ChatbotSidebar = ({ isOpen, onClose }: ChatbotSidebarProps) => {
     setInputMessage(prompt);
   };
 
+  const clearChatHistory = () => {
+    const welcomeMessage: CoPilotMessage = {
+      id: "welcome",
+      content: "👋 Hey there! I'm your Degen CoPilot - ready to help you create viral marketing strategies for your tokens! What can I help you with today?",
+      isUser: false,
+      timestamp: new Date(),
+    };
+    setMessages([welcomeMessage]);
+    toast.success("Chat history cleared!");
+  };
+
+  // Function to format text with basic markdown-like formatting
+  const formatMessage = (content: string) => {
+    // Replace **text** with bold styling
+    const formatted = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    return formatted;
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -110,9 +128,19 @@ const ChatbotSidebar = ({ isOpen, onClose }: ChatbotSidebarProps) => {
           <MessageCircle className="w-5 h-5 text-primary" />
           <h3 className="font-semibold">Degen CoPilot</h3>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <X className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={clearChatHistory}
+            title="Clear chat history"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Credits */}
@@ -137,7 +165,10 @@ const ChatbotSidebar = ({ isOpen, onClose }: ChatbotSidebarProps) => {
                     : "bg-muted text-muted-foreground"
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <div 
+                  className="text-sm whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }}
+                />
                 <div className="text-xs opacity-70 mt-1">
                   {message.timestamp.toLocaleTimeString([], { 
                     hour: '2-digit', 
