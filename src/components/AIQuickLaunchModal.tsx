@@ -70,9 +70,9 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
     const availableBalance = Math.max(0, balance - 0.1);
     
     if (availableBalance < 0.05) {
-      return 0; // Too little balance
+      return 0.05; // Minimum suggested amount
     } else if (availableBalance < 0.5) {
-      return Math.round((availableBalance * 0.3) * 100) / 100; // 30% of available
+      return Math.max(0.05, Math.round((availableBalance * 0.3) * 100) / 100); // 30% of available
     } else if (availableBalance < 2) {
       return Math.round((availableBalance * 0.25) * 100) / 100; // 25% of available
     } else if (availableBalance < 10) {
@@ -288,7 +288,15 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
                   >
                     Use suggested amount ({suggestedAmount} SOL)
                   </button>
-                )}
+                 )}
+                
+                <button
+                  type="button"
+                  onClick={() => setInitialBuyIn("0")}
+                  className="text-xs text-gray-600 hover:text-gray-700 underline"
+                >
+                  Skip initial investment
+                </button>
                 
                 {parseFloat(initialBuyIn) > 0 && (
                   <p className="text-xs text-green-600">
@@ -322,7 +330,12 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
               <Button variant="outline" onClick={handleClose} className="flex-1">
                 Cancel
               </Button>
-              <Button onClick={handleConfirm} className="flex-1 gap-2" variant="neon">
+              <Button 
+                onClick={handleConfirm} 
+                className="flex-1 gap-2" 
+                variant="neon"
+                disabled={walletBalance !== null && parseFloat(initialBuyIn) > (walletBalance - 0.1) && parseFloat(initialBuyIn) > 0}
+              >
                 <Wallet className="h-4 w-4" />
                 Launch Token ({(0.02 + (parseFloat(initialBuyIn) || 0)).toFixed(3)} SOL)
               </Button>
