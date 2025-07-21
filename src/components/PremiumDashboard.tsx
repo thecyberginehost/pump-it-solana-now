@@ -54,7 +54,47 @@ const PremiumDashboard = () => {
 
   const trendingBoosts = [
     {
-      name: "Premium Trending #1",
+      name: "Quick Trending",
+      price: 0.05,
+      duration: "1 hour",
+      features: ["Featured on trending page for 1 hour"],
+      icon: TrendingUp,
+      color: "text-blue-500"
+    },
+    {
+      name: "Half Day Trending",
+      price: 0.2,
+      duration: "12 hours",
+      features: ["Featured on trending page for 12 hours"],
+      icon: TrendingUp,
+      color: "text-green-500"
+    },
+    {
+      name: "Daily Trending",
+      price: 0.35,
+      duration: "24 hours",
+      features: ["Featured on trending page for 24 hours"],
+      icon: TrendingUp,
+      color: "text-yellow-500"
+    },
+    {
+      name: "Weekly Trending",
+      price: 1.5,
+      duration: "1 week",
+      features: ["Featured on trending page for 1 week"],
+      icon: Crown,
+      color: "text-purple-500"
+    },
+    {
+      name: "Premium Trending",
+      price: 10.0,
+      duration: "2 weeks",
+      features: ["Featured in top 10 trending tokens for 2 weeks"],
+      icon: Target,
+      color: "text-emerald-500"
+    },
+    {
+      name: "Legendary Degen Trending #1",
       price: 20.0,
       duration: "30 days",
       features: ["#1 spot on trending page for 30 days", "Maximum visibility and exposure", "Exclusive top position"],
@@ -64,8 +104,8 @@ const PremiumDashboard = () => {
   ];
 
   const handleUpgrade = async (boostName: string, price: number) => {
-    // Check if this is the Premium Trending #1 boost and if spot is available
-    if (boostName === "Premium Trending #1") {
+    // Check if this is the Legendary Degen Trending #1 boost and if spot is available
+    if (boostName === "Legendary Degen Trending #1") {
       if (availableTop1Spot <= 0) {
         toast.error("❌ #1 trending spot is taken!", {
           description: "The #1 trending spot is currently occupied. Try again later."
@@ -268,8 +308,8 @@ const PremiumDashboard = () => {
                          ))}
                        </div>
                        
-                        {/* Show availability for Premium Trending #1 */}
-                        {boost.name === "Premium Trending #1" && (
+                        {/* Show availability for Legendary Degen Trending #1 */}
+                        {boost.name === "Legendary Degen Trending #1" && (
                           <div className="p-3 bg-muted rounded-lg">
                             <div className="flex items-center justify-between text-sm">
                               <span className="font-medium">Available Spot:</span>
@@ -286,9 +326,9 @@ const PremiumDashboard = () => {
                         <Button 
                           className="w-full" 
                           onClick={() => handleUpgrade(boost.name, boost.price)}
-                          disabled={isLoading || (boost.name === "Premium Trending #1" && availableTop1Spot <= 0)}
+                          disabled={isLoading || (boost.name === "Legendary Degen Trending #1" && availableTop1Spot <= 0)}
                         >
-                          {isLoading && boost.name === "Premium Trending #1" ? "Booking..." : "Activate Boost"}
+                          {isLoading && boost.name === "Legendary Degen Trending #1" ? "Booking..." : "Activate Boost"}
                         </Button>
                      </CardContent>
                   </Card>
