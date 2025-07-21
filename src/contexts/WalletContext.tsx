@@ -21,28 +21,39 @@ export const WalletContextProvider = ({ children }: WalletContextProviderProps) 
   // Configure the endpoint
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
   
+  // Check if we're on mobile
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
   // Configure supported wallets
   const wallets = useMemo(
-    () => [
-      new SolanaMobileWalletAdapter({
-        appIdentity: { name: 'Pump It Solana', uri: window.location.origin },
-        authorizationResultCache: createDefaultAuthorizationResultCache(),
-        addressSelector: createDefaultAddressSelector(),
-        cluster: 'devnet',
-        onWalletNotFound: async () => {
-          window.open('https://phantom.app/download', '_blank');
-        },
-      }),
-      new PhantomWalletAdapter({ 
-        network,
-        config: {
-          deepLinkUrl: 'phantom://dapp',
-          redirectUrl: window.location.origin
-        }
-      }),
-      new SolflareWalletAdapter(),
-    ],
-    []
+    () => {
+      const walletList = [];
+      
+      // Add mobile wallet adapter for mobile devices
+      if (isMobile) {
+        walletList.push(
+          new SolanaMobileWalletAdapter({
+            appIdentity: { name: 'Pump It Solana', uri: window.location.origin },
+            authorizationResultCache: createDefaultAuthorizationResultCache(),
+            addressSelector: createDefaultAddressSelector(),
+            cluster: 'devnet',
+            onWalletNotFound: async () => {
+              // Try to open Phantom app directly
+              window.location.href = 'phantom://browse/' + encodeURIComponent(window.location.href);
+            },
+          })
+        );
+      }
+      
+      // Add standard wallet adapters
+      walletList.push(
+        new PhantomWalletAdapter(),
+        new SolflareWalletAdapter()
+      );
+      
+      return walletList;
+    },
+    [isMobile]
   );
 
   return (
