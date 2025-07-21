@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X, Download, Scissors, RotateCcw, Loader2 } from "lucide-react";
@@ -17,7 +17,16 @@ interface ImageViewerProps {
 const ImageViewer = ({ isOpen, onClose, imageUrl, onImageUpdate, onRegenerate }: ImageViewerProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedImageUrl, setProcessedImageUrl] = useState<string | null>(null);
+  const [currentBaseImageUrl, setCurrentBaseImageUrl] = useState<string>("");
   const { generateImage } = useAIServices();
+
+  // Reset processed image when a new base image is provided
+  React.useEffect(() => {
+    if (imageUrl !== currentBaseImageUrl) {
+      setProcessedImageUrl(null);
+      setCurrentBaseImageUrl(imageUrl);
+    }
+  }, [imageUrl, currentBaseImageUrl]);
 
   const removeBackground = async () => {
     if (!imageUrl) return;
