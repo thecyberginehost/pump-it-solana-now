@@ -269,6 +269,18 @@ serve(async (req) => {
       );
     }
 
+    // Check if the user has created any tokens
+    const { data: userTokens, error: tokensError } = await supabase
+      .from('tokens')
+      .select('id, name, symbol')
+      .eq('creator_wallet', userId);
+
+    if (tokensError) {
+      console.error('Error checking user tokens:', tokensError);
+    }
+
+    const hasCreatedTokens = userTokens && userTokens.length > 0;
+
     // Check if user has credits remaining
     const { data: creditsData, error: creditsError } = await supabase
       .from('creator_credits')
@@ -318,6 +330,66 @@ serve(async (req) => {
       trendData = await searchCurrentTrends(message);
     }
 
+    // Check if user is asking for token-specific help but has no tokens
+    const isTokenRequest = message.toLowerCase().includes('token') || 
+                          message.toLowerCase().includes('marketing') || 
+                          message.toLowerCase().includes('viral') ||
+                          message.toLowerCase().includes('promote') ||
+                          message.toLowerCase().includes('launch');
+
+    if (isTokenRequest && !hasCreatedTokens && !tokenName) {
+      const noTokenResponse = `🤖 **I don't see any created tokens in your account yet.**
+
+Do you want to generate content for another token, or would you like to create your own?
+
+**Choose an option:**
+
+🚀 [**Create Your Own Token**](/create-token) - Launch your meme token in minutes with AI assistance
+
+💎 **Create Content for Existing Token** - I can help you create viral marketing content for any token. Just tell me the token name and symbol!
+
+**Popular content I can create:**
+• Viral Twitter posts and threads
+• 72-hour launch strategies  
+• Community building tactics
+• Influencer outreach plans
+• Crisis management strategies
+
+What would you like to do?`;
+
+      // Store the conversation
+      if (sessionId) {
+        await supabase
+          .from('copilot_messages')
+          .insert([
+            {
+              session_id: sessionId,
+              user_id: userId,
+              message: message,
+              response: noTokenResponse,
+              prompt_type: promptType
+            }
+          ]);
+      }
+
+      // Get updated credits count
+      const { data: updatedCredits } = await supabase
+        .from('creator_credits')
+        .select('daily_credits')
+        .eq('user_id', userId)
+        .single();
+
+      return new Response(
+        JSON.stringify({ 
+          response: noTokenResponse,
+          creditsRemaining: updatedCredits?.daily_credits || 0,
+          promptType,
+          hasClickableLinks: true
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Build context-aware system prompt
     const systemPrompt = SYSTEM_PROMPTS[promptType as keyof typeof SYSTEM_PROMPTS] || SYSTEM_PROMPTS.general;
     
@@ -330,6 +402,7 @@ ${trendData ? `CURRENT MARKET INTELLIGENCE:\n${trendData}` : ''}
 TOKEN CONTEXT:
 ${tokenName ? `Token Name: ${tokenName}` : ''}
 ${tokenSymbol ? `Token Symbol: ${tokenSymbol}` : ''}
+${hasCreatedTokens ? `User has created ${userTokens.length} token(s): ${userTokens.map(t => `${t.name} (${t.symbol})`).join(', ')}` : 'User has not created any tokens yet'}
 
 Provide specific, actionable advice that the creator can implement immediately. Be direct, strategic, and results-focused.`;
 

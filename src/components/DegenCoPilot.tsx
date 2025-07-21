@@ -265,9 +265,15 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
                         {QUICK_PROMPTS.find(p => p.id === message.promptType)?.title || 'General'}
                       </Badge>
                     )}
-                    <div className="whitespace-pre-wrap text-sm">
-                      {message.content}
-                    </div>
+                    <div 
+                      className="whitespace-pre-wrap text-sm"
+                      dangerouslySetInnerHTML={{
+                        __html: message.content
+                          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary underline hover:text-primary/80 transition-colors">$1</a>')
+                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                      }}
+                    />
                     <div className="text-xs opacity-70 mt-1">
                       {message.timestamp.toLocaleTimeString()}
                     </div>
