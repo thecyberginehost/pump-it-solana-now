@@ -68,15 +68,25 @@ const ImageViewer = ({ isOpen, onClose, imageUrl, onImageUpdate, onRegenerate }:
     }
   };
 
-  const handleDownload = () => {
-    const urlToDownload = processedImageUrl || imageUrl;
-    const link = document.createElement('a');
-    link.href = urlToDownload;
-    link.download = processedImageUrl ? 'token-logo-no-bg.png' : 'token-logo.jpg';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Image downloaded!");
+  const handleDownload = async () => {
+    try {
+      const urlToDownload = processedImageUrl || imageUrl;
+      const response = await fetch(urlToDownload);
+      const blob = await response.blob();
+      
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = processedImageUrl ? 'token-logo-no-bg.png' : 'token-logo.jpg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      
+      toast.success("Image downloaded!");
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast.error("Failed to download image");
+    }
   };
 
   const handleRegenerate = () => {
