@@ -205,31 +205,31 @@ const Boosts = () => {
             <h2 className="text-2xl font-bold mb-4 text-center">How Boost Packages Work</h2>
             <div className="grid md:grid-cols-4 gap-6">
               <div className="text-center">
-                <Target className="w-8 h-8 mx-auto mb-3 text-accent" />
-                <h3 className="font-semibold mb-2">Targeted Exposure</h3>
+                <TrendingUp className="w-8 h-8 mx-auto mb-3 text-accent" />
+                <h3 className="font-semibold mb-2">Trending Placement</h3>
                 <p className="text-sm text-muted-foreground">
-                  Your token gets featured in high-visibility areas of our platform
+                  Your token gets featured in the trending section for the duration you select
+                </p>
+              </div>
+              <div className="text-center">
+                <Crown className="w-8 h-8 mx-auto mb-3 text-accent" />
+                <h3 className="font-semibold mb-2">Top 10 Premium</h3>
+                <p className="text-sm text-muted-foreground">
+                  Legendary boosts get priority placement in the top 10 trending spots
+                </p>
+              </div>
+              <div className="text-center">
+                <Target className="w-8 h-8 mx-auto mb-3 text-accent" />
+                <h3 className="font-semibold mb-2">AI Copilot Credits</h3>
+                <p className="text-sm text-muted-foreground">
+                  Degen boosts include unlimited daily credits for our AI trading assistant
                 </p>
               </div>
               <div className="text-center">
                 <Megaphone className="w-8 h-8 mx-auto mb-3 text-accent" />
-                <h3 className="font-semibold mb-2">Social Promotion</h3>
+                <h3 className="font-semibold mb-2">Site Recommendations</h3>
                 <p className="text-sm text-muted-foreground">
-                  We promote your token across our social media channels
-                </p>
-              </div>
-              <div className="text-center">
-                <Users className="w-8 h-8 mx-auto mb-3 text-accent" />
-                <h3 className="font-semibold mb-2">Community Access</h3>
-                <p className="text-sm text-muted-foreground">
-                  Get access to our trader communities and influencer networks
-                </p>
-              </div>
-              <div className="text-center">
-                <Clock className="w-8 h-8 mx-auto mb-3 text-accent" />
-                <h3 className="font-semibold mb-2">Extended Features</h3>
-                <p className="text-sm text-muted-foreground">
-                  Longer featuring periods and priority placement in listings
+                  Legendary boosts feature your token as a recommended buy across the platform
                 </p>
               </div>
             </div>
