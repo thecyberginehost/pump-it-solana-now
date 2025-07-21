@@ -8,6 +8,8 @@ import { Checkbox } from './ui/checkbox';
 import { AlertTriangle, Sparkles, TrendingUp, Zap, RefreshCw, Wallet, Loader2 } from 'lucide-react';
 import { useAIQuickLaunch, QuickLaunchResult } from '@/hooks/useAIQuickLaunch';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface AIQuickLaunchModalProps {
   open: boolean;
@@ -27,39 +29,33 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
   const [suggestedAmount, setSuggestedAmount] = useState("0");
   
   const { generateTrendBasedToken, regenerateComponent, isGenerating, currentStep } = useAIQuickLaunch();
+  const { toast } = useToast();
 
-  // Function to fetch SOL balance
+  // Function to fetch SOL balance using Alchemy RPC
   const fetchWalletBalance = async () => {
     if (!walletAddress) return;
     
     setIsLoadingBalance(true);
     try {
-      // Using public Solana RPC endpoint
-      const response = await fetch('https://api.mainnet-beta.solana.com', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getBalance',
-          params: [walletAddress]
-        })
+      const { data, error } = await supabase.functions.invoke('get-wallet-balance', {
+        body: { walletAddress }
       });
-      
-      const data = await response.json();
-      if (data.result) {
-        const balance = data.result.value / 1000000000; // Convert lamports to SOL
-        setWalletBalance(balance);
-        
-        // Calculate suggested buy-in amount
-        const suggested = calculateSuggestedBuyIn(balance);
-        setSuggestedAmount(suggested.toString());
-        setInitialBuyIn(suggested.toString());
+
+      if (error) {
+        throw new Error(error.message || 'Failed to fetch wallet balance');
       }
+
+      setWalletBalance(data.balance);
+      setSuggestedAmount(data.suggestedBuyIn.toString());
+      setInitialBuyIn(data.suggestedBuyIn.toString());
+      
     } catch (error) {
       console.error('Error fetching wallet balance:', error);
+      toast({
+        title: "Balance Check Failed",
+        description: "Unable to fetch wallet balance. Using defaults.",
+        variant: "destructive"
+      });
       // Fallback to a reasonable default
       setSuggestedAmount("0.1");
       setInitialBuyIn("0.1");
