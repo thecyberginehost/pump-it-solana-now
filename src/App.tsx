@@ -8,7 +8,8 @@ import { ChatProvider, useChatContext } from "@/contexts/ChatContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TokenSuccess from "./pages/TokenSuccess";
-import PremiumDashboard from "@/components/PremiumDashboard";
+import CreatorDashboard from "@/components/CreatorDashboard";
+import TokenList from "@/pages/TokenList";
 import Leaderboard from "@/components/Leaderboard";
 import ChatbotSidebar from "@/components/ChatbotSidebar";
 
@@ -27,7 +28,8 @@ const AppContent = () => {
       >
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<PremiumDashboard />} />
+          <Route path="/dashboard" element={<CreatorDashboard />} />
+          <Route path="/tokens" element={<TokenList />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/token-success" element={<TokenSuccess />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

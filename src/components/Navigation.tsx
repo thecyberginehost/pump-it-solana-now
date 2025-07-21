@@ -14,7 +14,8 @@ import {
   Rocket,
   Crown,
   Zap,
-  Bot
+  Bot,
+  Coins
 } from "lucide-react";
 
 const Navigation = () => {
@@ -25,8 +26,9 @@ const Navigation = () => {
 
   const navItems = [
     { path: "/", label: "Launch", icon: Home },
+    { path: "/tokens", label: "Tokens", icon: Coins },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    { path: "/dashboard", label: "Dashboard", icon: BarChart3, premium: true },
+    { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -62,12 +64,6 @@ const Navigation = () => {
                 >
                   <IconComponent className="w-4 h-4" />
                   <span>{item.label}</span>
-                  {item.premium && (
-                    <Badge className="ml-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-xs">
-                      <Crown className="w-3 h-3 mr-1" />
-                      PRO
-                    </Badge>
-                  )}
                 </Link>
               );
             })}
@@ -120,12 +116,6 @@ const Navigation = () => {
                   >
                     <IconComponent className="w-5 h-5" />
                     <span>{item.label}</span>
-                    {item.premium && (
-                      <Badge className="ml-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-xs">
-                        <Crown className="w-3 h-3 mr-1" />
-                        PRO
-                      </Badge>
-                    )}
                   </Link>
                 );
               })}
