@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -69,9 +70,51 @@ export const useAIServices = () => {
     }
   };
 
+  const researchTrends = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('research-crypto-trends');
+      
+      if (error) throw error;
+      
+      return data;
+    } catch (error: any) {
+      console.error('Trend research error:', error);
+      // Return fallback data instead of throwing
+      return {
+        trendingTokens: ['AI agents', 'Gaming tokens', 'Meme coins'],
+        viralMemes: ['Pepe variations', 'Doge derivatives', 'Space themes'],
+        narrativeThemes: ['Artificial Intelligence', 'Gaming & Metaverse', 'Meme Culture'],
+        sentiment: 'bullish',
+        topCategories: ['animals', 'space', 'technology']
+      };
+    }
+  };
+
+  const generateTrendBasedToken = async (trendData?: any) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-ai-content', {
+        body: {
+          type: 'trend-based-token',
+          prompt: 'Generate trending token concept',
+          trendData,
+        },
+      });
+
+      if (error) throw error;
+      
+      return data;
+    } catch (error: any) {
+      console.error('Trend-based token generation error:', error);
+      toast.error(error?.message || 'Failed to generate trend-based token');
+      return null;
+    }
+  };
+
   return {
     generateImage,
     generateSuggestions,
+    researchTrends,
+    generateTrendBasedToken,
     isGeneratingImage,
     isGeneratingSuggestions,
   };

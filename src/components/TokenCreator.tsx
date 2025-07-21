@@ -3,11 +3,13 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Upload, Eye, Wallet, Sparkles, Loader2, Bot } from "lucide-react";
+import { Upload, Eye, Wallet, Sparkles, Loader2, Bot, Zap, TrendingUp } from "lucide-react";
 import AISuggestions from "./AISuggestions";
 import AIMemeGenerator from "./AIMemeGenerator";
+import AIQuickLaunchModal from "./AIQuickLaunchModal";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import { useTokenCreation } from "@/hooks/useTokenCreation";
+import { QuickLaunchResult } from "@/hooks/useAIQuickLaunch";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,6 +28,7 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
   });
 
   const [showAIFeatures, setShowAIFeatures] = useState(false);
+  const [showQuickLaunchModal, setShowQuickLaunchModal] = useState(false);
   const [memePrompt, setMemePrompt] = useState('');
   const { isAuthenticated, walletAddress } = useWalletAuth();
   const { createToken, isCreating } = useTokenCreation();
@@ -43,6 +46,20 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
     // Generate a contextual meme prompt based on the token name
     const contextualPrompt = generateMemePrompt(name);
     setMemePrompt(contextualPrompt);
+  };
+
+  const handleQuickLaunchConfirm = (aiTokenData: QuickLaunchResult) => {
+    // Populate form with AI-generated data
+    setTokenData({
+      name: aiTokenData.name,
+      symbol: aiTokenData.symbol,
+      image: aiTokenData.imageUrl,
+      description: aiTokenData.description,
+      telegram_url: "",
+      x_url: ""
+    });
+    
+    toast.success('🚀 AI-generated token loaded! Review and launch when ready.');
   };
 
   const generateMemePrompt = (tokenName: string): string => {
@@ -322,7 +339,45 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
           </p>
         </div>
 
-        {/* AI Features */}
+        {/* AI Quick Launch Button */}
+        <div className="mb-6">
+          <Button
+            onClick={() => setShowQuickLaunchModal(true)}
+            className="w-full h-16 text-lg font-bold gradient-electric hover:scale-105 transition-all duration-300 shadow-neon"
+            disabled={!isAuthenticated}
+          >
+            <div className="flex items-center justify-center gap-3">
+              <div className="relative">
+                <Zap className="h-6 w-6" />
+                <TrendingUp className="absolute -top-1 -right-1 h-3 w-3 text-yellow-400" />
+              </div>
+              <div className="text-center">
+                <div>🚀 AI Quick Launch</div>
+                <div className="text-xs opacity-80 font-normal">
+                  Auto-generate trending token based on live crypto trends
+                </div>
+              </div>
+            </div>
+          </Button>
+          
+          {!isAuthenticated && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Connect wallet to use AI Quick Launch
+            </p>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="relative mb-6">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-border/50" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">Or create manually</span>
+          </div>
+        </div>
+
+        {/* AI Features Toggle */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
           <div className="flex items-center gap-2">
             <Sparkles className="text-accent" size={16} />
@@ -381,6 +436,7 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
           </div>
         )}
 
+        {/* Manual Token Creation Form */}
         <Card className="border-border/50">
           <CardContent className="p-6 space-y-4">
             {/* Token Name */}
@@ -513,6 +569,13 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
           </p>
         </div>
       </div>
+
+      {/* AI Quick Launch Modal */}
+      <AIQuickLaunchModal
+        open={showQuickLaunchModal}
+        onClose={() => setShowQuickLaunchModal(false)}
+        onConfirm={handleQuickLaunchConfirm}
+      />
     </section>
   );
 };

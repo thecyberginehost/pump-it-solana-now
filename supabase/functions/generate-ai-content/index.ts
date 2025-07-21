@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -27,7 +26,7 @@ serve(async (req) => {
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsdmFrcXVudnZoZWFqd2VqcHptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4OTYxNjksImV4cCI6MjA2ODQ3MjE2OX0.B4G2bqu9muRFuviZRt7bs80UUVEVy5nbO0p55z7vmlQ'
     );
 
-    const { type, prompt, context, imageUrl: inputImageUrl } = await req.json();
+    const { type, prompt, context, imageUrl: inputImageUrl, trendData } = await req.json();
 
     if (!type || !prompt) {
       return new Response(
@@ -37,6 +36,11 @@ serve(async (req) => {
     }
 
     console.log('Generating AI content:', { type, prompt, inputImageUrl });
+
+    if (type === 'trend-based-token') {
+      // Generate complete token package based on trends
+      return await generateTrendBasedToken(openAIApiKey, supabase, trendData);
+    }
 
     if (type === 'image') {
       // Generate image using DALL-E
@@ -453,7 +457,7 @@ Generate creative, marketable suggestions that would resonate with the current c
     }
 
     return new Response(
-      JSON.stringify({ error: 'Invalid type. Use "image", "background-removal", or "suggestions"' }),
+      JSON.stringify({ error: 'Invalid type. Use "image", "background-removal", "suggestions", or "trend-based-token"' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     );
 
@@ -465,3 +469,147 @@ Generate creative, marketable suggestions that would resonate with the current c
     );
   }
 });
+
+async function generateTrendBasedToken(openAIApiKey: string, supabase: any, trendData: any) {
+  console.log('Generating trend-based token with data:', trendData);
+
+  // Create a comprehensive prompt based on current trends
+  const trendPrompt = `Based on current crypto market trends, generate a complete token concept:
+
+CURRENT TRENDS:
+- Trending tokens: ${trendData?.trendingTokens?.join(', ') || 'AI, Gaming, Memes'}
+- Viral memes: ${trendData?.viralMemes?.join(', ') || 'Pepe, Doge, Space themes'}
+- Market sentiment: ${trendData?.sentiment || 'bullish'}
+- Hot categories: ${trendData?.topCategories?.join(', ') || 'animals, space, tech'}
+
+Generate a token that would be perfectly positioned for viral success right now. 
+Return JSON with:
+{
+  "name": "TokenName",
+  "symbol": "SYMB", 
+  "description": "Brief compelling description",
+  "imagePrompt": "Detailed prompt for logo generation",
+  "category": "primary category",
+  "reasoning": "Why this token concept would go viral now"
+}`;
+
+  try {
+    // Generate token concept
+    const conceptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a crypto trend expert who creates viral token concepts. Focus on current trends, memability, and viral potential. Always return valid JSON.'
+          },
+          {
+            role: 'user',
+            content: trendPrompt
+          }
+        ],
+        max_tokens: 800,
+        temperature: 0.9,
+      }),
+    });
+
+    const conceptData = await conceptResponse.json();
+    if (!conceptResponse.ok) {
+      throw new Error(`Concept generation failed: ${conceptData.error?.message}`);
+    }
+
+    let tokenConcept;
+    try {
+      const content = conceptData.choices[0].message.content;
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      tokenConcept = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+    } catch (parseError) {
+      // Fallback token concept
+      tokenConcept = {
+        name: "TrendMaster",
+        symbol: "TREND",
+        description: "The token that follows all the hottest crypto trends",
+        imagePrompt: "A futuristic crystal ball showing trending crypto symbols",
+        category: "trending",
+        reasoning: "Captures the essence of following market trends"
+      };
+    }
+
+    // Generate the logo image
+    const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'dall-e-3',
+        prompt: `Create a modern crypto token logo: ${tokenConcept.imagePrompt}. Style: clean, professional, vibrant colors, suitable for cryptocurrency branding. No text in the image.`,
+        n: 1,
+        size: '1024x1024',
+        quality: 'standard',
+      }),
+    });
+
+    const imageData = await imageResponse.json();
+    if (!imageResponse.ok) {
+      throw new Error(`Image generation failed: ${imageData.error?.message}`);
+    }
+
+    // Store the image
+    const imageUrl = imageData.data[0].url;
+    const imageBlob = await fetch(imageUrl).then(r => r.blob());
+    
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(2, 15);
+    const hashedFileName = `trend-${timestamp}-${randomString}.png`;
+    
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('token-images')
+      .upload(hashedFileName, imageBlob, {
+        contentType: 'image/png',
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    let finalImageUrl = imageUrl;
+    if (!uploadError) {
+      const { data: publicUrlData } = supabase.storage
+        .from('token-images')
+        .getPublicUrl(hashedFileName);
+      finalImageUrl = publicUrlData.publicUrl;
+    }
+
+    return new Response(
+      JSON.stringify({
+        ...tokenConcept,
+        imageUrl: finalImageUrl,
+        success: true
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Trend-based token generation failed:', error);
+    
+    // Return fallback token
+    return new Response(
+      JSON.stringify({
+        name: "TrendCoin",
+        symbol: "TREND",
+        description: "The hottest new meme token following current trends",
+        imageUrl: "",
+        category: "meme",
+        reasoning: "Fallback trendy token concept",
+        success: false,
+        error: error.message
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
