@@ -26,9 +26,7 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
     
     if (result) {
       setGeneratedToken(result);
-      // Auto-confirm and submit instead of showing preview
-      onConfirm(result);
-      handleClose();
+      setStep('preview');
     } else {
       setStep('confirm');
     }

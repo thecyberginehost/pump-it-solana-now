@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -14,6 +15,7 @@ export interface TokenData {
 
 export const useTokenCreation = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
 
   const createToken = useMutation({
@@ -37,6 +39,15 @@ export const useTokenCreation = () => {
       toast.success(`Token "${data.token.name}" created successfully!`);
       queryClient.invalidateQueries({ queryKey: ['tokens'] });
       queryClient.invalidateQueries({ queryKey: ['recent-tokens'] });
+      
+      // Navigate to success page with token details
+      const params = new URLSearchParams({
+        name: data.token.name,
+        symbol: data.token.symbol,
+        address: data.token.contract_address || '',
+        image: data.token.image_url || ''
+      });
+      navigate(`/token-success?${params.toString()}`);
     },
     onError: (error: any) => {
       console.error('Token creation error:', error);

@@ -7,6 +7,7 @@ import { WalletContextProvider } from "@/contexts/WalletContext";
 import { ChatProvider, useChatContext } from "@/contexts/ChatContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import TokenSuccess from "./pages/TokenSuccess";
 import PremiumDashboard from "@/components/PremiumDashboard";
 import Leaderboard from "@/components/Leaderboard";
 import ChatbotSidebar from "@/components/ChatbotSidebar";
@@ -28,6 +29,7 @@ const AppContent = () => {
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<PremiumDashboard />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/token-success" element={<TokenSuccess />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
