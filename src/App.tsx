@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TokenSuccess from "./pages/TokenSuccess";
 import TokenDetail from "./pages/TokenDetail";
+import Disclaimer from "./pages/Disclaimer";
 import CreatorDashboard from "@/components/CreatorDashboard";
 import TokenList from "@/pages/TokenList";
 import Leaderboard from "@/components/Leaderboard";
@@ -34,6 +35,7 @@ const AppContent = () => {
           <Route path="/tokens" element={<TokenList />} />
           <Route path="/token/:identifier" element={<TokenDetail />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/disclaimer" element={<Disclaimer />} />
           <Route path="/token-success" element={<TokenSuccess />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
