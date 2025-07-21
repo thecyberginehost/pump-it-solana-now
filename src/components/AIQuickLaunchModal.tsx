@@ -334,7 +334,7 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
                 onClick={handleConfirm} 
                 className="flex-1 gap-2" 
                 variant="neon"
-                disabled={walletBalance !== null && parseFloat(initialBuyIn) > (walletBalance - 0.1) && parseFloat(initialBuyIn) > 0}
+                disabled={walletBalance !== null && parseFloat(initialBuyIn) > 0 && parseFloat(initialBuyIn) > (walletBalance - 0.1)}
               >
                 <Wallet className="h-4 w-4" />
                 Launch Token ({(0.02 + (parseFloat(initialBuyIn) || 0)).toFixed(3)} SOL)

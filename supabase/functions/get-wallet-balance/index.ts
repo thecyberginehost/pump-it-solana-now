@@ -59,28 +59,21 @@ serve(async (req) => {
     console.log('Wallet balance fetched:', balanceInSol, 'SOL');
 
     // Calculate suggested buy-in amount based on balance
+    // Always leave at least 0.1 SOL for transaction fees
+    const availableBalance = Math.max(0, balanceInSol - 0.1);
     let suggestedBuyIn = 0;
     
-    if (balanceInSol > 10) {
-      // If they have more than 10 SOL, suggest 30% but cap at reasonable amount
-      suggestedBuyIn = Math.min(balanceInSol * 0.3, 50);
-    } else if (balanceInSol > 5) {
-      // If they have 5-10 SOL, suggest 25%
-      suggestedBuyIn = balanceInSol * 0.25;
-    } else if (balanceInSol > 2) {
-      // If they have 2-5 SOL, suggest 20%
-      suggestedBuyIn = balanceInSol * 0.2;
-    } else if (balanceInSol > 1) {
-      // If they have 1-2 SOL, suggest 15%
-      suggestedBuyIn = balanceInSol * 0.15;
-    } else if (balanceInSol > 0.5) {
-      // If they have 0.5-1 SOL, suggest 10%
-      suggestedBuyIn = balanceInSol * 0.1;
+    if (availableBalance < 0.05) {
+      suggestedBuyIn = 0.05; // Minimum suggested amount
+    } else if (availableBalance < 0.5) {
+      suggestedBuyIn = Math.max(0.05, availableBalance * 0.3); // 30% of available
+    } else if (availableBalance < 2) {
+      suggestedBuyIn = availableBalance * 0.25; // 25% of available
+    } else if (availableBalance < 10) {
+      suggestedBuyIn = availableBalance * 0.15; // 15% of available
+    } else {
+      suggestedBuyIn = Math.min(availableBalance * 0.1, 50); // 10% of available, cap at 50
     }
-    
-    // Always leave at least 0.1 SOL for transaction fees
-    const maxSafeBuyIn = Math.max(0, balanceInSol - 0.1);
-    suggestedBuyIn = Math.min(suggestedBuyIn, maxSafeBuyIn);
     
     // Round to reasonable decimal places
     suggestedBuyIn = Math.round(suggestedBuyIn * 10000) / 10000;
@@ -89,7 +82,7 @@ serve(async (req) => {
       JSON.stringify({ 
         balance: balanceInSol,
         suggestedBuyIn,
-        maxSafeBuyIn
+        maxSafeBuyIn: availableBalance
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
