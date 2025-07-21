@@ -62,19 +62,68 @@ serve(async (req) => {
 
       const imageUrl = imageData.data[0].url;
 
-      // Download and store image in Supabase Storage
+      // Download and store image in Supabase Storage with hashed filename
       const imageBlob = await fetch(imageUrl).then(r => r.blob());
-      const fileName = `token-logo-${Date.now()}.png`;
+      
+      // Create a secure hash for the filename
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const hashInput = `${prompt}-${timestamp}-${randomString}`;
+      
+      // Generate SHA-256 hash
+      const encoder = new TextEncoder();
+      const data = encoder.encode(hashInput);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = new Uint8Array(hashBuffer);
+      const hashHex = Array.from(hashArray)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      // Use first 16 characters of hash + extension for filename
+      const hashedFileName = `${hashHex.substring(0, 16)}.png`;
+      
+      console.log(`Storing image with hashed filename: ${hashedFileName}`);
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('token-images')
-        .upload(fileName, imageBlob, {
+        .upload(hashedFileName, imageBlob, {
           contentType: 'image/png',
           cacheControl: '3600',
+          upsert: false, // Don't overwrite if exists (very unlikely with hash)
         });
 
       if (uploadError) {
         console.error('Storage upload error:', uploadError);
+        // If filename collision (extremely unlikely), try with longer hash
+        if (uploadError.message?.includes('already exists')) {
+          const longerFileName = `${hashHex.substring(0, 24)}-${randomString}.png`;
+          const { data: retryUploadData, error: retryUploadError } = await supabase.storage
+            .from('token-images')
+            .upload(longerFileName, imageBlob, {
+              contentType: 'image/png',
+              cacheControl: '3600',
+              upsert: false,
+            });
+          
+          if (retryUploadError) {
+            console.error('Retry storage upload error:', retryUploadError);
+            // Return the original URL if storage fails
+            return new Response(
+              JSON.stringify({ imageUrl }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          
+          const { data: retryPublicUrlData } = supabase.storage
+            .from('token-images')
+            .getPublicUrl(longerFileName);
+
+          return new Response(
+            JSON.stringify({ imageUrl: retryPublicUrlData.publicUrl }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
         // Return the original URL if storage fails
         return new Response(
           JSON.stringify({ imageUrl }),
@@ -84,7 +133,9 @@ serve(async (req) => {
 
       const { data: publicUrlData } = supabase.storage
         .from('token-images')
-        .getPublicUrl(fileName);
+        .getPublicUrl(hashedFileName);
+
+      console.log(`Generated secure image URL: ${publicUrlData.publicUrl}`);
 
       return new Response(
         JSON.stringify({ imageUrl: publicUrlData.publicUrl }),
