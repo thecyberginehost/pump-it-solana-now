@@ -41,7 +41,11 @@ const Navigation = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 group">
             <div className="relative">
-              <Rocket className="w-8 h-8 text-primary group-hover:rotate-12 transition-transform duration-300" />
+              <img 
+                src="https://s3.us-east-1.amazonaws.com/moonforge.io/moonforgelogo.png" 
+                alt="MoonForge Logo" 
+                className="w-8 h-8 group-hover:scale-110 transition-transform duration-300"
+              />
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
