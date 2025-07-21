@@ -48,18 +48,34 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
     setMemePrompt(contextualPrompt);
   };
 
-  const handleQuickLaunchConfirm = (aiTokenData: QuickLaunchResult) => {
-    // Populate form with AI-generated data
-    setTokenData({
+  const handleAIDescriptionSelect = (description: string) => {
+    setTokenData(prev => ({ ...prev, description }));
+  };
+
+  const handleQuickLaunchConfirm = async (aiTokenData: QuickLaunchResult) => {
+    // Populate form with AI-generated data and auto-launch
+    const newTokenData = {
       name: aiTokenData.name,
       symbol: aiTokenData.symbol,
       image: aiTokenData.imageUrl,
       description: aiTokenData.description,
       telegram_url: "",
       x_url: ""
-    });
+    };
     
-    toast.success('🚀 AI-generated token loaded! Review and launch when ready.');
+    setTokenData(newTokenData);
+    toast.success('🚀 AI-generated token ready! Launching now...');
+    
+    // Check if user is authenticated before launching
+    if (!isAuthenticated || !walletAddress) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+    
+    // Auto-launch the token immediately with the new data
+    setTimeout(async () => {
+      await createToken(newTokenData, walletAddress);
+    }, 1000);
   };
 
   const generateMemePrompt = (tokenName: string): string => {
@@ -424,7 +440,9 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
               onNameSelect={handleAINameSelect}
               onSymbolSelect={handleAISymbolSelect}
               onTokenSelect={handleAITokenSelect}
+              onDescriptionSelect={handleAIDescriptionSelect}
               currentName={tokenData.name}
+              currentSymbol={tokenData.symbol}
               isPremium={true}
             />
             <AIMemeGenerator 
@@ -466,6 +484,25 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
                 className="text-lg h-12"
                 maxLength={6}
               />
+            </div>
+
+            {/* Token Description */}
+            <div className="space-y-2">
+              <Label htmlFor="tokenDescription" className="text-sm font-medium">
+                Description (optional)
+              </Label>
+              <textarea
+                id="tokenDescription"
+                placeholder="e.g. A community-driven meme token going to the moon..."
+                value={tokenData.description}
+                onChange={(e) => setTokenData(prev => ({ ...prev, description: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-input bg-background rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                rows={3}
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground">
+                {tokenData.description.length}/500 characters
+              </p>
             </div>
 
             {/* Token Image */}

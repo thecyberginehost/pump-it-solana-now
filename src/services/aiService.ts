@@ -64,6 +64,36 @@ export class AIService {
     }
   }
 
+  // AI Description Generator
+  static async generateTokenDescription(name: string, symbol: string): Promise<string> {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-ai-content', {
+        body: {
+          type: 'description',
+          prompt: `Generate a compelling description for a cryptocurrency token named "${name}" with symbol "${symbol}". Make it engaging, viral-worthy, and highlight community aspects, innovation, and potential.`,
+          context: 'Create a description that will attract investors and community members'
+        },
+      });
+
+      if (error) throw error;
+      
+      return data?.description || `${name} (${symbol}) is a revolutionary community-driven token designed to reshape the future of decentralized finance. Built by degens, for degens, this token combines the power of memes with serious utility. Join the movement and watch your investments moon! 🚀`;
+    } catch (error) {
+      console.error('AI description generation error:', error);
+      
+      // Fallback descriptions based on token characteristics
+      const fallbackDescriptions = [
+        `${name} (${symbol}) is a community-driven meme token with diamond hands energy. Built for the degen community who believes in the power of collective moon missions. Join the revolution! 🚀💎`,
+        `Welcome to ${name} (${symbol}) - where innovation meets pure degen energy! This token is designed to break barriers and create generational wealth for early believers. Are you ready to moon? 🌙`,
+        `${name} (${symbol}) combines viral meme culture with cutting-edge blockchain technology. Created by the community, for the community. It's not just a token, it's a movement toward financial freedom! 💰`,
+        `The future is here with ${name} (${symbol})! This revolutionary token empowers its holders through community governance and viral growth mechanics. Get in early and watch magic happen! ✨`,
+        `${name} (${symbol}) is more than just another crypto - it's a lifestyle. Built for those who dare to dream big and hold strong. Together, we're not just going to the moon, we're conquering the universe! 🚀🌌`
+      ];
+      
+      return fallbackDescriptions[Math.floor(Math.random() * fallbackDescriptions.length)];
+    }
+  }
+
   // AI Viral Tweet Generator
   static async generateViralTweets(tokenName: string, tokenSymbol: string): Promise<string[]> {
     await new Promise(resolve => setTimeout(resolve, 2000));

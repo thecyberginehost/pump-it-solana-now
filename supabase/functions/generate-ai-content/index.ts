@@ -288,6 +288,53 @@ serve(async (req) => {
         );
       }
 
+    } else if (type === 'description') {
+      // Generate token description using GPT-4
+      const descriptionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert cryptocurrency marketing copywriter who creates compelling, viral-worthy token descriptions. Your descriptions should:
+              
+              - Be engaging and energetic without being overly hype-focused
+              - Highlight community aspects and real utility
+              - Use modern crypto terminology naturally
+              - Create FOMO while being authentic
+              - Be between 100-300 characters
+              - Avoid obvious scam language
+              - Make it sound like a legitimate project with viral potential
+              - Include relevant emojis for social media appeal`
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 200,
+          temperature: 0.8,
+        }),
+      });
+
+      const descriptionData = await descriptionResponse.json();
+      
+      if (!descriptionResponse.ok) {
+        throw new Error(`OpenAI Chat API error: ${descriptionData.error?.message || 'Unknown error'}`);
+      }
+
+      const description = descriptionData.choices[0].message.content.trim();
+      
+      return new Response(
+        JSON.stringify({ description }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+
     } else if (type === 'suggestions') {
       // Generate name/symbol suggestions using GPT-4
       const suggestionsResponse = await fetch('https://api.openai.com/v1/chat/completions', {

@@ -11,12 +11,15 @@ interface AISuggestionsProps {
   onNameSelect: (name: string) => void;
   onSymbolSelect: (symbol: string) => void;
   onTokenSelect?: (name: string, symbol: string) => void;
+  onDescriptionSelect?: (description: string) => void;
   currentName: string;
+  currentSymbol: string;
   isPremium?: boolean;
 }
 
-const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, currentName, isPremium = false }: AISuggestionsProps) => {
+const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, onDescriptionSelect, currentName, currentSymbol, isPremium = false }: AISuggestionsProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [suggestions, setSuggestions] = useState<{names: string[], symbols: string[]}>({
     names: [],
     symbols: []
@@ -70,6 +73,31 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, currentNam
     }
   };
 
+  const generateDescription = async () => {
+    if (!currentName || !currentSymbol) {
+      toast.error('Please enter a token name and symbol first');
+      return;
+    }
+
+    if (!isPremium) {
+      toast.info('💰 Premium AI Generation - 0.01 SOL', {
+        description: 'This will charge 0.01 SOL for AI-powered description'
+      });
+    }
+
+    setIsGeneratingDescription(true);
+    try {
+      const description = await AIService.generateTokenDescription(currentName, currentSymbol);
+      if (onDescriptionSelect) {
+        onDescriptionSelect(description);
+        toast.success('AI description generated!');
+      }
+    } catch (error) {
+      toast.error('Failed to generate description');
+    } finally {
+      setIsGeneratingDescription(false);
+    }
+  };
 
   return (
     <Card className="border-accent/20 bg-card/50">
@@ -177,26 +205,50 @@ const AISuggestions = ({ onNameSelect, onSymbolSelect, onTokenSelect, currentNam
           </div>
         )}
 
-        {/* Generate Button */}
-        <Button
-          onClick={() => generateSuggestions()}
-          disabled={isGenerating}
-          className="w-full"
-          variant="outline"
-        >
-          {isGenerating ? (
-            <>
-              <RefreshCw className="animate-spin mr-2" size={16} />
-              Generating...
-            </>
-          ) : (
-            <>
-              <Sparkles className="mr-2" size={16} />
-              Generate Token Suggestions
-              {!isPremium && <span className="ml-1 text-xs">(0.01 SOL)</span>}
-            </>
+        {/* Generate Buttons */}
+        <div className="space-y-2">
+          <Button
+            onClick={() => generateSuggestions()}
+            disabled={isGenerating}
+            className="w-full"
+            variant="outline"
+          >
+            {isGenerating ? (
+              <>
+                <RefreshCw className="animate-spin mr-2" size={16} />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2" size={16} />
+                Generate Token Suggestions
+                {!isPremium && <span className="ml-1 text-xs">(0.01 SOL)</span>}
+              </>
+            )}
+          </Button>
+
+          {onDescriptionSelect && (
+            <Button
+              onClick={generateDescription}
+              disabled={isGeneratingDescription || !currentName || !currentSymbol}
+              className="w-full"
+              variant="outline"
+            >
+              {isGeneratingDescription ? (
+                <>
+                  <RefreshCw className="animate-spin mr-2" size={16} />
+                  Generating Description...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2" size={16} />
+                  Generate Description
+                  {!isPremium && <span className="ml-1 text-xs">(0.01 SOL)</span>}
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
       </CardContent>
     </Card>
   );
