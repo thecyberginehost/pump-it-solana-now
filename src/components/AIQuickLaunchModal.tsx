@@ -5,8 +5,9 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
-import { AlertTriangle, Sparkles, TrendingUp, Zap, RefreshCw, Wallet } from 'lucide-react';
+import { AlertTriangle, Sparkles, TrendingUp, Zap, RefreshCw, Wallet, Loader2 } from 'lucide-react';
 import { useAIQuickLaunch, QuickLaunchResult } from '@/hooks/useAIQuickLaunch';
+import { useWalletAuth } from '@/hooks/useWalletAuth';
 
 interface AIQuickLaunchModalProps {
   open: boolean;
@@ -15,13 +16,75 @@ interface AIQuickLaunchModalProps {
 }
 
 const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProps) => {
+  const { walletAddress } = useWalletAuth();
   const [step, setStep] = useState<'confirm' | 'generating' | 'preview'>('confirm');
   const [understood, setUnderstood] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<QuickLaunchResult | null>(null);
   const [initialBuyIn, setInitialBuyIn] = useState("0");
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [suggestedAmount, setSuggestedAmount] = useState("0");
   
   const { generateTrendBasedToken, regenerateComponent, isGenerating, currentStep } = useAIQuickLaunch();
+
+  // Function to fetch SOL balance
+  const fetchWalletBalance = async () => {
+    if (!walletAddress) return;
+    
+    setIsLoadingBalance(true);
+    try {
+      // Using public Solana RPC endpoint
+      const response = await fetch('https://api.mainnet-beta.solana.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getBalance',
+          params: [walletAddress]
+        })
+      });
+      
+      const data = await response.json();
+      if (data.result) {
+        const balance = data.result.value / 1000000000; // Convert lamports to SOL
+        setWalletBalance(balance);
+        
+        // Calculate suggested buy-in amount
+        const suggested = calculateSuggestedBuyIn(balance);
+        setSuggestedAmount(suggested.toString());
+        setInitialBuyIn(suggested.toString());
+      }
+    } catch (error) {
+      console.error('Error fetching wallet balance:', error);
+      // Fallback to a reasonable default
+      setSuggestedAmount("0.1");
+      setInitialBuyIn("0.1");
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
+  // Smart suggestion algorithm based on wallet balance
+  const calculateSuggestedBuyIn = (balance: number): number => {
+    // Always leave at least 0.1 SOL for transactions and fees
+    const availableBalance = Math.max(0, balance - 0.1);
+    
+    if (availableBalance < 0.05) {
+      return 0; // Too little balance
+    } else if (availableBalance < 0.5) {
+      return Math.round((availableBalance * 0.3) * 100) / 100; // 30% of available
+    } else if (availableBalance < 2) {
+      return Math.round((availableBalance * 0.25) * 100) / 100; // 25% of available
+    } else if (availableBalance < 10) {
+      return Math.round((availableBalance * 0.15) * 100) / 100; // 15% of available
+    } else {
+      return Math.round((availableBalance * 0.1) * 100) / 100; // 10% of available, max reasonable amount
+    }
+  };
 
   const handleGenerate = async () => {
     setStep('generating');
@@ -29,6 +92,8 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
     
     if (result) {
       setGeneratedToken(result);
+      // Fetch wallet balance when we get to preview step
+      await fetchWalletBalance();
       setStep('preview');
     } else {
       setStep('confirm');
@@ -57,6 +122,8 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
     setAgreedToTerms(false);
     setGeneratedToken(null);
     setInitialBuyIn("0");
+    setWalletBalance(null);
+    setSuggestedAmount("0");
     onClose();
   };
 
@@ -168,12 +235,33 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
 
             {/* Initial Buy-In Section */}
             <div className="border rounded-lg p-4 space-y-3">
-              <Label className="text-sm font-medium flex items-center gap-2">
-                💰 Initial Buy-In (optional)
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  💰 Initial Buy-In (optional)
+                </Label>
+                {isLoadingBalance ? (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Analyzing wallet...
+                  </div>
+                ) : walletBalance !== null ? (
+                  <div className="text-xs text-muted-foreground">
+                    Balance: {walletBalance.toFixed(3)} SOL
+                  </div>
+                ) : null}
+              </div>
+              
               <p className="text-xs text-muted-foreground">
                 Automatically purchase your own token at launch to show confidence and set initial price
               </p>
+              
+              {walletBalance !== null && suggestedAmount !== "0" && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2">
+                  <p className="text-xs text-blue-600 font-medium">
+                    💡 AI Suggestion: {suggestedAmount} SOL (~{Math.round(parseFloat(suggestedAmount) / parseFloat(walletBalance.toString()) * 100)}% of available balance)
+                  </p>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Label htmlFor="aiBuyInAmount" className="text-xs font-medium">
@@ -189,14 +277,32 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
                     className="text-sm pr-12"
                     min="0"
                     step="0.01"
+                    max={walletBalance ? (walletBalance - 0.1).toString() : undefined}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                     SOL
                   </span>
                 </div>
+                
+                {suggestedAmount !== "0" && initialBuyIn !== suggestedAmount && (
+                  <button
+                    type="button"
+                    onClick={() => setInitialBuyIn(suggestedAmount)}
+                    className="text-xs text-blue-600 hover:text-blue-700 underline"
+                  >
+                    Use suggested amount ({suggestedAmount} SOL)
+                  </button>
+                )}
+                
                 {parseFloat(initialBuyIn) > 0 && (
                   <p className="text-xs text-green-600">
                     ✓ Will purchase ~${((parseFloat(initialBuyIn) || 0) * 150).toFixed(2)} worth of tokens at launch
+                  </p>
+                )}
+                
+                {walletBalance !== null && parseFloat(initialBuyIn) > (walletBalance - 0.1) && (
+                  <p className="text-xs text-red-600">
+                    ⚠️ Amount exceeds available balance (keeping 0.1 SOL for fees)
                   </p>
                 )}
               </div>
