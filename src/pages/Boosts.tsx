@@ -1,22 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Crown, TrendingUp, Target, Megaphone, Users, Clock, CheckCircle } from "lucide-react";
+import { Zap, Crown, TrendingUp, Target, Megaphone, Users, Clock, CheckCircle, Skull, FlameKindling } from "lucide-react";
 
 const Boosts = () => {
   const boostOptions = [
     {
       id: "basic",
       name: "Basic Boost",
-      price: "0.1 SOL",
+      price: "0.2 SOL",
       icon: Zap,
       color: "blue",
       features: [
-        "Featured in 'Recent Launches' for 24 hours",
-        "Basic social media promotion",
-        "Priority listing position"
+        "Featured in Trending for 12 hours"
       ],
-      description: "Get your token noticed with basic promotion features"
+      description: "Get your token featured in trending for half a day"
     },
     {
       id: "premium", 
@@ -26,13 +24,9 @@ const Boosts = () => {
       color: "purple",
       popular: true,
       features: [
-        "Featured for 72 hours",
-        "Trending badge",
-        "Social media blast",
-        "Community showcase",
-        "Analytics dashboard"
+        "Featured in Trending for 72 hours"
       ],
-      description: "Maximum exposure with our premium promotion package"
+      description: "Get your token featured in trending for 3 days"
     },
     {
       id: "viral",
@@ -41,14 +35,37 @@ const Boosts = () => {
       icon: TrendingUp,
       color: "green",
       features: [
-        "Featured for 1 week",
-        "Influencer promotion",
-        "Multi-platform marketing",
-        "Dedicated community support",
-        "Advanced analytics",
-        "Viral trend optimization"
+        "Featured in Trending for 1 week"
       ],
-      description: "All-out promotion for maximum viral potential"
+      description: "Get your token featured in trending for a full week"
+    }
+  ];
+
+  const degenBoosts = [
+    {
+      id: "degen",
+      name: "Degen Boost",
+      price: "5.0 SOL",
+      icon: Skull,
+      color: "orange",
+      features: [
+        "Featured in Trending for 3 weeks",
+        "Unlimited Degen Copilot daily credits"
+      ],
+      description: "For the dedicated degens - extended trending with unlimited AI credits"
+    },
+    {
+      id: "legendary",
+      name: "Legendary Degen Boost",
+      price: "10.0 SOL",
+      icon: FlameKindling,
+      color: "red",
+      features: [
+        "Featured in Trending Top 10 for 1 month",
+        "Unlimited Degen Copilot daily credits",
+        "Featured as a recommended buy (advertised on site)"
+      ],
+      description: "The ultimate boost - top 10 trending plus site-wide advertising"
     }
   ];
 
@@ -112,6 +129,56 @@ const Boosts = () => {
               </Card>
             );
           })}
+        </div>
+
+        {/* Degen Boost Section */}
+        <div className="mt-16">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-black mb-4 text-gradient bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
+              Degen Boosts
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              For the hardcore degens who want maximum exposure and unlimited AI power.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {degenBoosts.map((boost) => {
+              const IconComponent = boost.icon;
+              return (
+                <Card 
+                  key={boost.id} 
+                  className={`relative border-2 hover:scale-105 transition-all duration-300 border-${boost.color}-500/50 bg-gradient-to-br from-${boost.color}-500/5 to-${boost.color}-600/10 shadow-lg shadow-${boost.color}-500/20`}
+                >
+                  <CardHeader className="text-center">
+                    <div className={`w-16 h-16 mx-auto rounded-full bg-${boost.color}-500/20 flex items-center justify-center mb-4`}>
+                      <IconComponent className={`w-8 h-8 text-${boost.color}-500`} />
+                    </div>
+                    <CardTitle className="text-2xl">{boost.name}</CardTitle>
+                    <div className={`text-3xl font-bold text-${boost.color}-500`}>{boost.price}</div>
+                    <p className="text-muted-foreground text-sm">{boost.description}</p>
+                  </CardHeader>
+
+                  <CardContent>
+                    <ul className="space-y-3 mb-6">
+                      {boost.features.map((feature, index) => (
+                        <li key={index} className="flex items-start gap-3">
+                          <CheckCircle className={`w-5 h-5 text-${boost.color}-500 flex-shrink-0 mt-0.5`} />
+                          <span className="text-sm">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Button 
+                      className={`w-full bg-${boost.color}-500 hover:bg-${boost.color}/90 text-white`}
+                    >
+                      Select {boost.name}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
 
         <div className="mt-16 bg-muted/50 rounded-lg p-8">
