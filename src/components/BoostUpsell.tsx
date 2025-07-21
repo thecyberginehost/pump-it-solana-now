@@ -16,10 +16,10 @@ const BoostUpsell = ({ isAIQuickLaunch = false }: BoostUpsellProps) => {
     {
       id: "basic",
       name: "Basic Boost",
-      price: "0.1 SOL",
+      price: "0.2 SOL",
       icon: Zap,
       color: "blue",
-      description: "Featured placement for 24 hours",
+      description: "Featured in Trending for 12 hours",
       isRecommended: !isAIQuickLaunch
     },
     {
@@ -28,7 +28,7 @@ const BoostUpsell = ({ isAIQuickLaunch = false }: BoostUpsellProps) => {
       price: "0.5 SOL",
       icon: Crown,
       color: "purple",
-      description: "Trending badge + 72h featured placement",
+      description: "Featured in Trending for 72 hours",
       isRecommended: isAIQuickLaunch
     },
     {
@@ -37,7 +37,23 @@ const BoostUpsell = ({ isAIQuickLaunch = false }: BoostUpsellProps) => {
       price: "1.0 SOL", 
       icon: TrendingUp,
       color: "green",
-      description: "Full influencer promotion package"
+      description: "Featured in Trending for 1 week"
+    },
+    {
+      id: "degen",
+      name: "Degen Boost",
+      price: "5.0 SOL",
+      icon: Star,
+      color: "orange",
+      description: "Featured for 3 weeks + unlimited AI credits"
+    },
+    {
+      id: "legendary",
+      name: "Legendary Degen Boost",
+      price: "10.0 SOL",
+      icon: Crown,
+      color: "red", 
+      description: "Top 10 for 1 month + unlimited AI + advertising"
     }
   ];
 
