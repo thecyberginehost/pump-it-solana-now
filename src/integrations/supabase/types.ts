@@ -376,6 +376,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      get_user_credits: {
+        Args: { user_wallet: string }
+        Returns: number
+      }
+      has_unlimited_credits: {
+        Args: { user_wallet: string }
+        Returns: boolean
+      }
       reset_daily_credits: {
         Args: Record<PropertyKey, never>
         Returns: undefined
