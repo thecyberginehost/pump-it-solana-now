@@ -220,9 +220,9 @@ const Boosts = () => {
               </div>
               <div className="text-center">
                 <Target className="w-8 h-8 mx-auto mb-3 text-accent" />
-                <h3 className="font-semibold mb-2">AI Copilot Credits</h3>
+                <h3 className="font-semibold mb-2">AI Marketing Assistant</h3>
                 <p className="text-sm text-muted-foreground">
-                  Degen boosts include unlimited daily credits for our AI trading assistant
+                  Degen boosts include unlimited daily credits for our AI viral marketing assistant
                 </p>
               </div>
               <div className="text-center">
