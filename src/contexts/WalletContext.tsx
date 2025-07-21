@@ -21,39 +21,13 @@ export const WalletContextProvider = ({ children }: WalletContextProviderProps) 
   // Configure the endpoint
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
   
-  // Check if we're on mobile
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  
-  // Configure supported wallets
+  // Configure supported wallets - simplified approach
   const wallets = useMemo(
-    () => {
-      const walletList = [];
-      
-      // Add mobile wallet adapter for mobile devices
-      if (isMobile) {
-        walletList.push(
-          new SolanaMobileWalletAdapter({
-            appIdentity: { name: 'Pump It Solana', uri: window.location.origin },
-            authorizationResultCache: createDefaultAuthorizationResultCache(),
-            addressSelector: createDefaultAddressSelector(),
-            cluster: 'devnet',
-            onWalletNotFound: async () => {
-              // Try to open Phantom app directly
-              window.location.href = 'phantom://browse/' + encodeURIComponent(window.location.href);
-            },
-          })
-        );
-      }
-      
-      // Add standard wallet adapters
-      walletList.push(
-        new PhantomWalletAdapter(),
-        new SolflareWalletAdapter()
-      );
-      
-      return walletList;
-    },
-    [isMobile]
+    () => [
+      new PhantomWalletAdapter(),
+      new SolflareWalletAdapter(),
+    ],
+    []
   );
 
   return (

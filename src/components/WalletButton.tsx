@@ -3,11 +3,20 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { Button } from '@/components/ui/button';
 import { LogOut, Wallet } from 'lucide-react';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
+import { MobileWalletButton } from './MobileWalletButton';
 
 export const WalletButton = () => {
   const { connected, publicKey } = useWallet();
   const { logout } = useWalletAuth();
 
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  // Use mobile wallet button for mobile devices
+  if (isMobile) {
+    return <MobileWalletButton />;
+  }
+
+  // Desktop wallet connection
   if (connected && publicKey) {
     const shortAddress = `${publicKey.toString().slice(0, 4)}...${publicKey.toString().slice(-4)}`;
     
