@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Navigation from "@/components/Navigation";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 import { 
   TrendingUp, 
   TrendingDown,
@@ -15,8 +17,11 @@ import {
   Filter,
   Users,
   DollarSign,
-  Activity
+  Activity,
+  Copy,
+  ExternalLink
 } from "lucide-react";
+import { toast } from "sonner";
 
 type FilterType = "trending" | "new" | "fast-risers" | "slow-risers" | "epic-fails";
 
@@ -64,12 +69,14 @@ const TokenList = () => {
   const applyFilters = () => {
     let filtered = [...tokens];
 
-    // Apply search filter
+    // Apply search filter - now includes mint_address
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(token => 
-        token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        token.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        token.description?.toLowerCase().includes(searchQuery.toLowerCase())
+        token.name.toLowerCase().includes(query) ||
+        token.symbol.toLowerCase().includes(query) ||
+        token.description?.toLowerCase().includes(query) ||
+        token.mint_address?.toLowerCase().includes(query)
       );
     }
 
@@ -130,6 +137,11 @@ const TokenList = () => {
     return `${Math.floor(diffInHours / 24)}d ago`;
   };
 
+  const copyContractAddress = (address: string) => {
+    navigator.clipboard.writeText(address);
+    toast.success("Contract address copied to clipboard");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -149,7 +161,7 @@ const TokenList = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search tokens by name, symbol, or description..."
+              placeholder="Search by name, symbol, contract address, or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -228,6 +240,21 @@ const TokenList = () => {
                     </p>
                   )}
 
+                  {/* Contract Address */}
+                  {token.mint_address && (
+                    <div className="flex items-center gap-2 p-2 bg-muted rounded text-xs">
+                      <code className="flex-1 truncate">{token.mint_address}</code>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-6 w-6 p-0"
+                        onClick={() => copyContractAddress(token.mint_address)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="space-y-1">
                       <div className="flex items-center gap-1 text-muted-foreground">
@@ -263,8 +290,11 @@ const TokenList = () => {
                     <Button className="flex-1" size="sm">
                       Buy Token
                     </Button>
-                    <Button variant="outline" size="sm">
-                      View Details
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/token/${token.id}`}>
+                        <ExternalLink className="w-3 h-3 mr-1" />
+                        View Details
+                      </Link>
                     </Button>
                   </div>
                 </CardContent>

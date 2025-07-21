@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +9,7 @@ import { ChatProvider, useChatContext } from "@/contexts/ChatContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TokenSuccess from "./pages/TokenSuccess";
+import TokenDetail from "./pages/TokenDetail";
 import CreatorDashboard from "@/components/CreatorDashboard";
 import TokenList from "@/pages/TokenList";
 import Leaderboard from "@/components/Leaderboard";
@@ -30,6 +32,7 @@ const AppContent = () => {
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<CreatorDashboard />} />
           <Route path="/tokens" element={<TokenList />} />
+          <Route path="/token/:identifier" element={<TokenDetail />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/token-success" element={<TokenSuccess />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
