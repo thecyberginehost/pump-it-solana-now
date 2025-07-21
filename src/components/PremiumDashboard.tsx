@@ -10,21 +10,20 @@ import { supabase } from "@/integrations/supabase/client";
 
 const PremiumDashboard = () => {
   const [activeTab, setActiveTab] = useState("analytics");
-  const [availableTop10Spots, setAvailableTop10Spots] = useState(10);
+  const [availableTop1Spot, setAvailableTop1Spot] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    fetchAvailableTop10Spots();
+    fetchAvailableTop1Spot();
   }, []);
 
-  const fetchAvailableTop10Spots = async () => {
+  const fetchAvailableTop1Spot = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_available_top_10_spots');
-      if (error) throw error;
-      setAvailableTop10Spots(data || 10);
+      // For now, just set to 1 - in real implementation this would check if #1 spot is taken
+      setAvailableTop1Spot(1);
     } catch (error) {
-      console.error('Error fetching available spots:', error);
-      setAvailableTop10Spots(10); // Default to 10 if error
+      console.error('Error fetching available spot:', error);
+      setAvailableTop1Spot(1); // Default to 1 if error
     }
   };
 
@@ -55,53 +54,21 @@ const PremiumDashboard = () => {
 
   const trendingBoosts = [
     {
-      name: "Quick Trending",
-      price: 0.05,
-      duration: "1 hour",
-      features: ["Featured on trending page for 1 hour"],
-      icon: TrendingUp,
-      color: "text-blue-500"
-    },
-    {
-      name: "Half Day Trending",
-      price: 0.2,
-      duration: "12 hours",
-      features: ["Featured on trending page for 12 hours"],
-      icon: TrendingUp,
-      color: "text-green-500"
-    },
-    {
-      name: "Daily Trending",
-      price: 0.35,
-      duration: "24 hours",
-      features: ["Featured on trending page for 24 hours"],
-      icon: TrendingUp,
-      color: "text-yellow-500"
-    },
-    {
-      name: "Weekly Trending",
-      price: 1.5,
-      duration: "1 week",
-      features: ["Featured on trending page for 1 week"],
+      name: "Premium Trending #1",
+      price: 20.0,
+      duration: "30 days",
+      features: ["#1 spot on trending page for 30 days", "Maximum visibility and exposure", "Exclusive top position"],
       icon: Crown,
-      color: "text-purple-500"
-    },
-    {
-      name: "Premium Trending",
-      price: 10.0,
-      duration: "2 weeks",
-      features: ["Featured in top 10 trending tokens for 2 weeks"],
-      icon: Target,
-      color: "text-emerald-500"
+      color: "text-yellow-500"
     }
   ];
 
   const handleUpgrade = async (boostName: string, price: number) => {
-    // Check if this is the Premium Trending boost and if spots are available
-    if (boostName === "Premium Trending") {
-      if (availableTop10Spots <= 0) {
-        toast.error("❌ Top 10 spots are fully booked!", {
-          description: "All 10 premium trending spots are currently occupied. Try again later."
+    // Check if this is the Premium Trending #1 boost and if spot is available
+    if (boostName === "Premium Trending #1") {
+      if (availableTop1Spot <= 0) {
+        toast.error("❌ #1 trending spot is taken!", {
+          description: "The #1 trending spot is currently occupied. Try again later."
         });
         return;
       }
@@ -110,17 +77,17 @@ const PremiumDashboard = () => {
       try {
         // Mock booking logic - in real implementation, this would:
         // 1. Process payment
-        // 2. Insert into trending_boosts table with top_10_premium type
-        // 3. Assign position using assign_top_10_position function
+        // 2. Insert into trending_boosts table
+        // 3. Set token as #1 trending
         
         // For now, just simulate the booking
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Update available spots
-        setAvailableTop10Spots(prev => prev - 1);
+        // Update available spot
+        setAvailableTop1Spot(0);
         
         toast.success(`🚀 ${boostName} activated! (${price} SOL charged)`, {
-          description: `Your token is now in the top 10 trending! ${availableTop10Spots - 1} spots remaining.`
+          description: "Your token is now #1 on trending for 30 days!"
         });
       } catch (error) {
         toast.error("Failed to activate boost. Please try again.");
@@ -301,31 +268,28 @@ const PremiumDashboard = () => {
                          ))}
                        </div>
                        
-                       {/* Show availability for Premium Trending */}
-                       {boost.name === "Premium Trending" && (
-                         <div className="p-3 bg-muted rounded-lg">
-                           <div className="flex items-center justify-between text-sm">
-                             <span className="font-medium">Available Spots:</span>
-                             <Badge variant={availableTop10Spots > 0 ? "default" : "destructive"}>
-                               {availableTop10Spots}/10
-                             </Badge>
-                           </div>
-                           {availableTop10Spots <= 3 && availableTop10Spots > 0 && (
-                             <p className="text-xs text-orange-500 mt-1">⚠️ Limited spots remaining!</p>
-                           )}
-                           {availableTop10Spots === 0 && (
-                             <p className="text-xs text-destructive mt-1">❌ All spots occupied</p>
-                           )}
-                         </div>
-                       )}
-                       
-                       <Button 
-                         className="w-full" 
-                         onClick={() => handleUpgrade(boost.name, boost.price)}
-                         disabled={isLoading || (boost.name === "Premium Trending" && availableTop10Spots <= 0)}
-                       >
-                         {isLoading && boost.name === "Premium Trending" ? "Booking..." : "Activate Boost"}
-                       </Button>
+                        {/* Show availability for Premium Trending #1 */}
+                        {boost.name === "Premium Trending #1" && (
+                          <div className="p-3 bg-muted rounded-lg">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium">Available Spot:</span>
+                              <Badge variant={availableTop1Spot > 0 ? "default" : "destructive"}>
+                                {availableTop1Spot > 0 ? "Available" : "Taken"}
+                              </Badge>
+                            </div>
+                            {availableTop1Spot === 0 && (
+                              <p className="text-xs text-destructive mt-1">❌ #1 spot is occupied</p>
+                            )}
+                          </div>
+                        )}
+                        
+                        <Button 
+                          className="w-full" 
+                          onClick={() => handleUpgrade(boost.name, boost.price)}
+                          disabled={isLoading || (boost.name === "Premium Trending #1" && availableTop1Spot <= 0)}
+                        >
+                          {isLoading && boost.name === "Premium Trending #1" ? "Booking..." : "Activate Boost"}
+                        </Button>
                      </CardContent>
                   </Card>
                 );
