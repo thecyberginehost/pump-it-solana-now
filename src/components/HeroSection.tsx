@@ -3,8 +3,10 @@ import { Button } from "./ui/button";
 import { Rocket, TrendingUp, Flame, Sparkles } from "lucide-react";
 import FloatingTokens from "./FloatingTokens";
 import heroImage from "@/assets/hero-bg.jpg";
+import { useHeroStats } from "@/hooks/useHeroStats";
 
 const HeroSection = () => {
+  const { data: stats } = useHeroStats();
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background */}
@@ -46,21 +48,21 @@ const HeroSection = () => {
           <div className="text-center min-w-[100px]">
             <div className="text-2xl sm:text-3xl font-bold text-primary flex items-center justify-center gap-2">
               <Rocket className="text-accent h-5 w-5 sm:h-6 sm:w-6" />
-              42,069
+              {stats?.tokensForged?.toLocaleString() || 0}
             </div>
-            <div className="text-xs sm:text-sm text-muted-foreground">Tokens Forged</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">AI One-Click Tokens</div>
           </div>
           <div className="text-center min-w-[100px]">
             <div className="text-2xl sm:text-3xl font-bold text-secondary flex items-center justify-center gap-2">
               <Sparkles className="text-accent h-5 w-5 sm:h-6 sm:w-6" />
-              1,337
+              {stats?.aiMemesGenerated?.toLocaleString() || 0}
             </div>
             <div className="text-xs sm:text-sm text-muted-foreground">AI Memes Generated</div>
           </div>
           <div className="text-center min-w-[100px]">
             <div className="text-2xl sm:text-3xl font-bold text-accent flex items-center justify-center gap-2">
               <TrendingUp className="text-accent h-5 w-5 sm:h-6 sm:w-6" />
-              $6.9M
+              ${stats?.volume24h ? (stats.volume24h / 1000000).toFixed(1) : '0.0'}M
             </div>
             <div className="text-xs sm:text-sm text-muted-foreground">Volume 24h</div>
           </div>
