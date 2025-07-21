@@ -50,10 +50,17 @@ const HeroSection = () => {
               <Rocket className="text-accent h-5 w-5 sm:h-6 sm:w-6" />
               {stats?.tokensForged?.toLocaleString() || 0}
             </div>
-            <div className="text-xs sm:text-sm text-muted-foreground">AI One-Click Tokens</div>
+            <div className="text-xs sm:text-sm text-muted-foreground">Total Tokens Created</div>
           </div>
           <div className="text-center min-w-[100px]">
             <div className="text-2xl sm:text-3xl font-bold text-secondary flex items-center justify-center gap-2">
+              <Sparkles className="text-accent h-5 w-5 sm:h-6 sm:w-6" />
+              {stats?.aiMemesGenerated?.toLocaleString() || 0}
+            </div>
+            <div className="text-xs sm:text-sm text-muted-foreground">AI One-Click Tokens</div>
+          </div>
+          <div className="text-center min-w-[100px]">
+            <div className="text-2xl sm:text-3xl font-bold text-accent flex items-center justify-center gap-2">
               <Sparkles className="text-accent h-5 w-5 sm:h-6 sm:w-6" />
               {stats?.aiMemesGenerated?.toLocaleString() || 0}
             </div>
