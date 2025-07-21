@@ -35,7 +35,7 @@ serve(async (req) => {
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsdmFrcXVudnZoZWFqd2VqcHptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4OTYxNjksImV4cCI6MjA2ODQ3MjE2OX0.B4G2bqu9muRFuviZRt7bs80UUVEVy5nbO0p55z7vmlQ'
     );
 
-    const { name, symbol, imageUrl, walletAddress, description, telegramUrl, xUrl } = await req.json();
+    const { name, symbol, imageUrl, walletAddress, description, telegramUrl, xUrl, initialBuyIn } = await req.json();
 
     if (!name || !symbol || !walletAddress) {
       return new Response(
@@ -44,7 +44,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Creating token:', { name, symbol, walletAddress });
+    console.log('Creating token:', { name, symbol, walletAddress, initialBuyIn });
 
     // Connect to Solana devnet
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
@@ -100,12 +100,28 @@ serve(async (req) => {
 
     console.log('Token created successfully:', tokenData);
 
+    // Handle initial buy-in if specified
+    let buyInMessage = '';
+    if (initialBuyIn && initialBuyIn > 0) {
+      // In production, this would execute the buy transaction
+      // For now, we'll just log it and include in the response
+      console.log(`Initial buy-in requested: ${initialBuyIn} SOL`);
+      buyInMessage = ` with ${initialBuyIn} SOL initial buy-in`;
+      
+      // TODO: Implement actual token purchase logic here
+      // This would involve:
+      // 1. Creating a swap transaction
+      // 2. Setting initial liquidity pool
+      // 3. Executing the buy transaction
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         token: tokenData,
         mintAddress: mockMintAddress,
-        message: 'Token created successfully! (Currently in development mode)',
+        initialBuyIn: initialBuyIn || 0,
+        message: `Token created successfully${buyInMessage}! (Currently in development mode)`,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

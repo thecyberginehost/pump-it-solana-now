@@ -19,7 +19,11 @@ export const useTokenCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
 
   const createToken = useMutation({
-    mutationFn: async ({ tokenData, walletAddress }: { tokenData: TokenData; walletAddress: string }) => {
+    mutationFn: async ({ tokenData, walletAddress, initialBuyIn = 0 }: { 
+      tokenData: TokenData; 
+      walletAddress: string;
+      initialBuyIn?: number;
+    }) => {
       const { data, error } = await supabase.functions.invoke('create-token', {
         body: {
           name: tokenData.name,
@@ -29,6 +33,7 @@ export const useTokenCreation = () => {
           telegramUrl: tokenData.telegram_url,
           xUrl: tokenData.x_url,
           walletAddress,
+          initialBuyIn,
         },
       });
 
@@ -55,7 +60,7 @@ export const useTokenCreation = () => {
     },
   });
 
-  const handleTokenCreation = async (tokenData: TokenData, walletAddress: string) => {
+  const handleTokenCreation = async (tokenData: TokenData, walletAddress: string, initialBuyIn: number = 0) => {
     if (!tokenData.name || !tokenData.symbol) {
       toast.error('Please fill in all required fields');
       return;
@@ -66,9 +71,14 @@ export const useTokenCreation = () => {
       return;
     }
 
+    if (initialBuyIn < 0) {
+      toast.error('Initial buy-in amount cannot be negative');
+      return;
+    }
+
     setIsCreating(true);
     try {
-      await createToken.mutateAsync({ tokenData, walletAddress });
+      await createToken.mutateAsync({ tokenData, walletAddress, initialBuyIn });
     } finally {
       setIsCreating(false);
     }

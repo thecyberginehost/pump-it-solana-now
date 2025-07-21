@@ -2,14 +2,16 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
-import { AlertTriangle, Sparkles, TrendingUp, Zap, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Sparkles, TrendingUp, Zap, RefreshCw, Wallet } from 'lucide-react';
 import { useAIQuickLaunch, QuickLaunchResult } from '@/hooks/useAIQuickLaunch';
 
 interface AIQuickLaunchModalProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (tokenData: QuickLaunchResult) => void;
+  onConfirm: (tokenData: QuickLaunchResult & { initialBuyIn?: string }) => void;
 }
 
 const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProps) => {
@@ -17,6 +19,7 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
   const [understood, setUnderstood] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<QuickLaunchResult | null>(null);
+  const [initialBuyIn, setInitialBuyIn] = useState("0");
   
   const { generateTrendBasedToken, regenerateComponent, isGenerating, currentStep } = useAIQuickLaunch();
 
@@ -43,7 +46,7 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
 
   const handleConfirm = () => {
     if (generatedToken) {
-      onConfirm(generatedToken);
+      onConfirm({ ...generatedToken, initialBuyIn });
       handleClose();
     }
   };
@@ -53,6 +56,7 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
     setUnderstood(false);
     setAgreedToTerms(false);
     setGeneratedToken(null);
+    setInitialBuyIn("0");
     onClose();
   };
 
@@ -162,6 +166,42 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
               </div>
             </div>
 
+            {/* Initial Buy-In Section */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                💰 Initial Buy-In (optional)
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Automatically purchase your own token at launch to show confidence and set initial price
+              </p>
+              
+              <div className="space-y-2">
+                <Label htmlFor="aiBuyInAmount" className="text-xs font-medium">
+                  Amount in SOL
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="aiBuyInAmount"
+                    type="number"
+                    placeholder="0.0"
+                    value={initialBuyIn}
+                    onChange={(e) => setInitialBuyIn(e.target.value)}
+                    className="text-sm pr-12"
+                    min="0"
+                    step="0.01"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                    SOL
+                  </span>
+                </div>
+                {parseFloat(initialBuyIn) > 0 && (
+                  <p className="text-xs text-green-600">
+                    ✓ Will purchase ~${((parseFloat(initialBuyIn) || 0) * 150).toFixed(2)} worth of tokens at launch
+                  </p>
+                )}
+              </div>
+            </div>
+
             {/* Final Warning */}
             <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
               <div className="flex items-start gap-3">
@@ -169,7 +209,7 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
                 <div className="space-y-2">
                   <p className="font-medium text-orange-500">Final Confirmation</p>
                   <p className="text-sm text-muted-foreground">
-                    Once you proceed with payment (0.02 SOL), this token will be created with the exact details shown above. 
+                    Once you proceed with payment ({(0.02 + (parseFloat(initialBuyIn) || 0)).toFixed(3)} SOL total), this token will be created with the exact details shown above. 
                     <strong className="text-foreground"> Name, symbol, and image cannot be changed after creation.</strong>
                   </p>
                 </div>
@@ -181,8 +221,8 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
                 Cancel
               </Button>
               <Button onClick={handleConfirm} className="flex-1 gap-2" variant="neon">
-                <Zap className="h-4 w-4" />
-                Launch Token (0.02 SOL)
+                <Wallet className="h-4 w-4" />
+                Launch Token ({(0.02 + (parseFloat(initialBuyIn) || 0)).toFixed(3)} SOL)
               </Button>
             </div>
           </div>

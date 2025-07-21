@@ -26,6 +26,7 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
     telegram_url: "",
     x_url: ""
   });
+  const [initialBuyIn, setInitialBuyIn] = useState("0");
 
   const [showAIFeatures, setShowAIFeatures] = useState(false);
   const [showQuickLaunchModal, setShowQuickLaunchModal] = useState(false);
@@ -52,7 +53,7 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
     setTokenData(prev => ({ ...prev, description }));
   };
 
-  const handleQuickLaunchConfirm = async (aiTokenData: QuickLaunchResult) => {
+  const handleQuickLaunchConfirm = async (aiTokenData: QuickLaunchResult & { initialBuyIn?: string }) => {
     // Populate form with AI-generated data and auto-launch
     const newTokenData = {
       name: aiTokenData.name,
@@ -64,6 +65,9 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
     };
     
     setTokenData(newTokenData);
+    if (aiTokenData.initialBuyIn) {
+      setInitialBuyIn(aiTokenData.initialBuyIn);
+    }
     toast.success('🚀 AI-generated token ready! Launching now...');
     
     // Check if user is authenticated before launching
@@ -74,7 +78,7 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
     
     // Auto-launch the token immediately with the new data
     setTimeout(async () => {
-      await createToken(newTokenData, walletAddress);
+      await createToken(newTokenData, walletAddress, parseFloat(aiTokenData.initialBuyIn || "0"));
     }, 1000);
   };
 
@@ -340,7 +344,13 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
       return;
     }
 
-    await createToken(tokenData, walletAddress);
+    const buyInAmount = parseFloat(initialBuyIn) || 0;
+    if (buyInAmount < 0) {
+      toast.error('Buy-in amount cannot be negative');
+      return;
+    }
+
+    await createToken(tokenData, walletAddress, buyInAmount);
   };
 
   return (
@@ -576,6 +586,42 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
                 </div>
               </div>
             </div>
+
+            {/* Initial Buy-In */}
+            <div className="space-y-3 pt-4 border-t border-border/50">
+              <Label className="text-sm font-medium">
+                💰 Initial Buy-In (optional)
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Automatically purchase your own token at launch to show confidence and set initial price
+              </p>
+              
+              <div className="space-y-2">
+                <Label htmlFor="buyInAmount" className="text-xs font-medium">
+                  Amount in SOL
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="buyInAmount"
+                    type="number"
+                    placeholder="0.0"
+                    value={initialBuyIn}
+                    onChange={(e) => setInitialBuyIn(e.target.value)}
+                    className="text-sm pr-12"
+                    min="0"
+                    step="0.01"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                    SOL
+                  </span>
+                </div>
+                {parseFloat(initialBuyIn) > 0 && (
+                  <p className="text-xs text-green-600">
+                    ✓ Will purchase ~${((parseFloat(initialBuyIn) || 0) * 150).toFixed(2)} worth of tokens at launch
+                  </p>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -596,13 +642,20 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
             ) : (
               <>
                 <Wallet className="mr-2" size={20} />
-                {isAuthenticated ? 'Launch for 0.02 SOL (~$3)' : 'Connect Wallet to Launch'}
+                {isAuthenticated ? (
+                  `Launch for ${(0.02 + (parseFloat(initialBuyIn) || 0)).toFixed(3)} SOL`
+                ) : (
+                  'Connect Wallet to Launch'
+                )}
               </>
             )}
           </Button>
           
           <p className="text-xs text-muted-foreground text-center mt-2">
-            Fair launch • No presale • Instant liquidity
+            {parseFloat(initialBuyIn) > 0 
+              ? `0.02 SOL creation fee + ${initialBuyIn} SOL initial buy-in`
+              : 'Fair launch • No presale • Instant liquidity'
+            }
           </p>
         </div>
       </div>
