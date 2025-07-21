@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WalletButton } from "@/components/WalletButton";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { 
   Home, 
   Trophy, 
@@ -11,12 +12,19 @@ import {
   X, 
   Rocket,
   Crown,
-  Zap
+  Zap,
+  MessageCircle
 } from "lucide-react";
 
-const Navigation = () => {
+interface NavigationProps {
+  onChatToggle?: () => void;
+  isChatOpen?: boolean;
+}
+
+const Navigation = ({ onChatToggle, isChatOpen }: NavigationProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { publicKey } = useWallet();
 
   const navItems = [
     { path: "/", label: "Launch", icon: Home },
@@ -68,8 +76,19 @@ const Navigation = () => {
             })}
           </div>
 
-          {/* Wallet Connection */}
+          {/* Wallet Connection & Chat */}
           <div className="hidden md:flex items-center space-x-4">
+            {publicKey && onChatToggle && (
+              <Button
+                variant={isChatOpen ? "default" : "outline"}
+                size="sm"
+                onClick={onChatToggle}
+                className="flex items-center space-x-2"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>CoPilot</span>
+              </Button>
+            )}
             <WalletButton />
           </div>
 
@@ -113,7 +132,21 @@ const Navigation = () => {
                   </Link>
                 );
               })}
-              <div className="pt-4">
+              <div className="pt-4 space-y-2">
+                {publicKey && onChatToggle && (
+                  <Button
+                    variant={isChatOpen ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      onChatToggle();
+                      setIsOpen(false);
+                    }}
+                    className="w-full flex items-center justify-center space-x-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Degen CoPilot</span>
+                  </Button>
+                )}
                 <WalletButton />
               </div>
             </div>
