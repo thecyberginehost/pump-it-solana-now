@@ -59,8 +59,8 @@ serve(async (req) => {
     console.log('Wallet balance fetched:', balanceInSol, 'SOL');
 
     // Calculate suggested buy-in amount based on balance
-    // Always leave at least 0.1 SOL for transaction fees
-    const availableBalance = Math.max(0, balanceInSol - 0.1);
+    // Always leave at least 0.005 SOL for transaction fees
+    const availableBalance = Math.max(0, balanceInSol - 0.005);
     let suggestedBuyIn = 0;
     
     if (availableBalance < 0.05) {

@@ -66,8 +66,8 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
 
   // Smart suggestion algorithm based on wallet balance
   const calculateSuggestedBuyIn = (balance: number): number => {
-    // Always leave at least 0.1 SOL for transactions and fees
-    const availableBalance = Math.max(0, balance - 0.1);
+    // Always leave at least 0.005 SOL for transactions and fees
+    const availableBalance = Math.max(0, balance - 0.005);
     
     if (availableBalance < 0.05) {
       return 0.05; // Minimum suggested amount
@@ -273,7 +273,7 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
                     className="text-sm pr-12"
                     min="0"
                     step="0.01"
-                    max={walletBalance ? (walletBalance - 0.1).toString() : undefined}
+                    max={walletBalance ? (walletBalance - 0.005).toString() : undefined}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                     SOL
@@ -304,9 +304,9 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
                   </p>
                 )}
                 
-                {walletBalance !== null && parseFloat(initialBuyIn) > (walletBalance - 0.1) && (
+                {walletBalance !== null && parseFloat(initialBuyIn) > (walletBalance - 0.005) && (
                   <p className="text-xs text-red-600">
-                    ⚠️ Amount exceeds available balance (keeping 0.1 SOL for fees)
+                    ⚠️ Amount exceeds available balance (keeping 0.005 SOL for fees)
                   </p>
                 )}
               </div>
@@ -334,7 +334,7 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
                 onClick={handleConfirm} 
                 className="flex-1 gap-2" 
                 variant="neon"
-                disabled={walletBalance !== null && parseFloat(initialBuyIn) > 0 && parseFloat(initialBuyIn) > (walletBalance - 0.1)}
+                disabled={walletBalance !== null && parseFloat(initialBuyIn) > 0 && parseFloat(initialBuyIn) > (walletBalance - 0.005)}
               >
                 <Wallet className="h-4 w-4" />
                 Launch Token ({(0.02 + (parseFloat(initialBuyIn) || 0)).toFixed(3)} SOL)
