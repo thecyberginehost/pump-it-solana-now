@@ -3,17 +3,19 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Upload, Eye, Wallet, Sparkles, Loader2, Bot } from "lucide-react";
 import AISuggestions from "./AISuggestions";
 import AIMemeGenerator from "./AIMemeGenerator";
-import { DegenCoPilot } from "./DegenCoPilot";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import { useTokenCreation } from "@/hooks/useTokenCreation";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-const TokenCreator = () => {
+interface TokenCreatorProps {
+  onChatToggle?: () => void;
+}
+
+const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
   const [tokenData, setTokenData] = useState({
     name: "",
     symbol: "",
@@ -24,7 +26,6 @@ const TokenCreator = () => {
   });
 
   const [showAIFeatures, setShowAIFeatures] = useState(false);
-  const [showCoPilot, setShowCoPilot] = useState(false);
   const [memePrompt, setMemePrompt] = useState('');
   const { isAuthenticated, walletAddress } = useWalletAuth();
   const { createToken, isCreating } = useTokenCreation();
@@ -348,26 +349,16 @@ const TokenCreator = () => {
             </div>
           </div>
           
-          {isAuthenticated && (
-            <Dialog open={showCoPilot} onOpenChange={setShowCoPilot}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Bot className="h-4 w-4" />
-                  Degen CoPilot
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-5xl w-[95vw] h-[90vh] sm:h-[80vh] p-0">
-                <DialogHeader className="p-4 sm:p-6 pb-0">
-                  <DialogTitle>Degen CoPilot - AI Marketing Assistant</DialogTitle>
-                </DialogHeader>
-                <div className="flex-1 p-4 sm:p-6 pt-0">
-                  <DegenCoPilot 
-                    tokenName={tokenData.name} 
-                    tokenSymbol={tokenData.symbol}
-                  />
-                </div>
-              </DialogContent>
-            </Dialog>
+          {isAuthenticated && onChatToggle && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={onChatToggle}
+            >
+              <Bot className="h-4 w-4" />
+              Degen Copilot
+            </Button>
           )}
         </div>
 

@@ -23,7 +23,7 @@ const Index = () => {
         }`}
       >
         <HeroSection />
-        <TokenCreator />
+        <TokenCreator onChatToggle={handleChatToggle} />
         <RecentLaunches />
       </div>
 

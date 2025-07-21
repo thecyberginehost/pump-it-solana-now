@@ -13,7 +13,7 @@ import {
   Rocket,
   Crown,
   Zap,
-  MessageCircle
+  Bot
 } from "lucide-react";
 
 interface NavigationProps {
@@ -79,14 +79,14 @@ const Navigation = ({ onChatToggle, isChatOpen }: NavigationProps) => {
           {/* Wallet Connection & Chat */}
           <div className="hidden md:flex items-center space-x-4">
             {publicKey && onChatToggle && (
-              <Button
+                <Button
                 variant={isChatOpen ? "default" : "outline"}
                 size="sm"
                 onClick={onChatToggle}
                 className="flex items-center space-x-2"
               >
-                <MessageCircle className="w-4 h-4" />
-                <span>CoPilot</span>
+                <Bot className="w-4 h-4" />
+                <span>Degen Copilot</span>
               </Button>
             )}
             <WalletButton />
@@ -134,7 +134,7 @@ const Navigation = ({ onChatToggle, isChatOpen }: NavigationProps) => {
               })}
               <div className="pt-4 space-y-2">
                 {publicKey && onChatToggle && (
-                  <Button
+                    <Button
                     variant={isChatOpen ? "default" : "outline"}
                     size="sm"
                     onClick={() => {
@@ -143,8 +143,8 @@ const Navigation = ({ onChatToggle, isChatOpen }: NavigationProps) => {
                     }}
                     className="w-full flex items-center justify-center space-x-2"
                   >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Degen CoPilot</span>
+                    <Bot className="w-4 h-4" />
+                    <span>Degen Copilot</span>
                   </Button>
                 )}
                 <WalletButton />
