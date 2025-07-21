@@ -18,6 +18,7 @@ const AIMemeGenerator = ({ onImageGenerated, externalPrompt = '', onPromptChange
   const [internalPrompt, setInternalPrompt] = useState('');
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string>('');
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [lastUsedPrompt, setLastUsedPrompt] = useState('');
   const { generateImage, isGeneratingImage } = useAIServices();
 
   // Use external prompt if provided, otherwise use internal state
@@ -34,6 +35,7 @@ const AIMemeGenerator = ({ onImageGenerated, externalPrompt = '', onPromptChange
   const handleGenerate = async () => {
     const imageUrl = await generateImage(prompt);
     if (imageUrl) {
+      setLastUsedPrompt(prompt); // Save the prompt before clearing
       setGeneratedImageUrl(imageUrl);
       onImageGenerated(imageUrl);
       handlePromptChange('');
@@ -51,8 +53,14 @@ const AIMemeGenerator = ({ onImageGenerated, externalPrompt = '', onPromptChange
     onImageGenerated(newImageUrl);
   };
 
-  const handleRegenerate = () => {
-    handleGenerate();
+  const handleRegenerate = async () => {
+    if (lastUsedPrompt) {
+      const imageUrl = await generateImage(lastUsedPrompt);
+      if (imageUrl) {
+        setGeneratedImageUrl(imageUrl);
+        onImageGenerated(imageUrl);
+      }
+    }
   };
 
   const quickPrompts = [
