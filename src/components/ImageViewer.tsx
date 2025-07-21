@@ -1,10 +1,9 @@
+
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X, Download, Scissors, RotateCcw, Loader2 } from "lucide-react";
+import { X, Download, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-
 
 interface ImageViewerProps {
   isOpen: boolean;
@@ -15,68 +14,26 @@ interface ImageViewerProps {
 }
 
 const ImageViewer = ({ isOpen, onClose, imageUrl, onImageUpdate, onRegenerate }: ImageViewerProps) => {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processedImageUrl, setProcessedImageUrl] = useState<string | null>(null);
-  const [currentBaseImageUrl, setCurrentBaseImageUrl] = useState<string>("");
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
 
-  // Reset processed image when a new base image is provided
-  React.useEffect(() => {
-    if (imageUrl !== currentBaseImageUrl) {
-      setProcessedImageUrl(null);
-      setCurrentBaseImageUrl(imageUrl);
-    }
-  }, [imageUrl, currentBaseImageUrl]);
-
-  const removeBackground = async () => {
-    if (!imageUrl) return;
-    
-    setIsProcessing(true);
-    try {
-      toast.info("Sending image to AI for background removal...");
-      
-      // Use the new background-removal type with the actual image URL
-      const response = await supabase.functions.invoke('generate-ai-content', {
-        body: {
-          type: 'background-removal',
-          prompt: 'Remove the background completely, keep only the main subject with transparent background',
-          imageUrl: imageUrl, // Pass the actual image URL
-        },
-      });
-
-      if (response.error) throw response.error;
-      
-      if (response.data?.imageUrl) {
-        setProcessedImageUrl(response.data.imageUrl);
-        toast.success("Background removed successfully!");
-      } else {
-        throw new Error("No processed image URL returned");
-      }
-      
-    } catch (error) {
-      console.error('Background removal failed:', error);
-      toast.error("Failed to remove background. Please try again.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleUseProcessedImage = () => {
-    if (processedImageUrl) {
-      onImageUpdate(processedImageUrl);
-      toast.success("Updated token image with background removed!");
-      onClose();
-    }
+  const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = event.currentTarget;
+    setImageDimensions({
+      width: img.naturalWidth,
+      height: img.naturalHeight
+    });
+    setImageLoaded(true);
   };
 
   const handleDownload = async () => {
     try {
-      const urlToDownload = processedImageUrl || imageUrl;
-      const response = await fetch(urlToDownload);
+      const response = await fetch(imageUrl);
       const blob = await response.blob();
       
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = processedImageUrl ? 'token-logo-no-bg.png' : 'token-logo.jpg';
+      link.download = 'token-logo.jpg';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -94,11 +51,37 @@ const ImageViewer = ({ isOpen, onClose, imageUrl, onImageUpdate, onRegenerate }:
     onClose();
   };
 
-  const currentImageUrl = processedImageUrl || imageUrl;
+  const getImageContainerStyle = () => {
+    if (!imageLoaded || !imageDimensions.width || !imageDimensions.height) {
+      return { maxWidth: '100%', maxHeight: '70vh' };
+    }
+
+    const maxWidth = Math.min(imageDimensions.width, 800);
+    const maxHeight = Math.min(imageDimensions.height, 600);
+    
+    // Calculate aspect ratio to maintain proportions
+    const aspectRatio = imageDimensions.width / imageDimensions.height;
+    
+    let containerWidth = maxWidth;
+    let containerHeight = maxHeight;
+    
+    if (containerWidth / containerHeight > aspectRatio) {
+      containerWidth = containerHeight * aspectRatio;
+    } else {
+      containerHeight = containerWidth / aspectRatio;
+    }
+
+    return {
+      width: `${containerWidth}px`,
+      height: `${containerHeight}px`,
+      maxWidth: '90vw',
+      maxHeight: '70vh'
+    };
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0">
+      <DialogContent className="max-w-fit w-auto max-h-[90vh] p-0">
         <DialogHeader className="p-6 pb-4">
           <DialogTitle className="flex items-center justify-between">
             <span>Token Image Preview</span>
@@ -110,46 +93,31 @@ const ImageViewer = ({ isOpen, onClose, imageUrl, onImageUpdate, onRegenerate }:
         
         <div className="px-6 pb-6">
           {/* Image Display */}
-          <div className="relative mb-6 bg-checker-pattern rounded-lg overflow-hidden">
-            <img
-              src={currentImageUrl}
-              alt="Token preview"
-              className="w-full max-h-96 object-contain mx-auto"
-            />
-            {processedImageUrl && (
-              <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs">
-                Background Removed
-              </div>
-            )}
+          <div className="mb-6 flex justify-center">
+            <div 
+              className="relative rounded-lg overflow-hidden bg-white shadow-sm border"
+              style={getImageContainerStyle()}
+            >
+              <img
+                src={imageUrl}
+                alt="Token preview"
+                className="w-full h-full object-contain"
+                onLoad={handleImageLoad}
+                onError={() => {
+                  setImageLoaded(false);
+                  toast.error("Failed to load image");
+                }}
+              />
+              {!imageLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                  <div className="text-muted-foreground text-sm">Loading image...</div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3 justify-center">
-            {!processedImageUrl && (
-              <Button 
-                onClick={removeBackground} 
-                disabled={isProcessing}
-                className="flex items-center gap-2"
-              >
-                {isProcessing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Scissors className="w-4 h-4" />
-                )}
-                Remove Background
-              </Button>
-            )}
-            
-            {processedImageUrl && (
-              <Button 
-                onClick={handleUseProcessedImage}
-                variant="default"
-                className="flex items-center gap-2"
-              >
-                Use This Image
-              </Button>
-            )}
-            
             <Button 
               onClick={handleDownload}
               variant="outline"
@@ -168,14 +136,6 @@ const ImageViewer = ({ isOpen, onClose, imageUrl, onImageUpdate, onRegenerate }:
               Regenerate
             </Button>
           </div>
-
-          {isProcessing && (
-            <div className="mt-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Processing with AI... This may take a few moments.
-              </p>
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>
