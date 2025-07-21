@@ -194,15 +194,15 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
   }
 
   return (
-    <Card className="w-full max-w-4xl mx-auto h-[600px] flex flex-col">
-      <CardHeader className="flex-shrink-0">
-        <div className="flex items-center justify-between">
+    <Card className="w-full max-w-4xl mx-auto h-[500px] sm:h-[600px] flex flex-col">
+      <CardHeader className="flex-shrink-0 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <CardTitle className="flex items-center gap-2">
             <Bot className="h-6 w-6 text-primary" />
             Degen CoPilot
             <Sparkles className="h-4 w-4 text-yellow-500" />
           </CardTitle>
-          <Badge variant="secondary" className="flex items-center gap-1">
+          <Badge variant="secondary" className="flex items-center gap-1 self-start sm:self-center">
             <Zap className="h-3 w-3" />
             {creditsRemaining} credits
           </Badge>
@@ -214,7 +214,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col gap-4 min-h-0">
+      <CardContent className="flex-1 flex flex-col gap-4 min-h-0 p-4 sm:p-6 pt-0">
         {messages.length === 0 && (
           <div className="space-y-4">
             <div className="text-center mb-6">
@@ -223,12 +223,12 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
                 Select a specialized marketing strategy or ask me anything
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {QUICK_PROMPTS.map((prompt) => (
                 <Button
                   key={prompt.id}
                   variant="outline"
-                  className="h-auto p-4 flex flex-col items-start gap-2 text-left hover:bg-accent/10 transition-all"
+                  className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left hover:bg-accent/10 transition-all"
                   onClick={() => handleQuickPrompt(prompt)}
                   disabled={isLoading || creditsRemaining <= 0}
                 >
@@ -246,7 +246,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
         )}
 
         {messages.length > 0 && (
-          <ScrollArea className="flex-1 pr-4">
+          <ScrollArea className="flex-1 pr-2 sm:pr-4">
             <div className="space-y-4">
               {messages.map((message) => (
                 <div
@@ -254,7 +254,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
                   className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                    className={`max-w-[85%] sm:max-w-[80%] rounded-lg px-3 sm:px-4 py-2 ${
                       message.isUser
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted'
@@ -276,7 +276,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg px-4 py-2 max-w-[80%]">
+                  <div className="bg-muted rounded-lg px-3 sm:px-4 py-2 max-w-[85%] sm:max-w-[80%]">
                     <div className="flex items-center gap-2">
                       <Bot className="h-4 w-4 animate-pulse" />
                       <span className="text-sm">Degen CoPilot is thinking...</span>
@@ -303,12 +303,13 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
               }
             }}
             disabled={isLoading || creditsRemaining <= 0}
-            className="flex-1"
+            className="flex-1 text-sm"
           />
           <Button
             onClick={() => sendMessage(inputMessage)}
             disabled={!inputMessage.trim() || isLoading || creditsRemaining <= 0}
             size="icon"
+            className="shrink-0"
           >
             <Send className="h-4 w-4" />
           </Button>

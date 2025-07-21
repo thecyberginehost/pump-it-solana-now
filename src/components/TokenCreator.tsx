@@ -80,10 +80,10 @@ const TokenCreator = () => {
   };
 
   return (
-    <section id="token-creator" className="py-20 px-6">
+    <section id="token-creator" className="py-12 sm:py-20 px-4 sm:px-6">
       <div className="max-w-xl mx-auto">
-        <div className="text-center mb-8">
-          <h2 className="text-4xl font-black mb-4 text-gradient">
+        <div className="text-center mb-6 sm:mb-8">
+          <h2 className="text-3xl sm:text-4xl font-black mb-4 text-gradient">
             Launch Your Token
           </h2>
           <p className="text-muted-foreground">
@@ -92,7 +92,7 @@ const TokenCreator = () => {
         </div>
 
         {/* AI Features */}
-        <div className="flex items-center justify-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
           <div className="flex items-center gap-2">
             <Sparkles className="text-accent" size={16} />
             <span className="text-sm">Use AI Tools</span>
@@ -126,11 +126,11 @@ const TokenCreator = () => {
                   Degen CoPilot
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-5xl w-[95vw] h-[80vh] p-0">
-                <DialogHeader className="p-6 pb-0">
+              <DialogContent className="max-w-5xl w-[95vw] h-[90vh] sm:h-[80vh] p-0">
+                <DialogHeader className="p-4 sm:p-6 pb-0">
                   <DialogTitle>Degen CoPilot - AI Marketing Assistant</DialogTitle>
                 </DialogHeader>
-                <div className="flex-1 p-6 pt-0">
+                <div className="flex-1 p-4 sm:p-6 pt-0">
                   <DegenCoPilot 
                     tokenName={tokenData.name} 
                     tokenSymbol={tokenData.symbol}

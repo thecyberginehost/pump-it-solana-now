@@ -52,6 +52,66 @@ export type Database = {
           },
         ]
       }
+      copilot_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          prompt_type: string | null
+          response: string
+          session_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          prompt_type?: string | null
+          response: string
+          session_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          prompt_type?: string | null
+          response?: string
+          session_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      creator_credits: {
+        Row: {
+          created_at: string
+          daily_credits: number
+          id: string
+          last_reset: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_credits?: number
+          id?: string
+          last_reset?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_credits?: number
+          id?: string
+          last_reset?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       creator_earnings: {
         Row: {
           claimable_amount: number
@@ -315,6 +375,10 @@ export type Database = {
       get_available_top_10_spots: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      reset_daily_credits: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {
