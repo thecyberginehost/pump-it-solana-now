@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { X, Download, Scissors, RotateCcw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useAIServices } from "@/hooks/useAIServices";
+import { supabase } from "@/integrations/supabase/client";
 
 
 interface ImageViewerProps {
@@ -18,7 +18,6 @@ const ImageViewer = ({ isOpen, onClose, imageUrl, onImageUpdate, onRegenerate }:
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedImageUrl, setProcessedImageUrl] = useState<string | null>(null);
   const [currentBaseImageUrl, setCurrentBaseImageUrl] = useState<string>("");
-  const { generateImage } = useAIServices();
 
   // Reset processed image when a new base image is provided
   React.useEffect(() => {
@@ -35,17 +34,22 @@ const ImageViewer = ({ isOpen, onClose, imageUrl, onImageUpdate, onRegenerate }:
     try {
       toast.info("Sending image to AI for background removal...");
       
-      // Create a prompt that includes the image URL and instructions
-      const prompt = `Remove the background of this exact image then give it back to me. Image URL: ${imageUrl}. Please return a new image with the background completely removed, keeping only the main subject with transparent background.`;
+      // Use the new background-removal type with the actual image URL
+      const response = await supabase.functions.invoke('generate-ai-content', {
+        body: {
+          type: 'background-removal',
+          prompt: 'Remove the background completely, keep only the main subject with transparent background',
+          imageUrl: imageUrl, // Pass the actual image URL
+        },
+      });
+
+      if (response.error) throw response.error;
       
-      // Use the AI service to process the image
-      const processedUrl = await generateImage(prompt);
-      
-      if (processedUrl) {
-        setProcessedImageUrl(processedUrl);
+      if (response.data?.imageUrl) {
+        setProcessedImageUrl(response.data.imageUrl);
         toast.success("Background removed successfully!");
       } else {
-        throw new Error("Failed to process image");
+        throw new Error("No processed image URL returned");
       }
       
     } catch (error) {

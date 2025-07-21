@@ -26,7 +26,7 @@ serve(async (req) => {
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsdmFrcXVudnZoZWFqd2VqcHptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4OTYxNjksImV4cCI6MjA2ODQ3MjE2OX0.B4G2bqu9muRFuviZRt7bs80UUVEVy5nbO0p55z7vmlQ'
     );
 
-    const { type, prompt, context } = await req.json();
+    const { type, prompt, context, imageUrl: inputImageUrl } = await req.json();
 
     if (!type || !prompt) {
       return new Response(
@@ -35,7 +35,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Generating AI content:', { type, prompt });
+    console.log('Generating AI content:', { type, prompt, inputImageUrl });
 
     if (type === 'image') {
       // Generate image using DALL-E
@@ -141,6 +141,111 @@ serve(async (req) => {
         JSON.stringify({ imageUrl: publicUrlData.publicUrl }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+
+    } else if (type === 'background-removal') {
+      // Handle background removal for existing images
+      if (!inputImageUrl) {
+        return new Response(
+          JSON.stringify({ error: 'Missing imageUrl for background removal' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+
+      console.log(`Processing background removal for image: ${inputImageUrl}`);
+
+      try {
+        // Download the original image
+        const originalImageResponse = await fetch(inputImageUrl);
+        if (!originalImageResponse.ok) {
+          throw new Error('Failed to fetch original image');
+        }
+        const originalImageBlob = await originalImageResponse.blob();
+
+        // Convert blob to base64 for OpenAI
+        const arrayBuffer = await originalImageBlob.arrayBuffer();
+        const base64Image = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+        // Use OpenAI's image editing API to remove background
+        const editResponse = await fetch('https://api.openai.com/v1/images/edits', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+          },
+          body: (() => {
+            const formData = new FormData();
+            formData.append('image', originalImageBlob, 'image.png');
+            formData.append('prompt', 'Remove the background completely, keep only the main subject with transparent background');
+            formData.append('n', '1');
+            formData.append('size', '1024x1024');
+            return formData;
+          })(),
+        });
+
+        const editData = await editResponse.json();
+        
+        if (!editResponse.ok) {
+          console.error('OpenAI Edit API error:', editData);
+          throw new Error(`OpenAI Edit API error: ${editData.error?.message || 'Unknown error'}`);
+        }
+
+        const editedImageUrl = editData.data[0].url;
+
+        // Download and store the edited image
+        const editedImageBlob = await fetch(editedImageUrl).then(r => r.blob());
+        
+        // Create a secure hash for the filename
+        const timestamp = Date.now();
+        const randomString = Math.random().toString(36).substring(2, 15);
+        const hashInput = `bg-removed-${inputImageUrl}-${timestamp}-${randomString}`;
+        
+        // Generate SHA-256 hash
+        const encoder = new TextEncoder();
+        const data = encoder.encode(hashInput);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = new Uint8Array(hashBuffer);
+        const hashHex = Array.from(hashArray)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+        
+        const hashedFileName = `bg-${hashHex.substring(0, 16)}.png`;
+        
+        console.log(`Storing background-removed image with filename: ${hashedFileName}`);
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('token-images')
+          .upload(hashedFileName, editedImageBlob, {
+            contentType: 'image/png',
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('Background removal storage upload error:', uploadError);
+          // Return the OpenAI URL if storage fails
+          return new Response(
+            JSON.stringify({ imageUrl: editedImageUrl }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('token-images')
+          .getPublicUrl(hashedFileName);
+
+        console.log(`Generated background-removed image URL: ${publicUrlData.publicUrl}`);
+
+        return new Response(
+          JSON.stringify({ imageUrl: publicUrlData.publicUrl }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+
+      } catch (error) {
+        console.error('Background removal failed:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to remove background', details: error.message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
 
     } else if (type === 'suggestions') {
       // Generate name/symbol suggestions using GPT-4
