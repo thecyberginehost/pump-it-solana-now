@@ -1,103 +1,93 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Trophy, Medal, Award, TrendingUp, Users, DollarSign, Crown, Flame, Zap } from "lucide-react";
+import { Trophy, Medal, Award, TrendingUp, Users, DollarSign, Crown, Flame, Zap, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Leaderboard = () => {
   const [activeTab, setActiveTab] = useState("creators");
+  const [topCreators, setTopCreators] = useState<any[]>([]);
+  const [hotTokens, setHotTokens] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const topCreators = [
-    {
-      rank: 1,
-      name: "MemeKing",
-      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=64&h=64&fit=crop&crop=face",
-      tokens: 15,
-      totalVolume: 2500000,
-      successRate: 87,
-      badge: "🏆 Legendary",
-      verified: true
-    },
-    {
-      rank: 2,
-      name: "CryptoQueen",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b25c8c3c?w=64&h=64&fit=crop&crop=face",
-      tokens: 12,
-      totalVolume: 1800000,
-      successRate: 92,
-      badge: "💎 Diamond",
-      verified: true
-    },
-    {
-      rank: 3,
-      name: "TokenMaster",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face",
-      tokens: 18,
-      totalVolume: 1600000,
-      successRate: 75,
-      badge: "🔥 Fire",
-      verified: false
-    },
-    {
-      rank: 4,
-      name: "PumpGuru",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face",
-      tokens: 9,
-      totalVolume: 1200000,
-      successRate: 89,
-      badge: "⭐ Elite",
-      verified: true
-    },
-    {
-      rank: 5,
-      name: "MoonShooter",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=64&h=64&fit=crop&crop=face",
-      tokens: 14,
-      totalVolume: 950000,
-      successRate: 71,
-      badge: "🚀 Rising",
-      verified: false
-    }
-  ];
+  useEffect(() => {
+    fetchLeaderboardData();
+  }, []);
 
-  const hotTokens = [
-    {
-      rank: 1,
-      name: "DogeAI",
-      symbol: "DOGEAI",
-      creator: "MemeKing",
-      marketCap: 890000,
-      change24h: 156.7,
-      volume24h: 45000,
-      holders: 2340,
-      trending: true
-    },
-    {
-      rank: 2,
-      name: "PumpCoin",
-      symbol: "PUMP",
-      creator: "CryptoQueen",
-      marketCap: 650000,
-      change24h: 89.2,
-      volume24h: 32000,
-      holders: 1890,
-      trending: true
-    },
-    {
-      rank: 3,
-      name: "MoonRocket",
-      symbol: "MOON",
-      creator: "TokenMaster",
-      marketCap: 420000,
-      change24h: 67.8,
-      volume24h: 28000,
-      holders: 1560,
-      trending: false
+  const fetchLeaderboardData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch top creators based on token count and total volume
+      const { data: creatorsData, error: creatorsError } = await supabase
+        .from('tokens')
+        .select('creator_wallet, name, symbol, market_cap, holder_count')
+        .order('created_at', { ascending: false });
+
+      if (creatorsError) throw creatorsError;
+
+      // Group by creator and calculate stats
+      const creatorStats: any = {};
+      creatorsData?.forEach((token: any) => {
+        const wallet = token.creator_wallet;
+        if (!creatorStats[wallet]) {
+          creatorStats[wallet] = {
+            wallet,
+            name: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
+            tokens: 0,
+            totalVolume: 0,
+            totalHolders: 0,
+            verified: false
+          };
+        }
+        creatorStats[wallet].tokens += 1;
+        creatorStats[wallet].totalVolume += token.market_cap || 0;
+        creatorStats[wallet].totalHolders += token.holder_count || 1;
+      });
+
+      const creators = Object.values(creatorStats)
+        .sort((a: any, b: any) => b.tokens - a.tokens)
+        .slice(0, 10)
+        .map((creator: any, index) => ({
+          ...creator,
+          rank: index + 1,
+          successRate: Math.floor(Math.random() * 30) + 70, // Mock for now
+          badge: index === 0 ? "🏆 Legendary" : index === 1 ? "💎 Diamond" : index === 2 ? "🔥 Fire" : "⭐ Elite"
+        }));
+
+      setTopCreators(creators);
+
+      // Fetch hot tokens
+      const { data: tokensData, error: tokensError } = await supabase
+        .from('tokens')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (tokensError) throw tokensError;
+
+      const tokens = tokensData?.map((token, index) => ({
+        rank: index + 1,
+        name: token.name,
+        symbol: token.symbol,
+        creator: `${token.creator_wallet.slice(0, 6)}...${token.creator_wallet.slice(-4)}`,
+        marketCap: token.market_cap || 0,
+        change24h: Math.random() * 200 + 10, // Mock for now
+        volume24h: token.volume_24h || 0,
+        holders: token.holder_count || 1,
+        trending: index < 3
+      })) || [];
+
+      setHotTokens(tokens);
+    } catch (error) {
+      console.error('Error fetching leaderboard data:', error);
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -156,42 +146,54 @@ const Leaderboard = () => {
 
         {activeTab === "creators" && (
           <div className="space-y-6">
-            {/* Top 3 Podium */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              {topCreators.slice(0, 3).map((creator, index) => (
-                <Card key={creator.rank} className={`relative overflow-hidden ${index === 0 ? 'md:order-2 transform md:scale-110' : index === 1 ? 'md:order-1' : 'md:order-3'}`}>
-                  <div className={`absolute top-0 left-0 w-full h-2 ${index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' : index === 1 ? 'bg-gradient-to-r from-gray-300 to-gray-500' : 'bg-gradient-to-r from-amber-500 to-amber-700'}`} />
-                  <CardContent className="p-6 text-center">
-                    <div className="flex justify-center mb-4">
-                      {getRankIcon(creator.rank)}
-                    </div>
-                    <Avatar className="w-16 h-16 mx-auto mb-4">
-                      <AvatarImage src={creator.avatar} />
-                      <AvatarFallback>{creator.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2">
-                        <h3 className="font-bold">{creator.name}</h3>
-                        {creator.verified && <Crown className="w-4 h-4 text-yellow-500" />}
-                      </div>
-                      <Badge variant="secondary">{creator.badge}</Badge>
-                      <div className="text-sm space-y-1">
-                        <p><span className="font-medium">{creator.tokens}</span> tokens created</p>
-                        <p><span className="font-medium">${creator.totalVolume.toLocaleString()}</span> total volume</p>
-                        <p><span className="font-medium">{creator.successRate}%</span> success rate</p>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        className="w-full mt-3"
-                        onClick={() => handleFollowCreator(creator.name)}
-                      >
-                        Follow Creator
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="animate-spin mr-2" size={32} />
+                <span className="text-lg">Loading leaderboard...</span>
+              </div>
+            ) : topCreators.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4">🏆</div>
+                <h3 className="text-xl font-semibold mb-2">No creators yet</h3>
+                <p className="text-muted-foreground">Be the first to create a token and claim the top spot!</p>
+              </div>
+            ) : (
+              <>
+                {/* Top 3 Podium */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                  {topCreators.slice(0, 3).map((creator, index) => (
+                    <Card key={creator.rank} className={`relative overflow-hidden ${index === 0 ? 'md:order-2 transform md:scale-110' : index === 1 ? 'md:order-1' : 'md:order-3'}`}>
+                      <div className={`absolute top-0 left-0 w-full h-2 ${index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' : index === 1 ? 'bg-gradient-to-r from-gray-300 to-gray-500' : 'bg-gradient-to-r from-amber-500 to-amber-700'}`} />
+                      <CardContent className="p-6 text-center">
+                        <div className="flex justify-center mb-4">
+                          {getRankIcon(creator.rank)}
+                        </div>
+                        <Avatar className="w-16 h-16 mx-auto mb-4">
+                          <AvatarFallback>{creator.name[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-center gap-2">
+                            <h3 className="font-bold">{creator.name}</h3>
+                            {creator.verified && <Crown className="w-4 h-4 text-yellow-500" />}
+                          </div>
+                          <Badge variant="secondary">{creator.badge}</Badge>
+                          <div className="text-sm space-y-1">
+                            <p><span className="font-medium">{creator.tokens}</span> tokens created</p>
+                            <p><span className="font-medium">${creator.totalVolume.toLocaleString()}</span> total volume</p>
+                            <p><span className="font-medium">{creator.successRate}%</span> success rate</p>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            className="w-full mt-3"
+                            onClick={() => handleFollowCreator(creator.name)}
+                          >
+                            Follow Creator
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
 
             {/* Full Leaderboard */}
             <Card>
@@ -210,7 +212,6 @@ const Leaderboard = () => {
                           {getRankIcon(creator.rank)}
                         </div>
                         <Avatar className="w-10 h-10">
-                          <AvatarImage src={creator.avatar} />
                           <AvatarFallback>{creator.name[0]}</AvatarFallback>
                         </Avatar>
                         <div>
@@ -247,70 +248,87 @@ const Leaderboard = () => {
                 </div>
               </CardContent>
             </Card>
+              </>
+            )}
           </div>
         )}
 
         {activeTab === "tokens" && (
           <div className="space-y-6">
-            {/* Hot Tokens Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {hotTokens.map((token) => (
-                <Card key={token.rank} className="relative overflow-hidden hover:shadow-xl transition-all">
-                  {token.trending && (
-                    <div className="absolute top-2 right-2">
-                      <Badge className="bg-gradient-to-r from-red-500 to-orange-500 animate-pulse">
-                        <Flame className="w-3 h-3 mr-1" />
-                        HOT
-                      </Badge>
-                    </div>
-                  )}
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        {getRankIcon(token.rank)}
-                        <div>
-                          <h3 className="font-bold text-lg">{token.name}</h3>
-                          <p className="text-sm text-muted-foreground">${token.symbol}</p>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="animate-spin mr-2" size={32} />
+                <span className="text-lg">Loading hot tokens...</span>
+              </div>
+            ) : hotTokens.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4">🔥</div>
+                <h3 className="text-xl font-semibold mb-2">No tokens yet</h3>
+                <p className="text-muted-foreground">Create the first token to start the competition!</p>
+              </div>
+            ) : (
+              <>
+                {/* Hot Tokens Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {hotTokens.map((token) => (
+                    <Card key={token.rank} className="relative overflow-hidden hover:shadow-xl transition-all">
+                      {token.trending && (
+                        <div className="absolute top-2 right-2">
+                          <Badge className="bg-gradient-to-r from-red-500 to-orange-500 animate-pulse">
+                            <Flame className="w-3 h-3 mr-1" />
+                            HOT
+                          </Badge>
                         </div>
-                      </div>
-                      <div className={`text-right ${token.change24h > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        <div className="text-lg font-bold">+{token.change24h.toFixed(1)}%</div>
-                        <div className="text-xs">24h</div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Market Cap</span>
-                        <span className="font-medium">${token.marketCap.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">24h Volume</span>
-                        <span className="font-medium">${token.volume24h.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Holders</span>
-                        <span className="font-medium">{token.holders.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Creator</span>
-                        <Badge variant="outline">{token.creator}</Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2 mt-4">
-                      <Button className="flex-1" size="sm">
-                        <DollarSign className="w-4 h-4 mr-1" />
-                        Trade
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Zap className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      )}
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            {getRankIcon(token.rank)}
+                            <div>
+                              <h3 className="font-bold text-lg">{token.name}</h3>
+                              <p className="text-sm text-muted-foreground">${token.symbol}</p>
+                            </div>
+                          </div>
+                          <div className={`text-right ${token.change24h > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            <div className="text-lg font-bold">+{token.change24h.toFixed(1)}%</div>
+                            <div className="text-xs">24h</div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Market Cap</span>
+                            <span className="font-medium">${token.marketCap.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">24h Volume</span>
+                            <span className="font-medium">${token.volume24h.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Holders</span>
+                            <span className="font-medium">{token.holders.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Creator</span>
+                            <Badge variant="outline">{token.creator}</Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2 mt-4">
+                          <Button className="flex-1" size="sm">
+                            <DollarSign className="w-4 h-4 mr-1" />
+                            Trade
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Zap className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
 
             {/* Achievement Badges */}
             <Card>

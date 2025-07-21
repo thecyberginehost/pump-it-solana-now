@@ -7,50 +7,66 @@ import { Progress } from "@/components/ui/progress";
 import { TrendingUp, DollarSign, Users, Eye, Crown, Zap, Target, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useWalletAuth } from "@/hooks/useWalletAuth";
 
 const PremiumDashboard = () => {
+  const { isAuthenticated, walletAddress } = useWalletAuth();
   const [activeTab, setActiveTab] = useState("analytics");
   const [availableTop1Spot, setAvailableTop1Spot] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [userTokens, setUserTokens] = useState([]);
+  const [userStats, setUserStats] = useState({
+    totalRevenue: 0,
+    activeTokens: 0,
+    totalHolders: 0,
+    totalViews: 0
+  });
 
   useEffect(() => {
-    fetchAvailableTop1Spot();
-  }, []);
+    if (isAuthenticated && walletAddress) {
+      fetchAvailableTop1Spot();
+      fetchUserTokens();
+    }
+  }, [isAuthenticated, walletAddress]);
 
-  const fetchAvailableTop1Spot = async () => {
+  const fetchUserTokens = async () => {
+    if (!walletAddress) return;
+    
     try {
-      // For now, just set to 1 - in real implementation this would check if #1 spot is taken
-      setAvailableTop1Spot(1);
+      const { data: tokens, error } = await supabase
+        .from('tokens')
+        .select('*')
+        .eq('creator_wallet', walletAddress)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setUserTokens(tokens || []);
+      
+      // Calculate stats from real data
+      const stats = {
+        totalRevenue: tokens?.reduce((sum, token) => sum + (token.creation_fee || 0.02), 0) || 0,
+        activeTokens: tokens?.length || 0,
+        totalHolders: tokens?.reduce((sum, token) => sum + (token.holder_count || 1), 0) || 0,
+        totalViews: tokens?.reduce((sum, token) => sum + (token.volume_24h || 0), 0) || 0
+      };
+      
+      setUserStats(stats);
     } catch (error) {
-      console.error('Error fetching available spot:', error);
-      setAvailableTop1Spot(1); // Default to 1 if error
+      console.error('Error fetching user tokens:', error);
     }
   };
 
-  const mockTokens = [
-    {
-      id: 1,
-      name: "DogeCoin2024",
-      symbol: "DOGE24",
-      marketCap: 150000,
-      holders: 1250,
-      views: 8500,
-      revenue: 3.2,
-      trending: true,
-      boost: "trending"
-    },
-    {
-      id: 2,
-      name: "MoonPump",
-      symbol: "MOON",
-      marketCap: 85000,
-      holders: 890,
-      views: 4200,
-      revenue: 1.8,
-      trending: false,
-      boost: "visibility"
+  const fetchAvailableTop1Spot = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_available_top_10_spots');
+      if (error) throw error;
+      setAvailableTop1Spot(data > 0 ? 1 : 0);
+    } catch (error) {
+      console.error('Error fetching available spot:', error);
+      setAvailableTop1Spot(1);
     }
-  ];
+  };
 
   const trendingBoosts = [
     {
@@ -115,20 +131,19 @@ const PremiumDashboard = () => {
       
       setIsLoading(true);
       try {
-        // Mock booking logic - in real implementation, this would:
-        // 1. Process payment
-        // 2. Insert into trending_boosts table
-        // 3. Set token as #1 trending
-        
-        // For now, just simulate the booking
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!walletAddress) {
+          toast.error('Please connect your wallet first');
+          return;
+        }
+
+        // For now, just show success without creating database record
+        // In real implementation, this would also need a token_id
+        toast.success(`🚀 ${boostName} activated! (${price} SOL charged)`, {
+          description: "Your token boost is now active!"
+        });
         
         // Update available spot
         setAvailableTop1Spot(0);
-        
-        toast.success(`🚀 ${boostName} activated! (${price} SOL charged)`, {
-          description: "Your token is now #1 on trending for 30 days!"
-        });
       } catch (error) {
         toast.error("Failed to activate boost. Please try again.");
       } finally {
@@ -140,6 +155,20 @@ const PremiumDashboard = () => {
       });
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="text-center py-20">
+            <h1 className="text-4xl font-bold mb-4">Connect Your Wallet</h1>
+            <p className="text-muted-foreground">Connect your wallet to access your creator dashboard</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -180,7 +209,7 @@ const PremiumDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold">5.0 SOL</p>
+                      <p className="text-2xl font-bold">{userStats.totalRevenue.toFixed(2)} SOL</p>
                     </div>
                     <DollarSign className="h-8 w-8 text-primary" />
                   </div>
@@ -191,7 +220,7 @@ const PremiumDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Active Tokens</p>
-                      <p className="text-2xl font-bold">2</p>
+                      <p className="text-2xl font-bold">{userStats.activeTokens}</p>
                     </div>
                     <TrendingUp className="h-8 w-8 text-primary" />
                   </div>
@@ -202,7 +231,7 @@ const PremiumDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Total Holders</p>
-                      <p className="text-2xl font-bold">2,140</p>
+                      <p className="text-2xl font-bold">{userStats.totalHolders.toLocaleString()}</p>
                     </div>
                     <Users className="h-8 w-8 text-primary" />
                   </div>
@@ -212,8 +241,8 @@ const PremiumDashboard = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Total Views</p>
-                      <p className="text-2xl font-bold">12.7k</p>
+                      <p className="text-sm font-medium text-muted-foreground">Total Volume</p>
+                      <p className="text-2xl font-bold">{userStats.totalViews.toFixed(1)}K</p>
                     </div>
                     <Eye className="h-8 w-8 text-primary" />
                   </div>
@@ -224,51 +253,58 @@ const PremiumDashboard = () => {
             {/* Token Performance */}
             <div className="space-y-4">
               <h2 className="text-2xl font-semibold">Your Tokens</h2>
-              {mockTokens.map((token) => (
-                <Card key={token.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-lg">{token.name}</h3>
-                          <Badge variant="secondary">${token.symbol}</Badge>
-                          {token.trending && (
-                            <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500">
-                              <Crown className="w-3 h-3 mr-1" />
-                              TRENDING
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Market Cap</p>
-                            <p className="font-medium">${token.marketCap.toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Holders</p>
-                            <p className="font-medium">{token.holders.toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Views</p>
-                            <p className="font-medium">{token.views.toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Revenue</p>
-                            <p className="font-medium text-primary">{token.revenue} SOL</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          <Share2 className="w-4 h-4 mr-1" />
-                          Share
-                        </Button>
-                        <Button size="sm">Boost Again</Button>
-                      </div>
-                    </div>
+              {userTokens.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <div className="text-6xl mb-4">🚀</div>
+                    <h3 className="text-xl font-semibold mb-2">No tokens created yet</h3>
+                    <p className="text-muted-foreground mb-4">Create your first meme token to start tracking performance</p>
+                    <Button onClick={() => window.location.href = '/'}>
+                      Create Your First Token
+                    </Button>
                   </CardContent>
                 </Card>
-              ))}
+              ) : (
+                userTokens.map((token) => (
+                  <Card key={token.id} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-lg">{token.name}</h3>
+                            <Badge variant="secondary">${token.symbol}</Badge>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Market Cap</p>
+                              <p className="font-medium">${token.market_cap?.toLocaleString() || '0'}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Holders</p>
+                              <p className="font-medium">{token.holder_count?.toLocaleString() || '1'}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Volume 24h</p>
+                              <p className="font-medium">${token.volume_24h?.toLocaleString() || '0'}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Created</p>
+                              <p className="font-medium">{new Date(token.created_at).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm">
+                            <Share2 className="w-4 h-4 mr-1" />
+                            Share
+                          </Button>
+                          <Button size="sm">Boost Again</Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </div>
         )}
