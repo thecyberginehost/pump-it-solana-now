@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -143,7 +144,7 @@ serve(async (req) => {
       );
 
     } else if (type === 'background-removal') {
-      // Handle background removal for existing images
+      // Handle background removal using gpt-image-1 model
       if (!inputImageUrl) {
         return new Response(
           JSON.stringify({ error: 'Missing imageUrl for background removal' }),
@@ -154,44 +155,80 @@ serve(async (req) => {
       console.log(`Processing background removal for image: ${inputImageUrl}`);
 
       try {
-        // Download the original image
-        const originalImageResponse = await fetch(inputImageUrl);
-        if (!originalImageResponse.ok) {
-          throw new Error('Failed to fetch original image');
-        }
-        const originalImageBlob = await originalImageResponse.blob();
-
-        // Convert blob to base64 for OpenAI
-        const arrayBuffer = await originalImageBlob.arrayBuffer();
-        const base64Image = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-
-        // Use OpenAI's image editing API to remove background
-        const editResponse = await fetch('https://api.openai.com/v1/images/edits', {
+        // Use GPT-4 Vision to describe the image first
+        const visionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
           },
-          body: (() => {
-            const formData = new FormData();
-            formData.append('image', originalImageBlob, 'image.png');
-            formData.append('prompt', 'Remove the background completely, keep only the main subject with transparent background');
-            formData.append('n', '1');
-            formData.append('size', '1024x1024');
-            return formData;
-          })(),
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: 'Describe this image in detail, focusing on the main subject/object. Be specific about colors, style, and key visual elements. This description will be used to recreate the image with a transparent background.'
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: inputImageUrl
+                    }
+                  }
+                ]
+              }
+            ],
+            max_tokens: 500,
+          }),
         });
 
-        const editData = await editResponse.json();
+        const visionData = await visionResponse.json();
         
-        if (!editResponse.ok) {
-          console.error('OpenAI Edit API error:', editData);
-          throw new Error(`OpenAI Edit API error: ${editData.error?.message || 'Unknown error'}`);
+        if (!visionResponse.ok) {
+          throw new Error(`Vision API error: ${visionData.error?.message || 'Unknown error'}`);
         }
 
-        const editedImageUrl = editData.data[0].url;
+        const imageDescription = visionData.choices[0].message.content;
+        console.log('Image description:', imageDescription);
 
-        // Download and store the edited image
-        const editedImageBlob = await fetch(editedImageUrl).then(r => r.blob());
+        // Generate new image with transparent background using gpt-image-1
+        const backgroundRemovalResponse = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-image-1',
+            prompt: `Create an exact replica of this image with a completely transparent background: ${imageDescription}. The main subject should be identical but isolated with no background whatsoever. Make sure the background is fully transparent/removed.`,
+            n: 1,
+            size: '1024x1024',
+            quality: 'high',
+            background: 'transparent',
+            output_format: 'png'
+          }),
+        });
+
+        const backgroundRemovalData = await backgroundRemovalResponse.json();
+        
+        if (!backgroundRemovalResponse.ok) {
+          console.error('Background removal API error:', backgroundRemovalData);
+          throw new Error(`Background removal API error: ${backgroundRemovalData.error?.message || 'Unknown error'}`);
+        }
+
+        // gpt-image-1 returns base64 data directly
+        const base64Image = backgroundRemovalData.data[0].b64_json;
+        
+        // Convert base64 to blob
+        const binaryString = atob(base64Image);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const processedImageBlob = new Blob([bytes], { type: 'image/png' });
         
         // Create a secure hash for the filename
         const timestamp = Date.now();
@@ -213,7 +250,7 @@ serve(async (req) => {
         
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('token-images')
-          .upload(hashedFileName, editedImageBlob, {
+          .upload(hashedFileName, processedImageBlob, {
             contentType: 'image/png',
             cacheControl: '3600',
             upsert: false,
@@ -221,9 +258,9 @@ serve(async (req) => {
 
         if (uploadError) {
           console.error('Background removal storage upload error:', uploadError);
-          // Return the OpenAI URL if storage fails
+          // Return base64 data URL if storage fails
           return new Response(
-            JSON.stringify({ imageUrl: editedImageUrl }),
+            JSON.stringify({ imageUrl: `data:image/png;base64,${base64Image}` }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -416,7 +453,7 @@ Generate creative, marketable suggestions that would resonate with the current c
     }
 
     return new Response(
-      JSON.stringify({ error: 'Invalid type. Use "image" or "suggestions"' }),
+      JSON.stringify({ error: 'Invalid type. Use "image", "background-removal", or "suggestions"' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     );
 
