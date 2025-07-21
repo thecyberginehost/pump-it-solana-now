@@ -46,19 +46,202 @@ const TokenCreator = () => {
   const generateMemePrompt = (tokenName: string): string => {
     const name = tokenName.toLowerCase();
     
-    if (name.includes('doge') || name.includes('dog')) {
-      return `${tokenName} doge with laser eyes and diamond hands`;
-    } else if (name.includes('pepe') || name.includes('frog')) {
-      return `${tokenName} pepe the frog wearing a crown`;
-    } else if (name.includes('moon') || name.includes('lunar')) {
-      return `${tokenName} rocket ship flying to the moon with crypto symbols`;
-    } else if (name.includes('rocket') || name.includes('blast')) {
-      return `${tokenName} rocket launching with fire trails and stars`;
-    } else if (name.includes('cat') || name.includes('kitty')) {
-      return `${tokenName} cool cat with sunglasses holding crypto coins`;
-    } else {
-      return `${tokenName} meme character with diamond hands and rocket background`;
+    // Define prompt categories with multiple variations
+    const promptCategories = {
+      doge: [
+        `${tokenName} shiba inu with laser eyes and diamond paws`,
+        `${tokenName} doge wearing sunglasses on a rocket`,
+        `${tokenName} muscular doge flexing with crypto coins`,
+        `${tokenName} doge astronaut floating in space with moon`,
+        `${tokenName} doge king wearing a golden crown`,
+        `${tokenName} cyber doge with neon glowing eyes`
+      ],
+      pepe: [
+        `${tokenName} pepe the frog with diamond hands`,
+        `${tokenName} rare pepe wearing a tuxedo`,
+        `${tokenName} pepe riding a rocket to the moon`,
+        `${tokenName} pepe as a crypto trader with charts`,
+        `${tokenName} golden pepe with rainbow background`,
+        `${tokenName} pepe wizard casting money spells`
+      ],
+      cat: [
+        `${tokenName} cool cat with crypto sunglasses`,
+        `${tokenName} ninja cat holding diamond swords`,
+        `${tokenName} space cat floating with stars`,
+        `${tokenName} pirate cat with treasure chest`,
+        `${tokenName} cyber cat with neon fur`,
+        `${tokenName} royal cat on a golden throne`
+      ],
+      moon: [
+        `${tokenName} rocket ship blasting to the moon`,
+        `${tokenName} astronaut planting flag on moon`,
+        `${tokenName} lunar base with crypto symbols`,
+        `${tokenName} moon with diamond craters`,
+        `${tokenName} spaceship with rainbow trail`,
+        `${tokenName} cosmic journey through stars`
+      ],
+      rocket: [
+        `${tokenName} rocket with fire trails and diamonds`,
+        `${tokenName} spaceship launching with coins`,
+        `${tokenName} rocket breaking through clouds`,
+        `${tokenName} futuristic rocket with neon glow`,
+        `${tokenName} rocket surrounded by lightning`,
+        `${tokenName} golden rocket with treasure trail`
+      ],
+      diamond: [
+        `${tokenName} giant diamond with laser beams`,
+        `${tokenName} diamond hands crushing obstacles`,
+        `${tokenName} crystal palace with gems`,
+        `${tokenName} diamond rain from the sky`,
+        `${tokenName} sparkling diamonds in space`,
+        `${tokenName} diamond crown with royal cape`
+      ],
+      bull: [
+        `${tokenName} charging bull with golden horns`,
+        `${tokenName} crypto bull breaking walls`,
+        `${tokenName} bull wearing diamond armor`,
+        `${tokenName} electric bull with lightning`,
+        `${tokenName} bull riding a rocket`,
+        `${tokenName} mechanical bull with gears`
+      ],
+      bear: [
+        `${tokenName} dancing bear with party hat`,
+        `${tokenName} bear wearing diamond chains`,
+        `${tokenName} cosmic bear floating in space`,
+        `${tokenName} bear DJ with turntables`,
+        `${tokenName} ninja bear with throwing stars`,
+        `${tokenName} bear king on a mountain`
+      ],
+      ape: [
+        `${tokenName} gorilla with diamond fists`,
+        `${tokenName} ape wearing a crown and cape`,
+        `${tokenName} cyber ape with robot arms`,
+        `${tokenName} ape swinging on vines of coins`,
+        `${tokenName} ape astronaut in space suit`,
+        `${tokenName} wise ape with golden staff`
+      ],
+      shark: [
+        `${tokenName} shark with laser fins`,
+        `${tokenName} space shark swimming through stars`,
+        `${tokenName} mechanical shark with gears`,
+        `${tokenName} shark wearing sunglasses`,
+        `${tokenName} golden shark with treasure`,
+        `${tokenName} cyber shark with neon stripes`
+      ],
+      lion: [
+        `${tokenName} lion with golden mane and crown`,
+        `${tokenName} cosmic lion roaring lightning`,
+        `${tokenName} lion king on diamond throne`,
+        `${tokenName} mechanical lion with steam`,
+        `${tokenName} lion wearing royal armor`,
+        `${tokenName} lion with rainbow mane`
+      ],
+      wolf: [
+        `${tokenName} wolf howling at diamond moon`,
+        `${tokenName} pack leader wolf with crown`,
+        `${tokenName} cyber wolf with glowing eyes`,
+        `${tokenName} wolf riding through cosmos`,
+        `${tokenName} wolf warrior with battle scars`,
+        `${tokenName} mystical wolf with magic aura`
+      ],
+      fire: [
+        `${tokenName} phoenix rising from flames`,
+        `${tokenName} dragon breathing rainbow fire`,
+        `${tokenName} fire spirit dancing with coins`,
+        `${tokenName} volcano erupting diamonds`,
+        `${tokenName} flame tornado with treasures`,
+        `${tokenName} fire sword cutting through darkness`
+      ],
+      ice: [
+        `${tokenName} ice wizard casting spells`,
+        `${tokenName} frozen castle with crystals`,
+        `${tokenName} ice dragon with diamond scales`,
+        `${tokenName} arctic fox with glowing fur`,
+        `${tokenName} ice queen with snow crown`,
+        `${tokenName} frozen treasure chest glowing`
+      ],
+      gold: [
+        `${tokenName} golden statue coming to life`,
+        `${tokenName} treasure chest overflowing with coins`,
+        `${tokenName} midas touch turning everything gold`,
+        `${tokenName} golden dragon hoarding treasure`,
+        `${tokenName} pirate map leading to gold`,
+        `${tokenName} golden armor gleaming in sunlight`
+      ]
+    };
+
+    // Generic creative prompts for tokens that don't match categories
+    const genericPrompts = [
+      `${tokenName} superhero character with cape and mask`,
+      `${tokenName} magical wizard casting rainbow spells`,
+      `${tokenName} pirate captain on treasure ship`,
+      `${tokenName} ninja warrior with glowing weapons`,
+      `${tokenName} robot guardian with laser eyes`,
+      `${tokenName} dragon rider soaring through clouds`,
+      `${tokenName} crystal golem with gem heart`,
+      `${tokenName} space explorer with alien friends`,
+      `${tokenName} time traveler with cosmic portal`,
+      `${tokenName} storm elemental controlling lightning`,
+      `${tokenName} forest guardian with nature powers`,
+      `${tokenName} cyber punk hacker with neon setup`,
+      `${tokenName} gladiator warrior in diamond arena`,
+      `${tokenName} phantom assassin with shadow powers`,
+      `${tokenName} alchemist brewing golden potions`,
+      `${tokenName} sky dancer floating on clouds`,
+      `${tokenName} ocean king ruling underwater realm`,
+      `${tokenName} mountain climber reaching peak`,
+      `${tokenName} speed racer with rocket car`,
+      `${tokenName} chef cooking magical feast`,
+      `${tokenName} artist painting reality with brush`,
+      `${tokenName} musician creating cosmic symphony`,
+      `${tokenName} inventor building flying machine`,
+      `${tokenName} explorer discovering new worlds`,
+      `${tokenName} guardian angel with golden wings`
+    ];
+
+    // Find matching category
+    for (const [category, prompts] of Object.entries(promptCategories)) {
+      if (name.includes(category) || name.includes(category.slice(0, -1))) {
+        return prompts[Math.floor(Math.random() * prompts.length)];
+      }
     }
+
+    // Check for additional keyword variations
+    const keywordMappings = {
+      'dog': 'doge',
+      'frog': 'pepe', 
+      'kitty': 'cat',
+      'kitten': 'cat',
+      'lunar': 'moon',
+      'blast': 'rocket',
+      'launch': 'rocket',
+      'gem': 'diamond',
+      'crystal': 'diamond',
+      'hands': 'diamond',
+      'hodl': 'diamond',
+      'bullish': 'bull',
+      'bearish': 'bear',
+      'monkey': 'ape',
+      'gorilla': 'ape',
+      'flame': 'fire',
+      'burn': 'fire',
+      'frozen': 'ice',
+      'snow': 'ice',
+      'cold': 'ice',
+      'treasure': 'gold',
+      'rich': 'gold',
+      'money': 'gold'
+    };
+
+    for (const [keyword, category] of Object.entries(keywordMappings)) {
+      if (name.includes(keyword)) {
+        const prompts = promptCategories[category as keyof typeof promptCategories];
+        return prompts[Math.floor(Math.random() * prompts.length)];
+      }
+    }
+
+    // Return random generic prompt if no category matches
+    return genericPrompts[Math.floor(Math.random() * genericPrompts.length)];
   };
 
   const handleAIImageSelect = (imageUrl: string) => {
