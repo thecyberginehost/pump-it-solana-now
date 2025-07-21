@@ -210,7 +210,10 @@ const TokenCreator = () => {
                   <img 
                     src={tokenData.image} 
                     alt="Token preview" 
-                    className="w-10 h-10 rounded object-cover border"
+                    className="w-10 h-10 rounded object-cover border cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => {
+                      // You could add a simple image viewer here too if needed
+                    }}
                   />
                   <span className="text-sm text-muted-foreground">Preview</span>
                 </div>
