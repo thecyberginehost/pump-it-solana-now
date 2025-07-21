@@ -7,6 +7,8 @@ import { Upload, Eye, Wallet, Sparkles, Loader2, Bot, Zap, TrendingUp } from "lu
 import AISuggestions from "./AISuggestions";
 import AIMemeGenerator from "./AIMemeGenerator";
 import AIQuickLaunchModal from "./AIQuickLaunchModal";
+import SubtleDisclaimer from "./SubtleDisclaimer";
+import BoostUpsell from "./BoostUpsell";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import { useTokenCreation } from "@/hooks/useTokenCreation";
 import { QuickLaunchResult } from "@/hooks/useAIQuickLaunch";
@@ -622,8 +624,16 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
                 )}
               </div>
             </div>
+
+            {/* Subtle Disclaimer */}
+            <SubtleDisclaimer />
           </CardContent>
         </Card>
+
+        {/* Boost Upsell */}
+        <div className="mt-4">
+          <BoostUpsell />
+        </div>
 
         {/* Launch Button */}
         <div className="mt-6">

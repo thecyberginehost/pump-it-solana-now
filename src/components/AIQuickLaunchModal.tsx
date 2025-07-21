@@ -10,6 +10,8 @@ import { useAIQuickLaunch, QuickLaunchResult } from '@/hooks/useAIQuickLaunch';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import SubtleDisclaimer from './SubtleDisclaimer';
+import BoostUpsell from './BoostUpsell';
 
 interface AIQuickLaunchModalProps {
   open: boolean;
@@ -312,6 +314,9 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
               </div>
             </div>
 
+            {/* Boost Upsell for AI Launch */}
+            <BoostUpsell isAIQuickLaunch={true} />
+
             {/* Final Warning */}
             <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
               <div className="flex items-start gap-3">
@@ -325,6 +330,9 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
                 </div>
               </div>
             </div>
+
+            {/* Subtle Disclaimer */}
+            <SubtleDisclaimer />
 
             <div className="flex gap-3">
               <Button variant="outline" onClick={handleClose} className="flex-1">
