@@ -11,6 +11,7 @@ import { DegenCoPilot } from "./DegenCoPilot";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import { useTokenCreation } from "@/hooks/useTokenCreation";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const TokenCreator = () => {
   const [tokenData, setTokenData] = useState({
@@ -244,6 +245,52 @@ const TokenCreator = () => {
     return genericPrompts[Math.floor(Math.random() * genericPrompts.length)];
   };
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be smaller than 5MB');
+      return;
+    }
+
+    try {
+      toast.info('Uploading image...');
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2);
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `${timestamp}-${randomString}.${fileExtension}`;
+
+      // Upload to Supabase storage
+      const { data, error } = await supabase.storage
+        .from('token-images')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('token-images')
+        .getPublicUrl(fileName);
+
+      setTokenData(prev => ({ ...prev, image: publicUrl }));
+      toast.success('Image uploaded successfully!');
+      
+    } catch (error) {
+      console.error('Upload failed:', error);
+      toast.error('Failed to upload image. Please try again.');
+    }
+  };
+
   const handleAIImageSelect = (imageUrl: string) => {
     setTokenData(prev => ({ ...prev, image: imageUrl }));
   };
@@ -384,9 +431,17 @@ const TokenCreator = () => {
                   onChange={(e) => setTokenData(prev => ({ ...prev, image: e.target.value }))}
                   className="flex-1"
                 />
-                <Button variant="outline" size="icon">
-                  <Upload size={16} />
-                </Button>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <Button variant="outline" size="icon" type="button">
+                    <Upload size={16} />
+                  </Button>
+                </div>
               </div>
               {tokenData.image && (
                 <div className="flex items-center gap-2 mt-2">
