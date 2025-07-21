@@ -4,7 +4,7 @@ import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { SolanaMobileWalletAdapter, createDefaultAuthorizationResultCache, createDefaultAddressSelector } from '@solana-mobile/wallet-adapter-mobile';
+
 import { clusterApiUrl } from '@solana/web3.js';
 
 // Import wallet adapter CSS
@@ -21,7 +21,7 @@ export const WalletContextProvider = ({ children }: WalletContextProviderProps) 
   // Configure the endpoint
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
   
-  // Configure supported wallets - simplified approach
+  // Configure supported wallets
   const wallets = useMemo(
     () => [
       new PhantomWalletAdapter(),
