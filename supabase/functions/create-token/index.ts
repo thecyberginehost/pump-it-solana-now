@@ -29,6 +29,37 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Base58 decoding for Phantom wallet private keys
+function base58Decode(str: string): Uint8Array {
+  const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const base = alphabet.length;
+  
+  let num = BigInt(0);
+  let multi = BigInt(1);
+  
+  for (let i = str.length - 1; i >= 0; i--) {
+    const char = str[i];
+    const index = alphabet.indexOf(char);
+    if (index === -1) throw new Error('Invalid base58 character');
+    num += BigInt(index) * multi;
+    multi *= BigInt(base);
+  }
+  
+  // Convert bigint to bytes
+  const bytes: number[] = [];
+  while (num > 0) {
+    bytes.unshift(Number(num % BigInt(256)));
+    num = num / BigInt(256);
+  }
+  
+  // Handle leading zeros
+  for (let i = 0; i < str.length && str[i] === '1'; i++) {
+    bytes.unshift(0);
+  }
+  
+  return new Uint8Array(bytes);
+}
+
 /**
  * Creates metadata JSON and uploads it to Supabase storage
  */
@@ -267,9 +298,8 @@ serve(async (req) => {
         privateKeyBytes = new Uint8Array(JSON.parse(platformPrivateKey));
       } else {
         // Base58 string format (from Phantom wallet)
-        // For now, we'll use a simple base58 decode approach
-        // Note: This is a simplified approach - in production you'd want a proper base58 library
-        throw new Error('Base58 private keys not yet supported. Please use JSON array format for now.');
+        console.log('Decoding base58 private key from Phantom wallet');
+        privateKeyBytes = base58Decode(platformPrivateKey.trim());
       }
       
       creatorKeypair = Keypair.fromSecretKey(privateKeyBytes);
