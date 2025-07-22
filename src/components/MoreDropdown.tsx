@@ -16,7 +16,7 @@ import {
   Trophy,
   Wallet
 } from "lucide-react";
-import { CleanWalletButton } from "@/components/CleanWalletButton";
+import { MobileWalletButton } from "@/components/MobileWalletButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const MoreDropdown = () => {
@@ -70,7 +70,7 @@ export const MoreDropdown = () => {
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <div className="w-full p-1">
-                <CleanWalletButton />
+                <MobileWalletButton />
               </div>
             </DropdownMenuItem>
           </>
