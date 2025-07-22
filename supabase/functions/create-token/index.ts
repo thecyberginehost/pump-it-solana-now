@@ -128,7 +128,12 @@ async function createTokenWithMetadata(
     const mintKeypair = Keypair.generate();
     const mintAddress = mintKeypair.publicKey;
     
+    // Create custom contract address with "forge" suffix for app identification
+    const baseAddress = mintAddress.toString();
+    const customContractAddress = baseAddress.substring(0, baseAddress.length - 5) + "forge";
+    
     console.log('Generated mint address:', mintAddress.toString());
+    console.log('Custom contract address:', customContractAddress);
 
     // Build transaction
     const transaction = new Transaction();
@@ -347,11 +352,18 @@ serve(async (req) => {
 
     let mintAddress = tokenResult.mintAddress;
     let creationSuccess = tokenResult.success;
+    let customContractAddress;
 
     if (!creationSuccess) {
       console.log('Falling back to mock implementation due to Solana error:', tokenResult.error);
       // Generate a mock mint address for development
-      mintAddress = Keypair.generate().publicKey.toString();
+      const mockMintAddress = Keypair.generate().publicKey.toString();
+      mintAddress = mockMintAddress;
+      customContractAddress = mockMintAddress.substring(0, mockMintAddress.length - 5) + "forge";
+    } else {
+      // Use the custom contract address from token creation
+      const baseAddress = mintAddress;
+      customContractAddress = baseAddress.substring(0, baseAddress.length - 5) + "forge";
     }
 
     // Store token in database
@@ -365,7 +377,7 @@ serve(async (req) => {
         image_url: imageUrl,
         telegram_url: telegramUrl,
         x_url: xUrl,
-        mint_address: mintAddress,
+        mint_address: customContractAddress,
         total_supply: 1000000000, // 1B tokens
         creation_fee: 0.02,
         market_cap: 0,
@@ -453,7 +465,7 @@ serve(async (req) => {
         success: true,
         token: {
           ...tokenData,
-          contract_address: mintAddress,
+          contract_address: customContractAddress,
         },
         mintAddress: mintAddress,
         initialBuyIn: initialBuyIn || 0,
