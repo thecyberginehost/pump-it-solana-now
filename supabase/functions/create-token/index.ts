@@ -32,9 +32,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to find metadata PDA
-function findMetadataPda(mint: PublicKey): [PublicKey, number] {
-  return PublicKey.findProgramAddressSync(
+// Create simplified metadata instruction (compatible with edge function limitations)
+function createSimpleMetadataInstruction(
+  mint: PublicKey,
+  updateAuthority: PublicKey,
+  name: string,
+  symbol: string,
+  uri: string
+) {
+  const [metadataPda] = PublicKey.findProgramAddressSync(
     [
       Buffer.from('metadata'),
       TOKEN_METADATA_PROGRAM_ID.toBuffer(),
@@ -42,51 +48,40 @@ function findMetadataPda(mint: PublicKey): [PublicKey, number] {
     ],
     TOKEN_METADATA_PROGRAM_ID
   );
-}
 
-// Create metadata instruction
-function createMetadataInstruction(
-  mint: PublicKey,
-  metadata: PublicKey,
-  updateAuthority: PublicKey,
-  mintAuthority: PublicKey,
-  payer: PublicKey,
-  name: string,
-  symbol: string,
-  uri: string
-) {
-  const keys = [
-    { pubkey: metadata, isSigner: false, isWritable: true },
-    { pubkey: mint, isSigner: false, isWritable: false },
-    { pubkey: mintAuthority, isSigner: true, isWritable: false },
-    { pubkey: payer, isSigner: true, isWritable: true },
-    { pubkey: updateAuthority, isSigner: false, isWritable: false },
-    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-  ];
-
-  const nameBuffer = Buffer.alloc(32);
-  nameBuffer.write(name);
+  // Simplified instruction data for CreateMetadataAccountV3
+  const nameBytes = Buffer.alloc(32);
+  nameBytes.write(name.slice(0, 31));
   
-  const symbolBuffer = Buffer.alloc(10);
-  symbolBuffer.write(symbol);
+  const symbolBytes = Buffer.alloc(10); 
+  symbolBytes.write(symbol.slice(0, 9));
   
-  const uriBuffer = Buffer.alloc(200);
-  uriBuffer.write(uri);
+  const uriBytes = Buffer.alloc(200);
+  uriBytes.write(uri.slice(0, 199));
 
-  const data = Buffer.concat([
-    Buffer.from([0]), // CreateMetadataAccountV3 instruction discriminator
-    nameBuffer,
-    symbolBuffer,
-    uriBuffer,
-    Buffer.from([0, 0]), // seller_fee_basis_points (0%)
+  const instructionData = Buffer.concat([
+    Buffer.from([0]), // instruction discriminator
+    nameBytes,
+    symbolBytes, 
+    uriBytes,
+    Buffer.from([0, 0]), // seller_fee_basis_points
     Buffer.from([1]), // update_authority_is_signer
     Buffer.from([1]), // is_mutable
+    Buffer.from([0]), // collection
+    Buffer.from([0]), // uses
   ]);
 
   return {
-    keys,
+    keys: [
+      { pubkey: metadataPda, isSigner: false, isWritable: true },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: updateAuthority, isSigner: true, isWritable: false },
+      { pubkey: updateAuthority, isSigner: true, isWritable: true }, // payer
+      { pubkey: updateAuthority, isSigner: false, isWritable: false }, // update_authority
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
     programId: TOKEN_METADATA_PROGRAM_ID,
-    data,
+    data: instructionData,
   };
 }
 
@@ -298,19 +293,21 @@ serve(async (req) => {
     );
 
     // Add Metaplex Token Metadata (this makes tokens show proper names!)
-    const [metadataPda] = findMetadataPda(mintAddress);
-    const metadataInstruction = createMetadataInstruction(
-      mintAddress,
-      metadataPda,
-      userPublicKey, // update authority
-      userPublicKey, // mint authority
-      userPublicKey, // payer
-      name,
-      symbol,
-      metadataUri
-    );
-    
-    transaction.add(metadataInstruction);
+    try {
+      const metadataInstruction = createSimpleMetadataInstruction(
+        mintAddress,
+        userPublicKey,
+        name,
+        symbol,
+        metadataUri
+      );
+      
+      transaction.add(metadataInstruction);
+      console.log('Added metadata instruction for token name display');
+    } catch (metadataError) {
+      console.log('Skipping metadata instruction due to error:', metadataError);
+      // Continue without metadata - token will still work but show as "Unknown Token"
+    }
 
     // Disable mint authority (make it immutable)
     transaction.add(
@@ -389,11 +386,17 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error creating token:', error);
+    console.error('=== ERROR CREATING TOKEN ===');
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 
-        details: error.message
+        details: error.message,
+        step: 'token_creation_failed'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
