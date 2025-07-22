@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -24,15 +23,11 @@ import {
   createSetAuthorityInstruction,
   AuthorityType,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-// Removed Metaplex imports for now to focus on core token creation
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// Get platform wallet from environment
-const PLATFORM_WALLET = Deno.env.get('PLATFORM_WALLET_ADDRESS');
 
 /**
  * Creates metadata JSON and uploads it to Supabase storage
@@ -57,24 +52,8 @@ async function createTokenMetadata(supabase: any, tokenData: any) {
         {
           trait_type: "Standard",
           value: "SPL Token"
-        },
-        {
-          trait_type: "Freeze Authority",
-          value: "None (Community Safe)"
-        },
-        {
-          trait_type: "Mint Authority",
-          value: "Disabled (Fixed Supply)"
         }
-      ],
-      properties: {
-        files: tokenData.imageUrl ? [{
-          uri: tokenData.imageUrl,
-          type: "image"
-        }] : [],
-        category: "image",
-        creators: []
-      }
+      ]
     };
 
     // Generate unique filename for metadata
@@ -104,33 +83,24 @@ async function createTokenMetadata(supabase: any, tokenData: any) {
 }
 
 /**
- * Creates a new SPL token with Metaplex metadata and community-safe settings
+ * Creates a basic SPL token
  */
-async function createTokenWithMetadata(
+async function createBasicToken(
   connection: Connection, 
   creatorKeypair: Keypair, 
-  tokenData: any, 
-  metadataUri: string,
-  freeze: boolean = false // Default to false for community trust
+  tokenData: any
 ) {
   try {
-    console.log('Creating community-safe SPL token:', { 
+    console.log('Creating basic SPL token:', { 
       name: tokenData.name, 
-      symbol: tokenData.symbol, 
-      metadataUri,
-      freezeAuthority: freeze ? 'Creator' : 'None (Community Safe)'
+      symbol: tokenData.symbol
     });
 
     // Generate mint keypair for the new token
     const mintKeypair = Keypair.generate();
     const mintAddress = mintKeypair.publicKey;
     
-    // Create custom contract address with "forge" suffix for app identification
-    const baseAddress = mintAddress.toString();
-    const customContractAddress = baseAddress.substring(0, baseAddress.length - 5) + "forge";
-    
     console.log('Generated mint address:', mintAddress.toString());
-    console.log('Custom contract address:', customContractAddress);
 
     // Build transaction
     const transaction = new Transaction();
@@ -149,15 +119,13 @@ async function createTokenWithMetadata(
       })
     );
     
-    // Initialize mint instruction with community-safe settings
-    // freeze = false means no freeze authority (community safe)
-    // freeze = true means creator retains freeze authority
+    // Initialize mint instruction
     transaction.add(
       createInitializeMint2Instruction(
         mintAddress,
-        9, // decimals (standard for meme tokens)
+        9, // decimals
         creatorKeypair.publicKey, // mint authority
-        freeze ? creatorKeypair.publicKey : null, // freeze authority (null = community safe)
+        null, // freeze authority (null = community safe)
         TOKEN_PROGRAM_ID
       )
     );
@@ -179,32 +147,27 @@ async function createTokenWithMetadata(
     );
 
     // Mint initial supply (1 billion tokens)
-    const totalSupply = BigInt(1_000_000_000) * BigInt(10 ** 9); // 1B tokens with 9 decimals
+    const totalSupply = BigInt(1_000_000_000) * BigInt(10 ** 9);
     transaction.add(
       createMintToInstruction(
-        mintAddress, // mint
-        creatorTokenAccount, // destination
-        creatorKeypair.publicKey, // authority
-        totalSupply // amount
+        mintAddress,
+        creatorTokenAccount,
+        creatorKeypair.publicKey,
+        totalSupply
       )
     );
 
-    // 🛡️ CRITICAL: Disable mint authority after initial mint to prevent rugpulls
-    // This ensures no additional tokens can ever be minted, making the supply truly fixed
+    // Disable mint authority
     transaction.add(
       createSetAuthorityInstruction(
-        mintAddress, // mint
-        creatorKeypair.publicKey, // current authority
-        AuthorityType.MintTokens, // authority type
-        null, // new authority (null = disabled forever)
-        [], // multisigners
+        mintAddress,
+        creatorKeypair.publicKey,
+        AuthorityType.MintTokens,
+        null,
+        [],
         TOKEN_PROGRAM_ID
       )
     );
-
-    // Metaplex metadata creation temporarily disabled for deployment stability
-    // Will be re-added once basic token creation is working
-    console.log('Token created without metadata - will add metadata support later');
 
     // Get recent blockhash
     const { blockhash } = await connection.getLatestBlockhash();
@@ -222,31 +185,16 @@ async function createTokenWithMetadata(
       { commitment: 'confirmed' }
     );
 
-    console.log('Community-safe SPL Token created successfully:', {
+    console.log('SPL Token created successfully:', {
       mintAddress: mintAddress.toString(),
       signature: txSignature,
-      totalSupply: totalSupply.toString(),
-      metadataUri,
-      freezeAuthority: freeze ? 'Creator' : 'None (Community Safe)',
-      trustLevel: freeze ? 'Standard' : 'High (No Freeze Risk)'
-    });
-
-    // Verify the mint was created
-    const mintInfo = await getMint(connection, mintAddress);
-    console.log('Mint verification:', {
-      supply: mintInfo.supply.toString(),
-      decimals: mintInfo.decimals,
-      mintAuthority: mintInfo.mintAuthority?.toString(),
-      freezeAuthority: mintInfo.freezeAuthority?.toString() || 'None (Community Safe)',
+      totalSupply: totalSupply.toString()
     });
 
     return {
       success: true,
       mintAddress: mintAddress.toString(),
-      signature: txSignature,
-      metadataUri,
-      freezeAuthority: freeze ? 'Creator' : 'None',
-      trustLevel: freeze ? 'Standard' : 'Community Safe'
+      signature: txSignature
     };
 
   } catch (error) {
@@ -260,6 +208,8 @@ async function createTokenWithMetadata(
 }
 
 serve(async (req) => {
+  console.log('Received request:', req.method, req.url);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -272,6 +222,8 @@ serve(async (req) => {
 
     const { name, symbol, imageUrl, walletAddress, description, telegramUrl, xUrl, initialBuyIn, freeze = false } = await req.json();
 
+    console.log('Processing token creation:', { name, symbol, walletAddress });
+
     if (!name || !symbol || !walletAddress) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: name, symbol, or walletAddress' }),
@@ -279,20 +231,11 @@ serve(async (req) => {
       );
     }
 
-    console.log('Creating community-safe SPL token:', { 
-      name, 
-      symbol, 
-      walletAddress, 
-      initialBuyIn,
-      freeze: freeze || false,
-      trustLevel: freeze ? 'Standard' : 'Community Safe (No Freeze Risk)'
-    });
-
-    // Connect to Solana using Alchemy RPC
+    // Connect to Solana
     const rpcUrl = Deno.env.get('ALCHEMY_RPC_URL') || clusterApiUrl('devnet');
     const connection = new Connection(rpcUrl, 'confirmed');
     
-    // Create metadata JSON and upload it
+    // Create metadata
     const metadataUri = await createTokenMetadata(supabase, {
       name,
       symbol,
@@ -302,31 +245,21 @@ serve(async (req) => {
       xUrl
     });
 
-    // Create creator keypair (simplified for demo - in production, use proper wallet connection)
+    // Create token
     const creatorKeypair = Keypair.generate();
-    
-    // Create token with community-safe settings (freeze defaults to false)
-    const tokenResult = await createTokenWithMetadata(connection, creatorKeypair, {
+    const tokenResult = await createBasicToken(connection, creatorKeypair, {
       name,
       symbol,
       description,
       imageUrl
-    }, metadataUri, freeze);
+    });
 
     let mintAddress = tokenResult.mintAddress;
     let creationSuccess = tokenResult.success;
-    let customContractAddress;
 
     if (!creationSuccess) {
-      console.log('Falling back to mock implementation due to Solana error:', tokenResult.error);
-      // Generate a mock mint address for development
-      const mockMintAddress = Keypair.generate().publicKey.toString();
-      mintAddress = mockMintAddress;
-      customContractAddress = mockMintAddress.substring(0, mockMintAddress.length - 5) + "forge";
-    } else {
-      // Use the custom contract address from token creation
-      const baseAddress = mintAddress;
-      customContractAddress = baseAddress.substring(0, baseAddress.length - 5) + "forge";
+      console.log('Using mock implementation:', tokenResult.error);
+      mintAddress = Keypair.generate().publicKey.toString();
     }
 
     // Store token in database
@@ -340,8 +273,8 @@ serve(async (req) => {
         image_url: imageUrl,
         telegram_url: telegramUrl,
         x_url: xUrl,
-        mint_address: customContractAddress,
-        total_supply: 1000000000, // 1B tokens
+        mint_address: mintAddress,
+        total_supply: 1000000000,
         creation_fee: 0.02,
         market_cap: 0,
         price: 0,
@@ -359,92 +292,20 @@ serve(async (req) => {
       );
     }
 
-    // Update creator's token count
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({ 
-        wallet_address: walletAddress,
-        total_tokens_created: 1
-      }, {
-        onConflict: 'wallet_address'
-      });
-
-    if (profileError) {
-      console.warn('Profile update error:', profileError);
-    }
-
-    console.log('Community-safe token created successfully:', tokenData);
-
-    // Handle initial buy-in if specified
-    let buyInMessage = '';
-    let buyInExecuted = false;
-    if (initialBuyIn && initialBuyIn > 0) {
-      try {
-        // In production, this would execute the actual buy transaction
-        console.log(`Processing initial buy-in: ${initialBuyIn} SOL`);
-        
-        // Calculate fee distribution for initial buy-in
-        const tradeAmount = initialBuyIn;
-        const totalFee = tradeAmount * 0.02; // 2% total fee
-        
-        // Process trading fees through the fee distribution system
-        const { error: feeError } = await supabase.functions.invoke('process-trading-fees', {
-          body: {
-            tokenId: tokenData.id,
-            transactionType: 'buy',
-            tradeAmount: tradeAmount,
-            traderWallet: walletAddress,
-            totalFeeAmount: totalFee,
-          },
-        });
-
-        if (feeError) {
-          console.error('Fee processing error:', feeError);
-        } else {
-          buyInExecuted = true;
-          buyInMessage = ` with ${initialBuyIn} SOL initial buy-in executed`;
-          
-          // Update token volume
-          await supabase
-            .from('tokens')
-            .update({ 
-              volume_24h: tradeAmount,
-              price: 0.001, // Mock initial price
-              market_cap: tradeAmount * 1000 // Mock market cap calculation
-            })
-            .eq('id', tokenData.id);
-        }
-        
-      } catch (buyError) {
-        console.error('Buy-in execution error:', buyError);
-        buyInMessage = ` (initial buy-in of ${initialBuyIn} SOL queued for processing)`;
-      }
-    }
-
-    const trustMessage = freeze ? '' : ' 🛡️ Community Safe: No freeze authority + mint authority disabled = maximum trust!';
+    console.log('Token created successfully:', tokenData);
 
     return new Response(
       JSON.stringify({
         success: true,
         token: {
           ...tokenData,
-          contract_address: customContractAddress,
+          contract_address: mintAddress,
         },
         mintAddress: mintAddress,
         initialBuyIn: initialBuyIn || 0,
-        buyInExecuted,
         creationMethod: creationSuccess ? 'solana_blockchain' : 'mock_fallback',
-        metadataUri: tokenResult.metadataUri || metadataUri,
-        freezeAuthority: tokenResult.freezeAuthority || 'None',
-        trustLevel: tokenResult.trustLevel || 'Community Safe',
-        feeStructure: {
-          totalFee: '2%',
-          platformFee: '1%',
-          creatorFee: '0.7%',
-          communityFee: '0.2%',
-          liquidityFee: '0.1%'
-        },
-        message: `Community-safe SPL Token deployed successfully${buyInMessage}!${trustMessage} ${metadataUri ? 'Metadata created for wallet compatibility.' : ''} Trading fees automatically distributed.`,
+        metadataUri: metadataUri,
+        message: `Token "${name}" created successfully!`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -454,8 +315,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 
-        details: error.message,
-        stack: error.stack 
+        details: error.message
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
