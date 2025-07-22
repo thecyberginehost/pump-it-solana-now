@@ -23,6 +23,8 @@ import {
   ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
+import TokenTradingPanel from "@/components/TokenTradingPanel";
+import TokenTradingActivity from "@/components/TokenTradingActivity";
 
 interface TokenDetail {
   id: string;
@@ -202,13 +204,9 @@ const TokenDetail = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 lg:ml-auto">
-            <Button className="gap-2">
-              <DollarSign className="w-4 h-4" />
-              Buy Token
-            </Button>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => copyToClipboard(window.location.href, 'Token link')}>
               <Share2 className="w-4 h-4" />
-              Share
+              Share Token
             </Button>
           </div>
         </div>
@@ -223,8 +221,27 @@ const TokenDetail = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Stats */}
+          {/* Main Content - Trading Chart and Stats */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Trading Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Live Trading Chart
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 bg-muted/30 rounded-lg flex items-center justify-center">
+                  <div className="text-center space-y-2">
+                    <TrendingUp className="w-8 h-8 mx-auto text-muted-foreground" />
+                    <p className="text-muted-foreground">Live trading chart coming soon</p>
+                    <p className="text-xs text-muted-foreground">Real-time price movements and volume</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Key Metrics */}
             <Card>
               <CardHeader>
@@ -289,8 +306,13 @@ const TokenDetail = () => {
             </Card>
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar - Trading Panel */}
           <div className="space-y-6">
+            {/* Trading Panel */}
+            <TokenTradingPanel token={token} />
+            
+            {/* Trading Activity */}
+            <TokenTradingActivity tokenId={token.id} />
             {/* Contract Info */}
             <Card>
               <CardHeader>

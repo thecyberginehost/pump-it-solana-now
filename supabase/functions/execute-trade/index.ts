@@ -44,7 +44,7 @@ serve(async (req) => {
 
     console.log(`Processing ${tradeType} trade:`, { tokenId, amount, walletAddress });
 
-    // Get token details
+    // Get token details and validate it's app-created
     const { data: token, error: tokenError } = await supabase
       .from('tokens')
       .select('*')
@@ -55,6 +55,34 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Token not found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+      );
+    }
+
+    // Validate token is app-created and has mint address
+    if (!token.mint_address) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid token', 
+          message: 'This token was not created through our platform and cannot be traded here.'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
+
+    // Check if token has graduated to external DEX (market cap >= 100k)
+    const hasGraduated = token.market_cap >= 100000;
+    if (hasGraduated) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Token graduated', 
+          message: 'This token has graduated to Raydium. Please trade on external exchanges.',
+          graduationInfo: {
+            marketCap: token.market_cap,
+            mintAddress: token.mint_address,
+            suggestedDex: 'Raydium'
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
       );
     }
 

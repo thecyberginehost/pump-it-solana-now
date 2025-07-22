@@ -58,7 +58,15 @@ export const useTrading = () => {
     },
     onError: (error: any) => {
       console.error('Trading error:', error);
-      toast.error(error?.message || 'Trade failed');
+      
+      // Handle specific error types
+      if (error?.message?.includes('graduated')) {
+        toast.error('Token has graduated to Raydium! Please trade on external DEX platforms.');
+      } else if (error?.message?.includes('Invalid token')) {
+        toast.error('This token cannot be traded here. Only tokens created through our platform are supported.');
+      } else {
+        toast.error(error?.message || 'Trade failed');
+      }
     },
   });
 

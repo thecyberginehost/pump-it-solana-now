@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { TrendingUp, TrendingDown, Loader2, DollarSign } from "lucide-react";
+import { Alert, AlertDescription } from "./ui/alert";
+import { TrendingUp, TrendingDown, Loader2, DollarSign, Shield, ExternalLink } from "lucide-react";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import { useTrading } from "@/hooks/useTrading";
 import { Token } from "@/hooks/useTokens";
@@ -70,6 +71,12 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
   const currentPrice = token.price || 0.001;
   const estimatedTokens = buyAmount ? (parseFloat(buyAmount) / currentPrice) * 0.98 : 0;
   const estimatedSOL = sellAmount ? (parseFloat(sellAmount) * currentPrice) * 0.98 : 0;
+  
+  // Check if token has graduated (market cap >= 100k)
+  const hasGraduated = token.market_cap >= 100000;
+  
+  // Check if token is app-created (has mint address)
+  const isAppToken = !!token.mint_address;
 
   return (
     <Card className="w-full max-w-md">
@@ -83,6 +90,24 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Security & Trading Status */}
+        {!isAppToken && (
+          <Alert className="mb-4 border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
+            <Shield className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+              This token was not created through our platform. Trading is restricted for security.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {hasGraduated && (
+          <Alert className="mb-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+            <ExternalLink className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800 dark:text-blue-200">
+              This token has graduated to Raydium! Please trade on external DEX platforms.
+            </AlertDescription>
+          </Alert>
+        )}
         <Tabs defaultValue="buy" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="buy" className="flex items-center gap-2">
@@ -124,7 +149,7 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
             
             <Button 
               onClick={handleBuy}
-              disabled={!isAuthenticated || isTrading || !buyAmount}
+              disabled={!isAuthenticated || isTrading || !buyAmount || !isAppToken || hasGraduated}
               className="w-full"
               variant="default"
             >
@@ -171,7 +196,7 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
             
             <Button 
               onClick={handleSell}
-              disabled={!isAuthenticated || isTrading || !sellAmount}
+              disabled={!isAuthenticated || isTrading || !sellAmount || !isAppToken || hasGraduated}
               className="w-full"
               variant="destructive"
             >
