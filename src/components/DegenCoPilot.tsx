@@ -201,7 +201,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
   // Mobile minimized view
   if (isMobile && isMinimized) {
     return (
-      <div className="fixed bottom-40 right-4 z-40">
+      <div className="fixed bottom-20 right-4 z-[60]">
         <Button
           onClick={() => setIsMinimized(false)}
           className="w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
@@ -215,7 +215,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
   return (
     <Card className={`w-full ${
       isMobile 
-        ? 'fixed inset-x-2 bottom-40 top-20 z-30' 
+        ? 'fixed inset-x-2 bottom-2 top-20 z-[60]' 
         : 'max-w-4xl mx-auto h-[500px] sm:h-[600px]'
     } flex flex-col`}>
       <CardHeader className="flex-shrink-0 p-3 sm:p-6">
@@ -332,7 +332,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
 
         <Separator />
 
-        <div className="flex gap-2">
+        <div className={`flex gap-2 ${isMobile ? 'pb-20' : ''}`}>
           <Input
             placeholder={isMobile ? "Ask Degen CoPilot..." : "Ask Degen CoPilot anything about viral marketing..."}
             value={inputMessage}
