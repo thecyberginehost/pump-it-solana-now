@@ -59,10 +59,19 @@ serve(async (req) => {
       total: platformFee + creatorFee + communityFee + liquidityFee
     });
 
-    // Platform wallet address for receiving platform fees
+    // Wallet addresses for different fee purposes
     const platformWallet = Deno.env.get('PLATFORM_WALLET_ADDRESS');
+    const communityWallet = Deno.env.get('COMMUNITY_WALLET_ADDRESS');
+    const liquidityWallet = Deno.env.get('LIQUIDITY_WALLET_ADDRESS');
+    
     if (!platformWallet) {
       console.warn('Platform wallet address not configured');
+    }
+    if (!communityWallet) {
+      console.warn('Community wallet address not configured');
+    }
+    if (!liquidityWallet) {
+      console.warn('Liquidity wallet address not configured');
     }
 
     // Start transaction
