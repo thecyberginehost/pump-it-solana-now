@@ -74,12 +74,6 @@ serve(async (req) => {
       console.warn('Liquidity wallet address not configured');
     }
 
-    // Start transaction
-    const { error: transactionError } = await supabaseClient.rpc('begin');
-    if (transactionError) {
-      throw new Error(`Failed to start transaction: ${transactionError.message}`);
-    }
-
     try {
       // 1. Log the fee transaction
       const { error: feeLogError } = await supabaseClient
@@ -146,12 +140,6 @@ serve(async (req) => {
         console.warn(`Failed to update token volume: ${tokenUpdateError.message}`);
       }
 
-      // Commit transaction
-      const { error: commitError } = await supabaseClient.rpc('commit');
-      if (commitError) {
-        throw new Error(`Failed to commit transaction: ${commitError.message}`);
-      }
-
       console.log(`Successfully processed fees for ${transactionType} transaction`);
 
       return new Response(
@@ -172,8 +160,7 @@ serve(async (req) => {
       );
 
     } catch (error) {
-      // Rollback transaction on error
-      await supabaseClient.rpc('rollback');
+      console.error('Error processing fees:', error);
       throw error;
     }
 
