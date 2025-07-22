@@ -215,7 +215,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
   return (
     <Card className={`w-full ${
       isMobile 
-        ? 'fixed inset-x-2 bottom-2 top-20 z-[60]' 
+        ? 'fixed inset-x-2 inset-y-2 z-[60]' 
         : 'max-w-4xl mx-auto h-[500px] sm:h-[600px]'
     } flex flex-col`}>
       <CardHeader className="flex-shrink-0 p-3 sm:p-6">
@@ -249,7 +249,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col gap-3 sm:gap-4 min-h-0 p-3 sm:p-6 pt-0">
+      <CardContent className={`flex-1 flex flex-col gap-3 sm:gap-4 min-h-0 p-3 sm:p-6 pt-0 ${isMobile ? 'pb-20' : ''}`}>
         {messages.length === 0 && (
           <div className="space-y-3 sm:space-y-4">
             <div className="text-center mb-4 sm:mb-6">
@@ -332,7 +332,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
 
         <Separator />
 
-        <div className={`flex gap-2 ${isMobile ? 'pb-20' : ''}`}>
+        <div className="flex gap-2">
           <Input
             placeholder={isMobile ? "Ask Degen CoPilot..." : "Ask Degen CoPilot anything about viral marketing..."}
             value={inputMessage}
