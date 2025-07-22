@@ -6,17 +6,22 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { 
   MoreHorizontal,
   Award,
   MapPin,
   Zap,
-  Trophy
+  Trophy,
+  Wallet
 } from "lucide-react";
+import { CleanWalletButton } from "@/components/CleanWalletButton";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const MoreDropdown = () => {
   const location = useLocation();
+  const isMobile = useIsMobile();
   
   const secondaryItems = [
     { path: "/achievements", label: "Achievements", icon: Award },
@@ -58,6 +63,18 @@ export const MoreDropdown = () => {
             </DropdownMenuItem>
           );
         })}
+        
+        {/* Wallet connection for mobile only */}
+        {isMobile && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <div className="w-full p-1">
+                <CleanWalletButton />
+              </div>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
