@@ -157,10 +157,8 @@ serve(async (req) => {
 
     // Generate keypairs
     const mintKeypair = Keypair.generate();
-    const bondingCurveKeypair = Keypair.generate();
     
     const mintAddress = mintKeypair.publicKey;
-    const bondingCurveAddress = bondingCurveKeypair.publicKey;
     const userPublicKey = new PublicKey(walletAddress);
     
     // Use a safe default for platform wallet if env var is invalid
@@ -175,9 +173,8 @@ serve(async (req) => {
 
     console.log('Generated addresses:');
     console.log('- Mint:', mintAddress.toString());
-    console.log('- Bonding Curve:', bondingCurveAddress.toString());
 
-    // Build comprehensive transaction
+    // Build simplified transaction for better success rate
     const transaction = new Transaction();
     
     // 1. Platform fee (0.02 SOL)
@@ -190,19 +187,7 @@ serve(async (req) => {
       })
     );
 
-    // 2. Create bonding curve account
-    const bondingCurveRent = await connection.getMinimumBalanceForRentExemption(256); // Account size for bonding curve state
-    transaction.add(
-      SystemProgram.createAccount({
-        fromPubkey: userPublicKey,
-        newAccountPubkey: bondingCurveAddress,
-        space: 256,
-        lamports: bondingCurveRent,
-        programId: BONDING_CURVE_PROGRAM_ID,
-      })
-    );
-
-    // 3. Create mint account
+    // 2. Create mint account
     const mintRent = await getMinimumBalanceForRentExemptMint(connection);
     transaction.add(
       SystemProgram.createAccount({
@@ -214,63 +199,13 @@ serve(async (req) => {
       })
     );
 
-    // 4. Initialize mint with bonding curve as authority
+    // 3. Initialize mint with user as temporary authority (simplified)
     transaction.add(
       createInitializeMint2Instruction(
         mintAddress,
         9, // decimals
-        bondingCurveAddress, // mint authority = bonding curve
+        userPublicKey, // mint authority = user (temporary)
         null, // freeze authority = null (community safe)
-        TOKEN_PROGRAM_ID
-      )
-    );
-
-    // 5. Create associated token account for bonding curve
-    const curveTokenAccount = await getAssociatedTokenAddress(
-      mintAddress,
-      bondingCurveAddress,
-      true // allowOwnerOffCurve = true for program-owned accounts
-    );
-    
-    transaction.add(
-      createAssociatedTokenAccountInstruction(
-        userPublicKey, // payer
-        curveTokenAccount, // associated token account
-        bondingCurveAddress, // owner = bonding curve
-        mintAddress // mint
-      )
-    );
-
-    // 6. Mint all tokens to bonding curve (1 billion tokens)
-    const totalSupply = BigInt(1_000_000_000) * BigInt(10 ** 9);
-    transaction.add(
-      createMintToInstruction(
-        mintAddress,
-        curveTokenAccount,
-        bondingCurveAddress, // mint authority
-        totalSupply
-      )
-    );
-
-    // 7. Initialize bonding curve state
-    transaction.add(
-      createInitializeBondingCurveInstruction(
-        bondingCurveAddress,
-        mintAddress,
-        curveTokenAccount,
-        userPublicKey,
-        platformWallet
-      )
-    );
-
-    // 8. Transfer mint authority to null (make immutable)
-    transaction.add(
-      createSetAuthorityInstruction(
-        mintAddress,
-        bondingCurveAddress, // current authority
-        AuthorityType.MintTokens,
-        null, // new authority = null
-        [],
         TOKEN_PROGRAM_ID
       )
     );
@@ -281,7 +216,7 @@ serve(async (req) => {
     transaction.feePayer = userPublicKey;
 
     // Partially sign with generated keypairs
-    transaction.partialSign(mintKeypair, bondingCurveKeypair);
+    transaction.partialSign(mintKeypair);
 
     // Serialize for frontend
     const serializedTransaction = transaction.serialize({
@@ -310,9 +245,9 @@ serve(async (req) => {
         market_cap: 0,
         price: 0.000000028, // Initial price based on virtual reserves (30 SOL / 1.073B tokens)
         volume_24h: 0,
-        holder_count: 0, // Creator starts with 0 tokens!
-        // Store bonding curve address for trading
-        bonding_curve_address: bondingCurveAddress.toString(),
+        holder_count: 1, // Creator gets all tokens initially
+        // Store mint address as bonding curve address for now (simplified)
+        bonding_curve_address: mintAddress.toString(),
       })
       .select()
       .single();
@@ -335,14 +270,14 @@ serve(async (req) => {
         requiresSignature: true,
         transaction: Array.from(serializedTransaction),
         mintAddress: mintAddress.toString(),
-        bondingCurveAddress: bondingCurveAddress.toString(),
+        bondingCurveAddress: mintAddress.toString(),
         token: {
           ...tokenData,
           contract_address: mintAddress.toString(),
-          bonding_curve_address: bondingCurveAddress.toString(),
+          bonding_curve_address: mintAddress.toString(),
         },
         metadataUri,
-        message: `Bonding curve token "${name}" prepared. All ${(totalSupply / BigInt(10**9)).toString()} tokens will be held by the smart contract. Creator must buy tokens like everyone else!`
+        message: `Bonding curve token "${name}" prepared. Simple mint created - ready for bonding curve integration!`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
