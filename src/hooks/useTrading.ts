@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAchievements } from './useAchievements';
 
 export interface TradeRequest {
   tokenId: string;
@@ -25,6 +26,7 @@ export interface TradeResult {
 export const useTrading = () => {
   const queryClient = useQueryClient();
   const [isTrading, setIsTrading] = useState(false);
+  const { checkAchievements } = useAchievements();
 
   const executeTrade = useMutation({
     mutationFn: async (tradeRequest: TradeRequest): Promise<TradeResult> => {
@@ -42,6 +44,12 @@ export const useTrading = () => {
         : `${data.solReceived.toFixed(3)} SOL`;
       
       toast.success(`Successfully ${action} ${amount}!`);
+      
+      // Check for trading achievements
+      checkAchievements({
+        userWallet: variables.walletAddress,
+        checkType: 'trading',
+      });
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['tokens'] });

@@ -53,7 +53,15 @@ const Achievements: React.FC = () => {
           
           <Card className="text-center">
             <CardContent className="p-4">
-              <Star className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+              <Trophy className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+              <h3 className="font-semibold text-sm">Trading</h3>
+              <p className="text-xs text-muted-foreground">Volume & performance achievements</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="text-center">
+            <CardContent className="p-4">
+              <Star className="w-8 h-8 mx-auto mb-2 text-purple-500" />
               <h3 className="font-semibold text-sm">Creator</h3>
               <p className="text-xs text-muted-foreground">Token creation achievements</p>
             </CardContent>
@@ -61,17 +69,9 @@ const Achievements: React.FC = () => {
           
           <Card className="text-center">
             <CardContent className="p-4">
-              <Award className="w-8 h-8 mx-auto mb-2 text-purple-500" />
+              <Award className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
               <h3 className="font-semibold text-sm">Community</h3>
               <p className="text-xs text-muted-foreground">AI usage & platform engagement</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="text-center">
-            <CardContent className="p-4">
-              <Trophy className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
-              <h3 className="font-semibold text-sm">Trading</h3>
-              <p className="text-xs text-muted-foreground">Volume & trading milestones</p>
             </CardContent>
           </Card>
         </div>
@@ -88,7 +88,7 @@ const Achievements: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                 <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                   <span className="text-green-600 font-bold text-sm">C</span>
@@ -110,6 +110,16 @@ const Achievements: React.FC = () => {
               </div>
               
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                  <span className="text-orange-600 font-bold text-sm">T</span>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm">Trading Discounts</h4>
+                  <p className="text-xs text-muted-foreground">Lower trading fees</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                 <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
                   <span className="text-purple-600 font-bold text-sm">V</span>
                 </div>
@@ -127,14 +137,14 @@ const Achievements: React.FC = () => {
           <CardContent className="p-6">
             <h3 className="text-xl font-bold mb-2">Ready to Earn More Achievements?</h3>
             <p className="text-muted-foreground mb-4">
-              Create tokens, reach milestones, and unlock exclusive rewards
+              Create tokens, trade actively, and unlock exclusive rewards
             </p>
             <div className="flex gap-3 justify-center">
               <Button asChild>
                 <Link to="/create">Create Token</Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link to="/tokens">Browse Tokens</Link>
+                <Link to="/tokens">Start Trading</Link>
               </Button>
             </div>
           </CardContent>

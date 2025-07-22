@@ -101,12 +101,15 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="earned" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="earned">
               Earned ({stats.total})
             </TabsTrigger>
             <TabsTrigger value="milestone">
               Milestones ({stats.byCategory.milestone})
+            </TabsTrigger>
+            <TabsTrigger value="trading">
+              Trading ({stats.byCategory.trading})
             </TabsTrigger>
             <TabsTrigger value="creator">
               Creator ({stats.byCategory.creator})
@@ -167,6 +170,41 @@ const AchievementDisplay: React.FC<AchievementDisplayProps> = ({
             <div className="grid gap-3">
               {achievementTypes
                 ?.filter((at) => at.category === 'milestone')
+                .map((achievement) => {
+                  const earned = userAchievements?.some(
+                    (ua) => ua.achievement_type_id === achievement.id
+                  );
+                  return (
+                    <div
+                      key={achievement.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border ${
+                        earned 
+                          ? 'bg-card/50 border-green-200 dark:border-green-800' 
+                          : 'bg-muted/30 opacity-60'
+                      }`}
+                    >
+                      <span className="text-2xl">{achievement.icon}</span>
+                      <div className="flex-1">
+                        <h4 className="font-medium">{achievement.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {achievement.description}
+                        </p>
+                      </div>
+                      {earned && (
+                        <Badge variant="outline" className="text-green-700 border-green-300">
+                          ✓ Earned
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="trading" className="space-y-4">
+            <div className="grid gap-3">
+              {achievementTypes
+                ?.filter((at) => at.category === 'trading')
                 .map((achievement) => {
                   const earned = userAchievements?.some(
                     (ua) => ua.achievement_type_id === achievement.id
