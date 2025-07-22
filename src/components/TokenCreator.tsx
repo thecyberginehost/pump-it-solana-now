@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Upload, Eye, Wallet, Sparkles, Loader2, Bot, Zap, TrendingUp, Shield, ShieldCheck } from "lucide-react";
+import { Upload, Eye, Wallet, Sparkles, Loader2, Bot, Zap, TrendingUp } from "lucide-react";
 import AISuggestions from "./AISuggestions";
 import AIMemeGenerator from "./AIMemeGenerator";
 import AIQuickLaunchModal from "./AIQuickLaunchModal";
@@ -29,7 +29,6 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
     x_url: ""
   });
   const [initialBuyIn, setInitialBuyIn] = useState("0");
-  const [communityMode, setCommunityMode] = useState(true);
 
   const [showAIFeatures, setShowAIFeatures] = useState(false);
   const [showQuickLaunchModal, setShowQuickLaunchModal] = useState(false);
@@ -79,9 +78,9 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
       return;
     }
     
-    // Auto-launch the token immediately with the new data
+    // Auto-launch the token immediately with the new data (always community safe)
     setTimeout(async () => {
-      await createToken(newTokenData, walletAddress, parseFloat(aiTokenData.initialBuyIn || "0"), !communityMode);
+      await createToken(newTokenData, walletAddress, parseFloat(aiTokenData.initialBuyIn || "0"), false);
     }, 1000);
   };
 
@@ -353,8 +352,8 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
       return;
     }
 
-    // Pass community mode setting as freeze parameter (inverted)
-    await createToken(tokenData, walletAddress, buyInAmount, !communityMode);
+    // Always use community mode (freeze = false)
+    await createToken(tokenData, walletAddress, buyInAmount, false);
   };
 
   return (
@@ -471,47 +470,6 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
         {/* Manual Token Creation Form */}
         <Card className="border-border/50">
           <CardContent className="p-6 space-y-4">
-            {/* Community Safety Toggle */}
-            <div className="flex items-center justify-between p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-              <div className="flex items-center gap-3">
-                {communityMode ? (
-                  <ShieldCheck className="h-5 w-5 text-green-500" />
-                ) : (
-                  <Shield className="h-5 w-5 text-yellow-500" />
-                )}
-                <div>
-                  <p className="font-medium text-sm">
-                    {communityMode ? 'Community Safe Mode' : 'Standard Mode'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {communityMode 
-                      ? 'No freeze authority - tokens cannot be frozen (Recommended for meme tokens)'
-                      : 'Creator retains freeze authority - can freeze user tokens if needed'
-                    }
-                  </p>
-                </div>
-              </div>
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={communityMode}
-                  onChange={(e) => setCommunityMode(e.target.checked)}
-                  className="sr-only"
-                />
-                <div
-                  onClick={() => setCommunityMode(!communityMode)}
-                  className={`w-10 h-5 rounded-full cursor-pointer transition-colors ${
-                    communityMode ? 'bg-green-500' : 'bg-yellow-500'
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 bg-white rounded-full transition-transform ${
-                      communityMode ? 'translate-x-5' : 'translate-x-0.5'
-                    } mt-0.5`}
-                  />
-                </div>
-              </div>
-            </div>
 
             {/* Token Name */}
             <div className="space-y-2">
@@ -712,11 +670,9 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
                 : 'Fair launch • No presale • Instant liquidity'
               }
             </p>
-            {communityMode && (
-              <p className="text-green-600 font-medium">
-                🛡️ Community Safe: No freeze authority for maximum trust
-              </p>
-            )}
+            <p className="text-green-600 font-medium">
+              🛡️ Community Safe: No freeze authority for maximum trust
+            </p>
           </div>
         </div>
       </div>
