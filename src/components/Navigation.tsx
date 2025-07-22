@@ -1,59 +1,33 @@
+
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { WalletButton } from "@/components/WalletButton";
-import { MobileWalletButton } from "@/components/MobileWalletButton";
+import { CleanWalletButton } from "@/components/CleanWalletButton";
+import { MoreDropdown } from "@/components/MoreDropdown";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useChatContext } from "@/contexts/ChatContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   Home, 
-  Trophy, 
-  BarChart3, 
   Menu, 
   X, 
-  Rocket,
-  Crown,
-  Zap,
   Bot,
   Coins,
-  Award,
-  MapPin,
-  ChevronUp,
+  BarChart3,
   MoreHorizontal
 } from "lucide-react";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
   const location = useLocation();
   const { publicKey } = useWallet();
   const { isChatOpen, toggleChat } = useChatContext();
   const isMobile = useIsMobile();
 
-  const navItems = [
+  // Main navigation items (reduced to 4)
+  const mainNavItems = [
     { path: "/", label: "Launch", icon: Home },
     { path: "/tokens", label: "Tokens", icon: Coins },
-    { path: "/achievements", label: "Achievements", icon: Award },
-    { path: "/roadmap", label: "Roadmap", icon: MapPin },
-    { path: "/boosts", label: "Boosts", icon: Zap },
-    { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
-  ];
-
-  // Most important buttons for mobile bottom nav
-  const primaryMobileItems = [
-    { path: "/", label: "Launch", icon: Home },
-    { path: "/tokens", label: "Tokens", icon: Coins },
-    { path: "/achievements", label: "Achievements", icon: Award },
-  ];
-
-  // Secondary items for dropdown
-  const secondaryMobileItems = [
-    { path: "/roadmap", label: "Roadmap", icon: MapPin },
-    { path: "/boosts", label: "Boosts", icon: Zap },
-    { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
   ];
 
@@ -81,8 +55,8 @@ const Navigation = () => {
             </Link>
 
             {/* Desktop Navigation Links */}
-            <div className="hidden md:flex items-center space-x-8">
-              {navItems.map((item) => {
+            <div className="hidden md:flex items-center space-x-6">
+              {mainNavItems.map((item) => {
                 const IconComponent = item.icon;
                 return (
                   <Link
@@ -99,6 +73,9 @@ const Navigation = () => {
                   </Link>
                 );
               })}
+              
+              {/* More Dropdown */}
+              <MoreDropdown />
             </div>
 
             {/* Desktop Wallet & Chat */}
@@ -114,10 +91,10 @@ const Navigation = () => {
                   <span>Degen Copilot</span>
                 </Button>
               )}
-              <WalletButton />
+              <CleanWalletButton />
             </div>
 
-            {/* Mobile menu button for full screen overlay */}
+            {/* Mobile menu button */}
             <div className="md:hidden">
               <Button
                 variant="ghost"
@@ -133,7 +110,8 @@ const Navigation = () => {
           {isOpen && (
             <div className="md:hidden">
               <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-background border-t border-border">
-                {navItems.map((item) => {
+                {/* Main nav items */}
+                {mainNavItems.map((item) => {
                   const IconComponent = item.icon;
                   return (
                     <Link
@@ -151,7 +129,56 @@ const Navigation = () => {
                     </Link>
                   );
                 })}
-                <div className="pt-4 space-y-2">
+                
+                {/* Secondary nav items */}
+                <div className="border-t border-border pt-2 mt-2">
+                  <Link
+                    to="/achievements"
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                      isActive('/achievements')
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <span>Achievements</span>
+                  </Link>
+                  <Link
+                    to="/roadmap"
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                      isActive('/roadmap')
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <span>Roadmap</span>
+                  </Link>
+                  <Link
+                    to="/boosts"
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                      isActive('/boosts')
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <span>Boosts</span>
+                  </Link>
+                  <Link
+                    to="/leaderboard"
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                      isActive('/leaderboard')
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <span>Leaderboard</span>
+                  </Link>
+                </div>
+                
+                <div className="pt-4 space-y-2 border-t border-border">
                   {publicKey && (
                     <Button
                       variant={isChatOpen ? "default" : "outline"}
@@ -167,7 +194,7 @@ const Navigation = () => {
                     </Button>
                   )}
                   <div className="w-full">
-                    <MobileWalletButton />
+                    <CleanWalletButton />
                   </div>
                 </div>
               </div>
@@ -178,52 +205,9 @@ const Navigation = () => {
 
       {/* Mobile Bottom Navigation */}
       {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-md border-t border-border" style={{ height: 'auto' }}>
-          {/* Drop-up menu for secondary items */}
-          {isMobileMoreOpen && (
-            <div className="absolute bottom-full left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border">
-              <div className="grid grid-cols-2 gap-2 p-4">
-                {secondaryMobileItems.map((item) => {
-                  const IconComponent = item.icon;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setIsMobileMoreOpen(false)}
-                      className={`flex flex-col items-center justify-center p-3 rounded-lg text-xs font-medium transition-colors ${
-                        isActive(item.path)
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <IconComponent className="w-5 h-5 mb-1" />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-                {publicKey && (
-                  <Button
-                    variant={isChatOpen ? "default" : "outline"}
-                    onClick={() => {
-                      toggleChat();
-                      setIsMobileMoreOpen(false);
-                    }}
-                    className="flex flex-col items-center justify-center p-3 h-auto text-xs"
-                  >
-                    <Bot className="w-5 h-5 mb-1" />
-                    <span>Copilot</span>
-                  </Button>
-                )}
-                <div className="flex flex-col items-center justify-center">
-                  <MobileWalletButton />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Main bottom navigation */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-md border-t border-border">
           <div className="flex items-center justify-around px-4 py-2 safe-area-pb">
-            {primaryMobileItems.map((item) => {
+            {mainNavItems.map((item) => {
               const IconComponent = item.icon;
               return (
                 <Link
@@ -241,15 +225,11 @@ const Navigation = () => {
               );
             })}
             
-            {/* More button */}
-            <Button
-              variant={isMobileMoreOpen ? "default" : "ghost"}
-              onClick={() => setIsMobileMoreOpen(!isMobileMoreOpen)}
-              className="flex flex-col items-center justify-center p-2 h-auto text-xs font-medium min-w-16"
-            >
-              <ChevronUp className={`w-5 h-5 mb-1 transition-transform ${isMobileMoreOpen ? 'rotate-180' : ''}`} />
+            {/* More button for mobile */}
+            <div className="flex flex-col items-center justify-center p-2 rounded-lg text-xs font-medium min-w-16">
+              <MoreHorizontal className="w-5 h-5 mb-1" />
               <span>More</span>
-            </Button>
+            </div>
           </div>
         </div>
       )}
