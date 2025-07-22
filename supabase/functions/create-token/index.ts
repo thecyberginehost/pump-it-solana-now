@@ -21,6 +21,8 @@ import {
   getAssociatedTokenAddress,
   createMintToInstruction,
   getMint,
+  createSetAuthorityInstruction,
+  AuthorityType,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
 import {
   createCreateMetadataAccountV3Instruction,
@@ -62,6 +64,10 @@ async function createTokenMetadata(supabase: any, tokenData: any) {
         {
           trait_type: "Freeze Authority",
           value: "None (Community Safe)"
+        },
+        {
+          trait_type: "Mint Authority",
+          value: "Disabled (Fixed Supply)"
         }
       ],
       properties: {
@@ -178,6 +184,19 @@ async function createTokenWithMetadata(
         creatorTokenAccount, // destination
         creatorKeypair.publicKey, // authority
         totalSupply // amount
+      )
+    );
+
+    // 🛡️ CRITICAL: Disable mint authority after initial mint to prevent rugpulls
+    // This ensures no additional tokens can ever be minted, making the supply truly fixed
+    transaction.add(
+      createSetAuthorityInstruction(
+        mintAddress, // mint
+        creatorKeypair.publicKey, // current authority
+        AuthorityType.MintTokens, // authority type
+        null, // new authority (null = disabled forever)
+        [], // multisigners
+        TOKEN_PROGRAM_ID
       )
     );
 
@@ -427,7 +446,7 @@ serve(async (req) => {
       }
     }
 
-    const trustMessage = freeze ? '' : ' 🛡️ Community Safe: No freeze authority means your tokens can never be frozen!';
+    const trustMessage = freeze ? '' : ' 🛡️ Community Safe: No freeze authority + mint authority disabled = maximum trust!';
 
     return new Response(
       JSON.stringify({
