@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 import TokenTradingPanel from "@/components/TokenTradingPanel";
 import TokenTradingActivity from "@/components/TokenTradingActivity";
+import { TradingChart } from "@/components/TradingChart";
 
 interface TokenDetail {
   id: string;
@@ -224,23 +225,11 @@ const TokenDetail = () => {
           {/* Main Content - Trading Chart and Stats */}
           <div className="lg:col-span-2 space-y-6">
             {/* Trading Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  Live Trading Chart
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 bg-muted/30 rounded-lg flex items-center justify-center">
-                  <div className="text-center space-y-2">
-                    <TrendingUp className="w-8 h-8 mx-auto text-muted-foreground" />
-                    <p className="text-muted-foreground">Live trading chart coming soon</p>
-                    <p className="text-xs text-muted-foreground">Real-time price movements and volume</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <TradingChart 
+              tokenId={token.id}
+              tokenName={token.name}
+              currentPrice={token.price}
+            />
 
             {/* Key Metrics */}
             <Card>
