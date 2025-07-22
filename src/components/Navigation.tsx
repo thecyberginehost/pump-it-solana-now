@@ -178,7 +178,7 @@ const Navigation = () => {
 
       {/* Mobile Bottom Navigation */}
       {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-md border-t border-border" style={{ height: 'auto' }}>
           {/* Drop-up menu for secondary items */}
           {isMobileMoreOpen && (
             <div className="absolute bottom-full left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border">

@@ -212,10 +212,13 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
     );
   }
 
+  // Debug mobile nav height
+  console.log('DegenCoPilot mobile rendering:', { isMobile, isMinimized });
+
   return (
     <Card className={`w-full ${
       isMobile 
-        ? 'fixed inset-x-2 top-2 bottom-32 z-[70]' 
+        ? 'fixed inset-x-2 top-2 bottom-40 z-[100] bg-background border shadow-lg' 
         : 'max-w-4xl mx-auto h-[500px] sm:h-[600px]'
     } flex flex-col`}>
       <CardHeader className="flex-shrink-0 p-3 sm:p-6">
