@@ -32,7 +32,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Create simplified metadata instruction (compatible with edge function limitations)
+// Create simplified metadata instruction (compatible with Deno edge function)
 function createSimpleMetadataInstruction(
   mint: PublicKey,
   updateAuthority: PublicKey,
@@ -40,36 +40,70 @@ function createSimpleMetadataInstruction(
   symbol: string,
   uri: string
 ) {
+  const encoder = new TextEncoder();
+  
   const [metadataPda] = PublicKey.findProgramAddressSync(
     [
-      Buffer.from('metadata'),
+      encoder.encode('metadata'),
       TOKEN_METADATA_PROGRAM_ID.toBuffer(),
       mint.toBuffer(),
     ],
     TOKEN_METADATA_PROGRAM_ID
   );
 
-  // Simplified instruction data for CreateMetadataAccountV3
-  const nameBytes = Buffer.alloc(32);
-  nameBytes.write(name.slice(0, 31));
+  // Create fixed-size byte arrays for metadata (Deno-compatible)
+  const nameBytes = new Uint8Array(32);
+  const nameEncoded = encoder.encode(name.slice(0, 31));
+  nameBytes.set(nameEncoded);
   
-  const symbolBytes = Buffer.alloc(10); 
-  symbolBytes.write(symbol.slice(0, 9));
+  const symbolBytes = new Uint8Array(10);
+  const symbolEncoded = encoder.encode(symbol.slice(0, 9));
+  symbolBytes.set(symbolEncoded);
   
-  const uriBytes = Buffer.alloc(200);
-  uriBytes.write(uri.slice(0, 199));
+  const uriBytes = new Uint8Array(200);
+  const uriEncoded = encoder.encode(uri.slice(0, 199));
+  uriBytes.set(uriEncoded);
 
-  const instructionData = Buffer.concat([
-    Buffer.from([0]), // instruction discriminator
-    nameBytes,
-    symbolBytes, 
-    uriBytes,
-    Buffer.from([0, 0]), // seller_fee_basis_points
-    Buffer.from([1]), // update_authority_is_signer
-    Buffer.from([1]), // is_mutable
-    Buffer.from([0]), // collection
-    Buffer.from([0]), // uses
-  ]);
+  // Build instruction data for CreateMetadataAccountV3
+  const instructionData = new Uint8Array(
+    1 + // instruction discriminator
+    nameBytes.length + 
+    symbolBytes.length + 
+    uriBytes.length + 
+    2 + // seller_fee_basis_points
+    1 + // update_authority_is_signer
+    1 + // is_mutable
+    1 + // collection
+    1   // uses
+  );
+
+  let offset = 0;
+  instructionData[offset] = 0; // CreateMetadataAccountV3 discriminator
+  offset += 1;
+  
+  instructionData.set(nameBytes, offset);
+  offset += nameBytes.length;
+  
+  instructionData.set(symbolBytes, offset);
+  offset += symbolBytes.length;
+  
+  instructionData.set(uriBytes, offset);
+  offset += uriBytes.length;
+  
+  instructionData[offset] = 0; // seller_fee_basis_points (low byte)
+  instructionData[offset + 1] = 0; // seller_fee_basis_points (high byte)
+  offset += 2;
+  
+  instructionData[offset] = 1; // update_authority_is_signer
+  offset += 1;
+  
+  instructionData[offset] = 1; // is_mutable
+  offset += 1;
+  
+  instructionData[offset] = 0; // collection
+  offset += 1;
+  
+  instructionData[offset] = 0; // uses
 
   return {
     keys: [
