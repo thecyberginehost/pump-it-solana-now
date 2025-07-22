@@ -34,8 +34,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Platform wallet for collecting fees (in production, this should be a secure multisig)
-const PLATFORM_WALLET = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
+// Get platform wallet from environment
+const PLATFORM_WALLET = Deno.env.get('PLATFORM_WALLET_ADDRESS');
 
 /**
  * Creates metadata JSON and uploads it to Supabase storage
