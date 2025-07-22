@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -19,10 +20,11 @@ export const useTokenCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
 
   const createToken = useMutation({
-    mutationFn: async ({ tokenData, walletAddress, initialBuyIn = 0 }: { 
+    mutationFn: async ({ tokenData, walletAddress, initialBuyIn = 0, freeze = false }: { 
       tokenData: TokenData; 
       walletAddress: string;
       initialBuyIn?: number;
+      freeze?: boolean;
     }) => {
       const { data, error } = await supabase.functions.invoke('create-token', {
         body: {
@@ -34,6 +36,7 @@ export const useTokenCreation = () => {
           xUrl: tokenData.x_url,
           walletAddress,
           initialBuyIn,
+          freeze, // Pass freeze parameter (defaults to false for community safety)
         },
       });
 
@@ -41,7 +44,10 @@ export const useTokenCreation = () => {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Token "${data.token.name}" created successfully!`);
+      const trustMessage = data.trustLevel === 'Community Safe' 
+        ? ' 🛡️ No freeze authority = Community safe!' 
+        : '';
+      toast.success(`Token "${data.token.name}" created successfully!${trustMessage}`);
       queryClient.invalidateQueries({ queryKey: ['tokens'] });
       queryClient.invalidateQueries({ queryKey: ['recent-tokens'] });
       
@@ -50,7 +56,8 @@ export const useTokenCreation = () => {
         name: data.token.name,
         symbol: data.token.symbol,
         address: data.token.contract_address || '',
-        image: data.token.image_url || ''
+        image: data.token.image_url || '',
+        trustLevel: data.trustLevel || 'Community Safe'
       });
       navigate(`/token-success?${params.toString()}`);
     },
@@ -60,7 +67,12 @@ export const useTokenCreation = () => {
     },
   });
 
-  const handleTokenCreation = async (tokenData: TokenData, walletAddress: string, initialBuyIn: number = 0) => {
+  const handleTokenCreation = async (
+    tokenData: TokenData, 
+    walletAddress: string, 
+    initialBuyIn: number = 0,
+    freeze: boolean = false // Default to false for community trust
+  ) => {
     if (!tokenData.name || !tokenData.symbol) {
       toast.error('Please fill in all required fields');
       return;
@@ -78,7 +90,7 @@ export const useTokenCreation = () => {
 
     setIsCreating(true);
     try {
-      await createToken.mutateAsync({ tokenData, walletAddress, initialBuyIn });
+      await createToken.mutateAsync({ tokenData, walletAddress, initialBuyIn, freeze });
     } finally {
       setIsCreating(false);
     }

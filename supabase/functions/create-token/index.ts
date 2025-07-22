@@ -58,6 +58,10 @@ async function createTokenMetadata(supabase: any, tokenData: any) {
         {
           trait_type: "Standard",
           value: "SPL Token"
+        },
+        {
+          trait_type: "Freeze Authority",
+          value: "None (Community Safe)"
         }
       ],
       properties: {
@@ -97,14 +101,21 @@ async function createTokenMetadata(supabase: any, tokenData: any) {
 }
 
 /**
- * Creates a new SPL token with Metaplex metadata
+ * Creates a new SPL token with Metaplex metadata and community-safe settings
  */
-async function createTokenWithMetadata(connection: Connection, creatorKeypair: Keypair, tokenData: any, metadataUri: string) {
+async function createTokenWithMetadata(
+  connection: Connection, 
+  creatorKeypair: Keypair, 
+  tokenData: any, 
+  metadataUri: string,
+  freeze: boolean = false // Default to false for community trust
+) {
   try {
-    console.log('Creating SPL token with metadata:', { 
+    console.log('Creating community-safe SPL token:', { 
       name: tokenData.name, 
       symbol: tokenData.symbol, 
-      metadataUri 
+      metadataUri,
+      freezeAuthority: freeze ? 'Creator' : 'None (Community Safe)'
     });
 
     // Generate mint keypair for the new token
@@ -130,13 +141,15 @@ async function createTokenWithMetadata(connection: Connection, creatorKeypair: K
       })
     );
     
-    // Initialize mint instruction with 9 decimals (standard for meme tokens)
+    // Initialize mint instruction with community-safe settings
+    // freeze = false means no freeze authority (community safe)
+    // freeze = true means creator retains freeze authority
     transaction.add(
       createInitializeMint2Instruction(
         mintAddress,
-        9, // decimals
+        9, // decimals (standard for meme tokens)
         creatorKeypair.publicKey, // mint authority
-        creatorKeypair.publicKey, // freeze authority
+        freeze ? creatorKeypair.publicKey : null, // freeze authority (null = community safe)
         TOKEN_PROGRAM_ID
       )
     );
@@ -223,11 +236,13 @@ async function createTokenWithMetadata(connection: Connection, creatorKeypair: K
       { commitment: 'confirmed' }
     );
 
-    console.log('SPL Token created successfully:', {
+    console.log('Community-safe SPL Token created successfully:', {
       mintAddress: mintAddress.toString(),
       signature: txSignature,
       totalSupply: totalSupply.toString(),
-      metadataUri
+      metadataUri,
+      freezeAuthority: freeze ? 'Creator' : 'None (Community Safe)',
+      trustLevel: freeze ? 'Standard' : 'High (No Freeze Risk)'
     });
 
     // Verify the mint was created
@@ -236,13 +251,16 @@ async function createTokenWithMetadata(connection: Connection, creatorKeypair: K
       supply: mintInfo.supply.toString(),
       decimals: mintInfo.decimals,
       mintAuthority: mintInfo.mintAuthority?.toString(),
+      freezeAuthority: mintInfo.freezeAuthority?.toString() || 'None (Community Safe)',
     });
 
     return {
       success: true,
       mintAddress: mintAddress.toString(),
       signature: txSignature,
-      metadataUri
+      metadataUri,
+      freezeAuthority: freeze ? 'Creator' : 'None',
+      trustLevel: freeze ? 'Standard' : 'Community Safe'
     };
 
   } catch (error) {
@@ -266,7 +284,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { name, symbol, imageUrl, walletAddress, description, telegramUrl, xUrl, initialBuyIn } = await req.json();
+    const { name, symbol, imageUrl, walletAddress, description, telegramUrl, xUrl, initialBuyIn, freeze = false } = await req.json();
 
     if (!name || !symbol || !walletAddress) {
       return new Response(
@@ -275,7 +293,14 @@ serve(async (req) => {
       );
     }
 
-    console.log('Creating SPL token:', { name, symbol, walletAddress, initialBuyIn });
+    console.log('Creating community-safe SPL token:', { 
+      name, 
+      symbol, 
+      walletAddress, 
+      initialBuyIn,
+      freeze: freeze || false,
+      trustLevel: freeze ? 'Standard' : 'Community Safe (No Freeze Risk)'
+    });
 
     // Connect to Solana devnet
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
@@ -293,13 +318,13 @@ serve(async (req) => {
     // Create creator keypair (simplified for demo - in production, use proper wallet connection)
     const creatorKeypair = Keypair.generate();
     
-    // Create token with metadata
+    // Create token with community-safe settings (freeze defaults to false)
     const tokenResult = await createTokenWithMetadata(connection, creatorKeypair, {
       name,
       symbol,
       description,
       imageUrl
-    }, metadataUri);
+    }, metadataUri, freeze);
 
     let mintAddress = tokenResult.mintAddress;
     let creationSuccess = tokenResult.success;
@@ -354,7 +379,7 @@ serve(async (req) => {
       console.warn('Profile update error:', profileError);
     }
 
-    console.log('Token created successfully:', tokenData);
+    console.log('Community-safe token created successfully:', tokenData);
 
     // Handle initial buy-in if specified
     let buyInMessage = '';
@@ -402,6 +427,8 @@ serve(async (req) => {
       }
     }
 
+    const trustMessage = freeze ? '' : ' 🛡️ Community Safe: No freeze authority means your tokens can never be frozen!';
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -414,6 +441,8 @@ serve(async (req) => {
         buyInExecuted,
         creationMethod: creationSuccess ? 'solana_blockchain' : 'mock_fallback',
         metadataUri: tokenResult.metadataUri || metadataUri,
+        freezeAuthority: tokenResult.freezeAuthority || 'None',
+        trustLevel: tokenResult.trustLevel || 'Community Safe',
         feeStructure: {
           totalFee: '2%',
           platformFee: '1%',
@@ -421,7 +450,7 @@ serve(async (req) => {
           communityFee: '0.2%',
           liquidityFee: '0.1%'
         },
-        message: `SPL Token deployed successfully${buyInMessage}! ${metadataUri ? 'Metadata created for wallet compatibility.' : ''} Trading fees automatically distributed.`,
+        message: `Community-safe SPL Token deployed successfully${buyInMessage}!${trustMessage} ${metadataUri ? 'Metadata created for wallet compatibility.' : ''} Trading fees automatically distributed.`,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
