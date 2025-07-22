@@ -143,8 +143,9 @@ serve(async (req) => {
       );
     }
 
-    // Connect to Solana
-    const rpcUrl = Deno.env.get('ALCHEMY_RPC_URL') || clusterApiUrl('devnet');
+    // Use public devnet RPC instead of Alchemy to avoid blacklists
+    const rpcUrl = 'https://api.devnet.solana.com';
+    console.log('Using RPC:', rpcUrl);
     const connection = new Connection(rpcUrl, 'confirmed');
     
     // Create metadata
