@@ -259,14 +259,28 @@ serve(async (req) => {
     
     let creatorKeypair;
     try {
-      creatorKeypair = Keypair.fromSecretKey(
-        new Uint8Array(JSON.parse(platformPrivateKey))
-      );
+      // Handle both base58 string (from Phantom) and JSON array formats
+      let privateKeyBytes;
+      
+      if (platformPrivateKey.startsWith('[')) {
+        // JSON array format: [123,45,67,...]
+        privateKeyBytes = new Uint8Array(JSON.parse(platformPrivateKey));
+      } else {
+        // Base58 string format (from Phantom wallet)
+        // For now, we'll use a simple base58 decode approach
+        // Note: This is a simplified approach - in production you'd want a proper base58 library
+        throw new Error('Base58 private keys not yet supported. Please use JSON array format for now.');
+      }
+      
+      creatorKeypair = Keypair.fromSecretKey(privateKeyBytes);
       console.log('Using platform wallet:', creatorKeypair.publicKey.toString());
     } catch (error) {
       console.error('Failed to parse platform wallet private key:', error);
       return new Response(
-        JSON.stringify({ error: 'Invalid platform wallet configuration' }),
+        JSON.stringify({ 
+          error: 'Invalid platform wallet configuration. Please use JSON array format like [123,45,67,...]',
+          details: error.message 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
