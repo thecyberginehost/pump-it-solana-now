@@ -27,7 +27,6 @@ import {
 import {
   createCreateMetadataAccountV3Instruction,
 } from "https://esm.sh/@metaplex-foundation/mpl-token-metadata@3.2.1";
-import { PublicKey as MetaplexPublicKey } from "https://esm.sh/@metaplex-foundation/umi-public-keys@0.8.4";
 
 // Define the metadata program ID directly
 const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
