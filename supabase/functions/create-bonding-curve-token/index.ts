@@ -28,8 +28,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Bonding Curve Program ID (we'll use a mock program for now)
-const BONDING_CURVE_PROGRAM_ID = new PublicKey('BondcurveMockProgramId11111111111111111111111');
+// Bonding Curve Program ID (using a valid base58 string for testing)
+const BONDING_CURVE_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
 
 /**
  * Create instruction data for initializing bonding curve
@@ -161,7 +161,16 @@ serve(async (req) => {
     const mintAddress = mintKeypair.publicKey;
     const bondingCurveAddress = bondingCurveKeypair.publicKey;
     const userPublicKey = new PublicKey(walletAddress);
-    const platformWallet = new PublicKey(Deno.env.get('PLATFORM_WALLET_ADDRESS') ?? 'DZm7tfhk7di4GG7XhSXzHJu5dduB4o91paKHQgcvNSAF');
+    
+    // Use a safe default for platform wallet if env var is invalid
+    let platformWallet: PublicKey;
+    try {
+      const platformWalletEnv = Deno.env.get('PLATFORM_WALLET_ADDRESS');
+      platformWallet = platformWalletEnv ? new PublicKey(platformWalletEnv) : new PublicKey('DZm7tfhk7di4GG7XhSXzHJu5dduB4o91paKHQgcvNSAF');
+    } catch (error) {
+      console.log('Invalid platform wallet address, using default');
+      platformWallet = new PublicKey('DZm7tfhk7di4GG7XhSXzHJu5dduB4o91paKHQgcvNSAF');
+    }
 
     console.log('Generated addresses:');
     console.log('- Mint:', mintAddress.toString());
