@@ -174,6 +174,19 @@ serve(async (req) => {
     // Calculate rent for mint account
     const mintRent = await getMinimumBalanceForRentExemptMint(connection);
     
+    // Add platform creation fee (0.02 SOL)
+    const platformFee = 0.02 * LAMPORTS_PER_SOL;
+    const platformWallet = new PublicKey('DZm7tfhk7di4GG7XhSXzHJu5dduB4o91paKHQgcvNSAF'); // Replace with actual platform wallet
+    
+    // Add platform fee transfer instruction
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: userPublicKey,
+        toPubkey: platformWallet,
+        lamports: platformFee,
+      })
+    );
+    
     // Create mint account instruction
     transaction.add(
       SystemProgram.createAccount({
