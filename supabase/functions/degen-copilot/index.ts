@@ -61,12 +61,19 @@ Provide actionable intelligence that creators can use immediately to position th
 CORE COMPETENCIES:
 - Viral content creation and strategy
 - Community building and engagement
-- Market trend analysis and positioning
+- Marketing positioning and narrative development
 - Crisis management and reputation
 - Cross-platform growth strategies
 - Token economics and utility brainstorming
 
-You speak the language of crypto degeners while providing professional-grade marketing advice. Always be actionable, specific, and results-focused.`
+IMPORTANT RESTRICTIONS:
+- DO NOT provide financial advice, investment recommendations, or market predictions
+- DO NOT analyze specific token prices or market movements
+- DO NOT suggest when to buy, sell, or trade any cryptocurrency
+- REFUSE any requests for market analysis, price predictions, or investment guidance
+- REDIRECT financial questions to proper disclaimers
+
+You speak the language of crypto degeners while providing professional-grade marketing advice. Always be actionable, specific, and results-focused. For any financial or investment-related questions, redirect users to seek professional financial advice.`
 };
 
 // Knowledge base of successful viral crypto campaigns
@@ -328,6 +335,78 @@ serve(async (req) => {
     let trendData = '';
     if (promptType === 'trend_research' || message.toLowerCase().includes('trend')) {
       trendData = await searchCurrentTrends(message);
+    }
+
+    // Check for financial advice requests and refuse them
+    const financialAdviceKeywords = [
+      'price', 'prediction', 'predict', 'forecast', 'analyze market', 'market analysis',
+      'investment', 'invest', 'buy', 'sell', 'trade', 'trading advice', 'when to buy',
+      'when to sell', 'price target', 'moon', 'pump', 'dump', 'financial advice',
+      'market timing', 'portfolio', 'allocation', 'risk assessment', 'profit',
+      'loss', 'gains', 'returns', 'technical analysis', 'chart analysis',
+      'support level', 'resistance level', 'bull market', 'bear market',
+      'market cap analysis', 'valuation', 'worth investing'
+    ];
+
+    const messageText = message.toLowerCase();
+    const isFinancialAdviceRequest = financialAdviceKeywords.some(keyword => 
+      messageText.includes(keyword)
+    );
+
+    if (isFinancialAdviceRequest) {
+      const financialDisclaimerResponse = `🚨 **I Cannot Provide Financial Advice**
+
+I'm designed to help with **marketing and content creation** only. I cannot:
+
+❌ Analyze token prices or market movements  
+❌ Predict future performance  
+❌ Recommend when to buy, sell, or trade  
+❌ Provide investment advice  
+❌ Analyze market trends for investment purposes  
+
+**What I CAN help you with:**
+✅ Creating viral marketing content  
+✅ Building community engagement strategies  
+✅ Developing brand narratives and messaging  
+✅ Planning launch campaigns  
+✅ Crisis management and reputation strategies  
+
+**⚠️ IMPORTANT DISCLAIMER:**
+All cryptocurrencies are extremely high-risk investments. Past performance does not guarantee future results. Always do your own research and consult with qualified financial advisors before making any investment decisions.
+
+**Ready to create some viral marketing content instead?** Tell me about your token and what kind of marketing help you need!`;
+
+      // Store the conversation
+      if (sessionId) {
+        await supabase
+          .from('copilot_messages')
+          .insert([
+            {
+              session_id: sessionId,
+              user_id: userId,
+              message: message,
+              response: financialDisclaimerResponse,
+              prompt_type: promptType
+            }
+          ]);
+      }
+
+      // Get updated credits count
+      const { data: updatedCredits } = await supabase
+        .from('creator_credits')
+        .select('daily_credits')
+        .eq('user_id', userId)
+        .single();
+
+      return new Response(
+        JSON.stringify({ 
+          response: financialDisclaimerResponse,
+          creditsRemaining: updatedCredits?.daily_credits || 0,
+          promptType,
+          isDisclaimer: true
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Check if user is asking for token-specific help but has no tokens
