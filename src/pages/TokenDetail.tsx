@@ -23,6 +23,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
+// Force rebuild to clear TokenTradingPanel reference error
 import BondingCurvePanel from "@/components/BondingCurvePanel";
 import BondingCurveVisualization from "@/components/BondingCurveVisualization";
 import TokenTradingActivity from "@/components/TokenTradingActivity";
