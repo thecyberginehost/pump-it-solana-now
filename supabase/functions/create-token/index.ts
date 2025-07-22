@@ -208,9 +208,11 @@ async function createBasicToken(
 }
 
 serve(async (req) => {
+  console.log('=== CREATE TOKEN REQUEST START ===');
   console.log('Received request:', req.method, req.url);
   
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
