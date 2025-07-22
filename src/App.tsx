@@ -16,6 +16,7 @@ import CreatorDashboard from "@/components/CreatorDashboard";
 import TokenList from "@/pages/TokenList";
 import Leaderboard from "@/components/Leaderboard";
 import Achievements from "./pages/Achievements";
+import Roadmap from "./pages/Roadmap";
 import ChatbotSidebar from "@/components/ChatbotSidebar";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const AppContent = () => {
           <Route path="/token/:identifier" element={<TokenDetail />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/achievements" element={<Achievements />} />
+          <Route path="/roadmap" element={<Roadmap />} />
           <Route path="/boosts" element={<Boosts />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
           <Route path="/token-success" element={<TokenSuccess />} />
