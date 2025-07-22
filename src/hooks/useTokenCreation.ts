@@ -111,10 +111,11 @@ export const useTokenCreation = () => {
       return data;
     },
     onSuccess: (data, variables) => {
-      const trustMessage = data.trustLevel === 'Community Safe' 
-        ? ' 🛡️ No freeze authority = Community safe!' 
-        : '';
-      toast.success(`Token "${data.token.name}" created successfully!${trustMessage}`);
+      const successMessage = data.partialSuccess 
+        ? `🎉 Token "${data.token.name}" created successfully!`
+        : `🎉 Token "${data.token.name}" created and confirmed on blockchain!`;
+      
+      toast.success(successMessage);
       queryClient.invalidateQueries({ queryKey: ['tokens'] });
       queryClient.invalidateQueries({ queryKey: ['recent-tokens'] });
       
