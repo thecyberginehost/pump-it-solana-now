@@ -58,12 +58,12 @@ serve(async (req) => {
       );
     }
 
-    // Validate token is app-created and has "forge" identifier
-    if (!token.mint_address || !token.mint_address.endsWith('forge')) {
+    // Only validate that we have a valid mint address (tokens created through our platform)
+    if (!token.mint_address) {
       return new Response(
         JSON.stringify({ 
           error: 'Invalid token', 
-          message: 'Only Forge-created tokens can be traded on this platform. This token was not created through our app.'
+          message: 'Token must have a valid mint address to be tradeable.'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
       );
