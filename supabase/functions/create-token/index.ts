@@ -26,8 +26,11 @@ import {
 } from "https://esm.sh/@solana/spl-token@0.4.8";
 import {
   createCreateMetadataAccountV3Instruction,
-  MPL_TOKEN_METADATA_PROGRAM_ID as METADATA_PROGRAM_ID,
 } from "https://esm.sh/@metaplex-foundation/mpl-token-metadata@3.2.1";
+import { PublicKey as MetaplexPublicKey } from "https://esm.sh/@metaplex-foundation/umi-public-keys@0.8.4";
+
+// Define the metadata program ID directly
+const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
