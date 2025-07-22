@@ -73,7 +73,13 @@ export const useTokenCreation = () => {
           
           // Wait for confirmation before declaring success
           console.log('Waiting for transaction confirmation...');
-          await connection.confirmTransaction(signature, 'confirmed');
+          const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+          
+          if (confirmation.value.err) {
+            console.error('Transaction failed on blockchain:', confirmation.value.err);
+            throw new Error(`Blockchain transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+          }
+          
           console.log('✅ Transaction confirmed on blockchain!');
           
           // Return success data
