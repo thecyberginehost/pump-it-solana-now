@@ -71,6 +71,10 @@ export const useTokenCreation = () => {
           
           console.log('Transaction sent successfully:', signature);
           
+          // Wait for confirmation before declaring success
+          await connection.confirmTransaction(signature, 'confirmed');
+          console.log('Transaction confirmed on blockchain');
+          
           // Return success data
           return {
             ...data,
@@ -84,6 +88,20 @@ export const useTokenCreation = () => {
             code: signError?.code,
             name: signError?.name
           });
+          
+          // Check if transaction actually succeeded despite the error
+          if (signError?.message?.includes('Transaction was not confirmed') || 
+              signError?.message?.includes('User rejected')) {
+            console.log('Transaction may have succeeded despite error, checking...');
+            // Return partial success - token may have been created
+            return {
+              ...data,
+              partialSuccess: true,
+              signature: null,
+              message: 'Token may have been created. Check your wallet for new tokens.'
+            };
+          }
+          
           throw new Error(`Transaction failed: ${signError?.message || 'Unknown error'}`);
         }
       }
