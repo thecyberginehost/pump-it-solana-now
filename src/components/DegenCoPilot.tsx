@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -16,7 +17,9 @@ import {
   MessageSquare, 
   Sparkles,
   Target,
-  BarChart3
+  BarChart3,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 
 interface Message {
@@ -82,11 +85,13 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
   tokenSymbol 
 }) => {
   const { isAuthenticated, walletAddress } = useWalletAuth();
+  const isMobile = useIsMobile();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [creditsRemaining, setCreditsRemaining] = useState<number>(30);
   const [sessionId] = useState(() => `session_${Date.now()}`);
+  const [isMinimized, setIsMinimized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -179,13 +184,13 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
 
   if (!isAuthenticated) {
     return (
-      <Card className="w-full max-w-4xl mx-auto">
+      <Card className={`w-full ${isMobile ? 'mx-2' : 'max-w-4xl mx-auto'}`}>
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center gap-2">
             <Bot className="h-6 w-6" />
             Degen CoPilot
           </CardTitle>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Connect your wallet to access your AI marketing assistant
           </p>
         </CardHeader>
@@ -193,50 +198,80 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
     );
   }
 
+  // Mobile minimized view
+  if (isMobile && isMinimized) {
+    return (
+      <div className="fixed bottom-20 right-4 z-40">
+        <Button
+          onClick={() => setIsMinimized(false)}
+          className="w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
+        >
+          <Bot className="h-6 w-6" />
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <Card className="w-full max-w-4xl mx-auto h-[500px] sm:h-[600px] flex flex-col">
-      <CardHeader className="flex-shrink-0 p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-6 w-6 text-primary" />
-            Degen CoPilot
-            <Sparkles className="h-4 w-4 text-yellow-500" />
-          </CardTitle>
-          <Badge variant="secondary" className="flex items-center gap-1 self-start sm:self-center">
-            <Zap className="h-3 w-3" />
-            {creditsRemaining} credits
-          </Badge>
+    <Card className={`w-full ${
+      isMobile 
+        ? 'fixed inset-x-2 bottom-20 top-20 z-30' 
+        : 'max-w-4xl mx-auto h-[500px] sm:h-[600px]'
+    } flex flex-col`}>
+      <CardHeader className="flex-shrink-0 p-3 sm:p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Bot className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              Degen CoPilot
+              <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-500" />
+            </CardTitle>
+            <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+              <Zap className="h-3 w-3" />
+              {creditsRemaining} credits
+            </Badge>
+          </div>
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsMinimized(true)}
+              className="p-2"
+            >
+              <Minimize2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         {tokenName && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Optimizing for: <span className="font-medium">{tokenName} (${tokenSymbol})</span>
           </p>
         )}
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col gap-4 min-h-0 p-4 sm:p-6 pt-0">
+      <CardContent className="flex-1 flex flex-col gap-3 sm:gap-4 min-h-0 p-3 sm:p-6 pt-0">
         {messages.length === 0 && (
-          <div className="space-y-4">
-            <div className="text-center mb-6">
-              <h3 className="text-lg font-semibold mb-2">Choose Your Mission</h3>
-              <p className="text-sm text-muted-foreground">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="text-center mb-4 sm:mb-6">
+              <h3 className="text-base sm:text-lg font-semibold mb-2">Choose Your Mission</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 Select a specialized marketing strategy or ask me anything
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className={`grid ${isMobile ? 'grid-cols-1 gap-2' : 'grid-cols-1 sm:grid-cols-2 gap-3'}`}>
               {QUICK_PROMPTS.map((prompt) => (
                 <Button
                   key={prompt.id}
                   variant="outline"
-                  className="h-auto p-3 sm:p-4 flex flex-col items-start gap-2 text-left hover:bg-accent/10 transition-all"
+                  className={`h-auto ${isMobile ? 'p-3' : 'p-3 sm:p-4'} flex flex-col items-start gap-2 text-left hover:bg-accent/10 transition-all`}
                   onClick={() => handleQuickPrompt(prompt)}
                   disabled={isLoading || creditsRemaining <= 0}
                 >
                   <div className="flex items-center gap-2 w-full">
                     {prompt.icon}
-                    <span className="font-medium text-sm">{prompt.title}</span>
+                    <span className={`font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>{prompt.title}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">
+                  <span className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'} line-clamp-2`}>
                     {prompt.description}
                   </span>
                 </Button>
@@ -246,15 +281,15 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
         )}
 
         {messages.length > 0 && (
-          <ScrollArea className="flex-1 pr-2 sm:pr-4">
-            <div className="space-y-4">
+          <ScrollArea className={`flex-1 ${isMobile ? 'pr-1' : 'pr-2 sm:pr-4'}`}>
+            <div className={`space-y-3 ${isMobile ? 'space-y-2' : 'space-y-4'}`}>
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] sm:max-w-[80%] rounded-lg px-3 sm:px-4 py-2 ${
+                    className={`${isMobile ? 'max-w-[90%]' : 'max-w-[85%] sm:max-w-[80%]'} rounded-lg px-3 py-2 ${
                       message.isUser
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted'
@@ -266,7 +301,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
                       </Badge>
                     )}
                     <div 
-                      className="whitespace-pre-wrap text-sm"
+                      className={`whitespace-pre-wrap ${isMobile ? 'text-xs' : 'text-sm'}`}
                       dangerouslySetInnerHTML={{
                         __html: message.content
                           .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary underline hover:text-primary/80 transition-colors">$1</a>')
@@ -282,10 +317,10 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg px-3 sm:px-4 py-2 max-w-[85%] sm:max-w-[80%]">
+                  <div className={`bg-muted rounded-lg px-3 py-2 ${isMobile ? 'max-w-[90%]' : 'max-w-[85%] sm:max-w-[80%]'}`}>
                     <div className="flex items-center gap-2">
                       <Bot className="h-4 w-4 animate-pulse" />
-                      <span className="text-sm">Degen CoPilot is thinking...</span>
+                      <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Degen CoPilot is thinking...</span>
                     </div>
                   </div>
                 </div>
@@ -299,7 +334,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
 
         <div className="flex gap-2">
           <Input
-            placeholder="Ask Degen CoPilot anything about viral marketing..."
+            placeholder={isMobile ? "Ask Degen CoPilot..." : "Ask Degen CoPilot anything about viral marketing..."}
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyDown={(e) => {
@@ -309,12 +344,12 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
               }
             }}
             disabled={isLoading || creditsRemaining <= 0}
-            className="flex-1 text-sm"
+            className={`flex-1 ${isMobile ? 'text-sm' : 'text-sm'}`}
           />
           <Button
             onClick={() => sendMessage(inputMessage)}
             disabled={!inputMessage.trim() || isLoading || creditsRemaining <= 0}
-            size="icon"
+            size={isMobile ? "sm" : "icon"}
             className="shrink-0"
           >
             <Send className="h-4 w-4" />
@@ -322,7 +357,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
         </div>
 
         {creditsRemaining <= 5 && (
-          <p className="text-xs text-amber-600 text-center">
+          <p className={`text-amber-600 text-center ${isMobile ? 'text-xs' : 'text-xs'}`}>
             ⚠️ Running low on credits! {creditsRemaining} remaining. Credits reset daily at midnight UTC.
           </p>
         )}

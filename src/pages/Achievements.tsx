@@ -1,6 +1,7 @@
 import React from 'react';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
 import AchievementDisplay from '@/components/AchievementDisplay';
+import Navigation from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Award, Star, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,9 @@ const Achievements: React.FC = () => {
 
   if (!isConnected || !walletAddress) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <>
+        <Navigation />
+        <div className="container mx-auto px-4 py-8 pb-24 md:pb-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-12">
             <Trophy className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
@@ -24,12 +27,15 @@ const Achievements: React.FC = () => {
             </Button>
           </div>
         </div>
-      </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <Navigation />
+      <div className="container mx-auto px-4 py-8 pb-24 md:pb-8">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center">
@@ -150,7 +156,8 @@ const Achievements: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
