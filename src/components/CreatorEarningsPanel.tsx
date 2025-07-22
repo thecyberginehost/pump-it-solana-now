@@ -5,21 +5,49 @@ import { DollarSign, TrendingUp, Clock, Coins } from "lucide-react";
 import { useCreatorEarnings, useTotalCreatorEarnings } from "@/hooks/useCreatorEarnings";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 
 const CreatorEarningsPanel = () => {
   const { walletAddress } = useWalletAuth();
-  const { data: earnings = [], isLoading } = useCreatorEarnings(walletAddress);
-  const { data: totals } = useTotalCreatorEarnings(walletAddress);
+  const { data: earnings = [], isLoading, refetch } = useCreatorEarnings(walletAddress);
+  const { data: totals, refetch: refetchTotals } = useTotalCreatorEarnings(walletAddress);
+  const [claiming, setClaiming] = useState(false);
 
-  const handleClaim = async () => {
-    if (!totals?.totalClaimable || totals.totalClaimable <= 0) {
+  const handleClaim = async (tokenId?: string) => {
+    if (!walletAddress) return;
+    
+    const claimableAmount = tokenId 
+      ? earnings.find(e => e.token_id === tokenId)?.claimable_amount || 0
+      : totals?.totalClaimable || 0;
+
+    if (claimableAmount <= 0) {
       toast.error('No earnings available to claim');
       return;
     }
 
-    // In production, this would execute the claim transaction
-    toast.success(`Claiming ${totals.totalClaimable.toFixed(6)} SOL...`);
-    // TODO: Implement actual claim functionality
+    setClaiming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('claim-earnings', {
+        body: {
+          creatorWallet: walletAddress,
+          tokenId,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Successfully claimed ${data.transaction.amount} SOL!`);
+      
+      // Refresh data
+      refetch();
+      refetchTotals();
+    } catch (error) {
+      console.error('Claim error:', error);
+      toast.error(error.message || "Failed to claim earnings");
+    } finally {
+      setClaiming(false);
+    }
   };
 
   if (!walletAddress) {
@@ -68,12 +96,12 @@ const CreatorEarningsPanel = () => {
             </div>
             <div className="text-center">
               <Button 
-                onClick={handleClaim}
-                disabled={!totals?.totalClaimable || totals.totalClaimable <= 0}
+                onClick={() => handleClaim()}
+                disabled={!totals?.totalClaimable || totals.totalClaimable <= 0 || claiming}
                 className="w-full"
               >
                 <Coins className="mr-2 h-4 w-4" />
-                Claim Earnings
+                {claiming ? 'Claiming...' : 'Claim All Earnings'}
               </Button>
             </div>
           </div>
@@ -110,13 +138,24 @@ const CreatorEarningsPanel = () => {
                       Last updated: {new Date(earning.updated_at).toLocaleDateString()}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold text-green-600">
-                      {Number(earning.total_earned).toFixed(6)} SOL
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="font-bold text-green-600">
+                        {Number(earning.total_earned).toFixed(6)} SOL
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Claimable: {Number(earning.claimable_amount).toFixed(6)} SOL
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Claimable: {Number(earning.claimable_amount).toFixed(6)} SOL
-                    </div>
+                    {Number(earning.claimable_amount) > 0 && (
+                      <Button 
+                        size="sm"
+                        onClick={() => handleClaim(earning.token_id)}
+                        disabled={claiming}
+                      >
+                        {claiming ? '...' : 'Claim'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

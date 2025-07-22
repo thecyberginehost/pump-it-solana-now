@@ -59,6 +59,12 @@ serve(async (req) => {
       total: platformFee + creatorFee + communityFee + liquidityFee
     });
 
+    // Platform wallet address for receiving platform fees
+    const platformWallet = Deno.env.get('PLATFORM_WALLET_ADDRESS');
+    if (!platformWallet) {
+      console.warn('Platform wallet address not configured');
+    }
+
     // Start transaction
     const { error: transactionError } = await supabaseClient.rpc('begin');
     if (transactionError) {
