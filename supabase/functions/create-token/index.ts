@@ -208,11 +208,10 @@ async function createTokenMetadata(supabase: any, tokenData: any) {
  */
 
 serve(async (req) => {
-  console.log('=== CREATE TOKEN REQUEST START ===');
-  console.log('Received request:', req.method, req.url);
+  console.log('=== TOKEN CREATION REQUEST ===');
+  console.log('🚀 REDIRECTING TO BONDING CURVE TOKEN CREATION');
   
   if (req.method === 'OPTIONS') {
-    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -222,211 +221,40 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { name, symbol, imageUrl, walletAddress, description, telegramUrl, xUrl, initialBuyIn, freeze = false } = await req.json();
-
-    console.log('Processing token creation:', { name, symbol, walletAddress });
-
-    if (!name || !symbol || !walletAddress) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields: name, symbol, or walletAddress' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    // Use public devnet RPC instead of Alchemy to avoid blacklists
-    const rpcUrl = 'https://api.devnet.solana.com';
-    console.log('Using RPC:', rpcUrl);
-    const connection = new Connection(rpcUrl, 'confirmed');
+    // Get request data
+    const requestData = await req.json();
     
-    // Create metadata
-    const metadataUri = await createTokenMetadata(supabase, {
-      name,
-      symbol,
-      description,
-      imageUrl,
-      telegramUrl,
-      xUrl
+    console.log('Delegating to bonding curve token creation:', requestData);
+
+    // Call the new bonding curve token creation function
+    const bondingCurveResponse = await supabase.functions.invoke('create-bonding-curve-token', {
+      body: requestData
     });
 
-    // Create token transaction for user to sign
-    console.log('Creating token transaction for user wallet:', walletAddress);
-    
-    // Generate mint keypair for the new token
-    const mintKeypair = Keypair.generate();
-    const mintAddress = mintKeypair.publicKey;
-    const userPublicKey = new PublicKey(walletAddress);
-    
-    console.log('Generated mint address:', mintAddress.toString());
-
-    // Build transaction that user will sign
-    const transaction = new Transaction();
-    
-    // Calculate rent for mint account
-    const mintRent = await getMinimumBalanceForRentExemptMint(connection);
-    
-    // Add platform creation fee (0.02 SOL)
-    const platformFee = 0.02 * LAMPORTS_PER_SOL;
-    const platformWallet = new PublicKey('DZm7tfhk7di4GG7XhSXzHJu5dduB4o91paKHQgcvNSAF'); // Replace with actual platform wallet
-    
-    // Add platform fee transfer instruction
-    transaction.add(
-      SystemProgram.transfer({
-        fromPubkey: userPublicKey,
-        toPubkey: platformWallet,
-        lamports: platformFee,
-      })
-    );
-    
-    // Create mint account instruction
-    transaction.add(
-      SystemProgram.createAccount({
-        fromPubkey: userPublicKey,
-        newAccountPubkey: mintAddress,
-        space: MINT_SIZE,
-        lamports: mintRent,
-        programId: TOKEN_PROGRAM_ID,
-      })
-    );
-    
-    // Initialize mint instruction
-    transaction.add(
-      createInitializeMint2Instruction(
-        mintAddress,
-        9, // decimals
-        userPublicKey, // mint authority (user owns the token)
-        null, // freeze authority (null = community safe)
-        TOKEN_PROGRAM_ID
-      )
-    );
-
-    // Get user's associated token account
-    const userTokenAccount = await getAssociatedTokenAddress(
-      mintAddress,
-      userPublicKey
-    );
-
-    // Create associated token account instruction
-    transaction.add(
-      createAssociatedTokenAccountInstruction(
-        userPublicKey, // payer
-        userTokenAccount, // associated token account
-        userPublicKey, // owner
-        mintAddress // mint
-      )
-    );
-
-    // Mint initial supply (1 billion tokens)
-    const totalSupply = BigInt(1_000_000_000) * BigInt(10 ** 9);
-    transaction.add(
-      createMintToInstruction(
-        mintAddress,
-        userTokenAccount,
-        userPublicKey,
-        totalSupply
-      )
-    );
-
-    // TEMPORARILY DISABLE METADATA TO ENSURE BLOCKCHAIN CREATION WORKS
-    // TODO: Re-enable once we confirm base token creation is working
-    console.log('Metadata disabled for reliable token creation on blockchain');
-    
-    // Add detailed logging for transaction structure
-    console.log('Transaction instructions count:', transaction.instructions.length);
-    console.log('Transaction fee payer:', transaction.feePayer?.toString());
-    console.log('Transaction recent blockhash present:', !!transaction.recentBlockhash);
-
-    // Disable mint authority (make it immutable)
-    transaction.add(
-      createSetAuthorityInstruction(
-        mintAddress,
-        userPublicKey,
-        AuthorityType.MintTokens,
-        null,
-        [],
-        TOKEN_PROGRAM_ID
-      )
-    );
-
-    // Get recent blockhash and set fee payer
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = userPublicKey;
-
-    // Partially sign with mint keypair (user will sign with their wallet)
-    transaction.partialSign(mintKeypair);
-
-    // Serialize transaction for frontend to sign
-    const serializedTransaction = transaction.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false
-    });
-
-    console.log('Transaction created successfully for user to sign');
-
-    // Store token in database (with pending status until transaction is confirmed)
-    const { data: tokenData, error: dbError } = await supabase
-      .from('tokens')
-      .insert({
-        creator_wallet: walletAddress,
-        name,
-        symbol,
-        description,
-        image_url: imageUrl,
-        telegram_url: telegramUrl,
-        x_url: xUrl,
-        mint_address: mintAddress.toString(),
-        total_supply: 1000000000,
-        creation_fee: 0.02,
-        // Initialize bonding curve values
-        sol_raised: 0,
-        tokens_sold: 0,
-        is_graduated: false,
-        market_cap: 0,
-        price: 0.001 / 1000000000, // Very small initial price
-        volume_24h: 0,
-        holder_count: 1,
-      })
-      .select()
-      .single();
-
-    if (dbError) {
-      console.error('Database error:', dbError);
+    if (bondingCurveResponse.error) {
+      console.error('Bonding curve creation error:', bondingCurveResponse.error);
       return new Response(
-        JSON.stringify({ error: 'Failed to store token data', details: dbError.message }),
+        JSON.stringify({ 
+          error: 'Failed to create bonding curve token', 
+          details: bondingCurveResponse.error.message 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
 
-    console.log('Token preparation successful:', tokenData);
-
+    console.log('✅ Successfully created bonding curve token');
     return new Response(
-      JSON.stringify({
-        success: true,
-        requiresSignature: true,
-        transaction: Array.from(serializedTransaction), // Send as array for easier handling
-        mintAddress: mintAddress.toString(),
-        token: {
-          ...tokenData,
-          contract_address: mintAddress.toString(),
-        },
-        metadataUri: metadataUri,
-        message: `Transaction prepared for "${name}" token creation. Please sign to complete.`
-      }),
+      JSON.stringify(bondingCurveResponse.data),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('=== ERROR CREATING TOKEN ===');
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
+    console.error('=== TOKEN CREATION ERROR ===');
+    console.error('Error:', error);
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 
-        details: error.message,
-        step: 'token_creation_failed'
+        details: error.message 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );

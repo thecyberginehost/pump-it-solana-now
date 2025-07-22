@@ -297,6 +297,7 @@ export type Database = {
       }
       tokens: {
         Row: {
+          bonding_curve_address: string | null
           created_at: string
           creation_fee: number | null
           creator_wallet: string
@@ -319,6 +320,7 @@ export type Database = {
           x_url: string | null
         }
         Insert: {
+          bonding_curve_address?: string | null
           created_at?: string
           creation_fee?: number | null
           creator_wallet: string
@@ -341,6 +343,7 @@ export type Database = {
           x_url?: string | null
         }
         Update: {
+          bonding_curve_address?: string | null
           created_at?: string
           creation_fee?: number | null
           creator_wallet?: string

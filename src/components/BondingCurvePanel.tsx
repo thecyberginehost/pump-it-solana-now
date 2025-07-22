@@ -76,27 +76,40 @@ const BondingCurvePanel = ({
 
     setIsTrading(true);
     try {
-      // Call bonding curve trade function via Supabase
-      const { data, error } = await supabase.functions.invoke('bonding-curve-trade', {
-        body: {
-          tokenId,
-          tradeType: 'buy',
-          solAmount: amount,
-          walletAddress,
-          expectedTokensOut: buyPreview.tokensOut,
-        },
+      console.log('🚀 Initiating smart contract buy:', {
+        tokenId,
+        walletAddress,
+        solAmount: amount
       });
 
-      if (error) throw new Error(error.message || 'Trade failed');
-      if (!data.success) throw new Error(data.error || 'Trade failed');
-      
-      toast.success(`Successfully bought ${formatTokenAmount(data.transaction.tokensReceived)} ${tokenSymbol}!`);
-      
-      setBuyAmount("");
-      onTrade?.(data);
+      // Call the new bonding curve buy function (smart contract)
+      const { data, error } = await supabase.functions.invoke('bonding-curve-buy', {
+        body: {
+          tokenId,
+          walletAddress,
+          solAmount: amount
+        }
+      });
+
+      if (error) {
+        console.error('Smart contract buy error:', error);
+        toast.error(`Buy failed: ${error.message}`);
+        return;
+      }
+
+      if (data?.requiresSignature && data?.transaction) {
+        toast.success(`🎯 Smart contract buy prepared: ${amount} SOL → ${data.trade.tokensOut.toFixed(2)} ${tokenSymbol}`);
+        toast.info('📝 Transaction ready for wallet signature');
+        
+        // Call onTrade callback to refresh data
+        onTrade?.(data.trade);
+        setBuyAmount("");
+      } else {
+        toast.error('Failed to prepare buy transaction');
+      }
     } catch (error: any) {
       console.error('Buy error:', error);
-      toast.error(error?.message || 'Buy failed');
+      toast.error(error?.message || 'Failed to prepare buy transaction');
     } finally {
       setIsTrading(false);
     }
@@ -121,27 +134,40 @@ const BondingCurvePanel = ({
 
     setIsTrading(true);
     try {
-      // Call bonding curve trade function via Supabase
-      const { data, error } = await supabase.functions.invoke('bonding-curve-trade', {
-        body: {
-          tokenId,
-          tradeType: 'sell',
-          tokenAmount: amount,
-          walletAddress,
-          expectedSolOut: Math.abs(sellPreview.solIn),
-        },
+      console.log('🚀 Initiating smart contract sell:', {
+        tokenId,
+        walletAddress,
+        tokenAmount: amount
       });
 
-      if (error) throw new Error(error.message || 'Trade failed');
-      if (!data.success) throw new Error(data.error || 'Trade failed');
-      
-      toast.success(`Successfully sold ${formatTokenAmount(amount)} ${tokenSymbol}!`);
-      
-      setSellAmount("");
-      onTrade?.(data);
+      // Call the new bonding curve sell function (smart contract)
+      const { data, error } = await supabase.functions.invoke('bonding-curve-sell', {
+        body: {
+          tokenId,
+          walletAddress,
+          tokenAmount: amount
+        }
+      });
+
+      if (error) {
+        console.error('Smart contract sell error:', error);
+        toast.error(`Sell failed: ${error.message}`);
+        return;
+      }
+
+      if (data?.requiresSignature && data?.transaction) {
+        toast.success(`🎯 Smart contract sell prepared: ${amount} ${tokenSymbol} → ${data.trade.solOut.toFixed(6)} SOL`);
+        toast.info('📝 Transaction ready for wallet signature');
+        
+        // Call onTrade callback to refresh data
+        onTrade?.(data.trade);
+        setSellAmount("");
+      } else {
+        toast.error('Failed to prepare sell transaction');
+      }
     } catch (error: any) {
       console.error('Sell error:', error);
-      toast.error(error?.message || 'Sell failed');
+      toast.error(error?.message || 'Failed to prepare sell transaction');
     } finally {
       setIsTrading(false);
     }
