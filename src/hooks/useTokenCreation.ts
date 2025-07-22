@@ -56,17 +56,20 @@ export const useTokenCreation = () => {
         }
 
         try {
+          console.log('Deserializing transaction...');
           // Deserialize transaction
           const transactionBuffer = new Uint8Array(data.transaction);
           const transaction = Transaction.from(transactionBuffer);
           
+          console.log('Signing transaction...');
           // Sign transaction with user's wallet
           const signedTransaction = await signTransaction(transaction);
           
+          console.log('Sending transaction...');
           // Send transaction
           const signature = await sendTransaction(signedTransaction, connection);
           
-          console.log('Transaction sent:', signature);
+          console.log('Transaction sent successfully:', signature);
           
           // Return success data
           return {
@@ -74,9 +77,14 @@ export const useTokenCreation = () => {
             signature,
             transactionConfirmed: true
           };
-        } catch (signError) {
-          console.error('Transaction signing/sending failed:', signError);
-          throw new Error(`Transaction failed: ${signError.message}`);
+        } catch (signError: any) {
+          console.error('Detailed transaction error:', {
+            error: signError,
+            message: signError?.message,
+            code: signError?.code,
+            name: signError?.name
+          });
+          throw new Error(`Transaction failed: ${signError?.message || 'Unknown error'}`);
         }
       }
 
