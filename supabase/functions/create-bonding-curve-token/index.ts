@@ -42,15 +42,16 @@ function createInitializeBondingCurveInstruction(
   platformWallet: PublicKey
 ): TransactionInstruction {
   // Instruction data: [instruction_type (1 byte), virtual_sol_reserves (8 bytes), virtual_token_reserves (8 bytes)]
-  const instructionData = Buffer.alloc(17);
-  instructionData.writeUInt8(0, 0); // Initialize instruction
+  const instructionData = new Uint8Array(17);
+  const dataView = new DataView(instructionData.buffer);
+  dataView.setUint8(0, 0); // Initialize instruction
   
   // Virtual reserves: 30 SOL and 1.073B tokens (pump.fun style)
   const virtualSol = BigInt(30 * LAMPORTS_PER_SOL);
   const virtualTokens = BigInt(1073000000 * Math.pow(10, 9)); // 1.073B tokens with 9 decimals
   
-  instructionData.writeBigUInt64LE(virtualSol, 1);
-  instructionData.writeBigUInt64LE(virtualTokens, 9);
+  dataView.setBigUint64(1, virtualSol, true); // little endian
+  dataView.setBigUint64(9, virtualTokens, true); // little endian
 
   const accounts: AccountMeta[] = [
     { pubkey: bondingCurve, isSigner: false, isWritable: true },

@@ -34,9 +34,10 @@ function createSellInstruction(
   tokenAmount: number
 ): TransactionInstruction {
   // Instruction data: [instruction_type (1 byte), token_amount (8 bytes)]
-  const instructionData = Buffer.alloc(9);
-  instructionData.writeUInt8(2, 0); // Sell instruction
-  instructionData.writeBigUInt64LE(BigInt(tokenAmount * Math.pow(10, 9)), 1); // Convert to smallest unit
+  const instructionData = new Uint8Array(9);
+  const dataView = new DataView(instructionData.buffer);
+  dataView.setUint8(0, 2); // Sell instruction
+  dataView.setBigUint64(1, BigInt(tokenAmount * Math.pow(10, 9)), true); // Convert to smallest unit, little endian
 
   const accounts: AccountMeta[] = [
     { pubkey: bondingCurve, isSigner: false, isWritable: true },

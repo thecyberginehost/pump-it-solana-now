@@ -36,9 +36,10 @@ function createBuyInstruction(
   solAmount: number
 ): TransactionInstruction {
   // Instruction data: [instruction_type (1 byte), sol_amount (8 bytes)]
-  const instructionData = Buffer.alloc(9);
-  instructionData.writeUInt8(1, 0); // Buy instruction
-  instructionData.writeBigUInt64LE(BigInt(solAmount * LAMPORTS_PER_SOL), 1);
+  const instructionData = new Uint8Array(9);
+  const dataView = new DataView(instructionData.buffer);
+  dataView.setUint8(0, 1); // Buy instruction
+  dataView.setBigUint64(1, BigInt(solAmount * LAMPORTS_PER_SOL), true); // little endian
 
   const accounts: AccountMeta[] = [
     { pubkey: bondingCurve, isSigner: false, isWritable: true },
