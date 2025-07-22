@@ -114,129 +114,8 @@ async function createTokenMetadata(supabase: any, tokenData: any) {
 }
 
 /**
- * Creates a basic SPL token
+ * Edge function to create token transactions for user signing
  */
-async function createBasicToken(
-  connection: Connection, 
-  creatorKeypair: Keypair, 
-  tokenData: any
-) {
-  try {
-    console.log('Creating basic SPL token:', { 
-      name: tokenData.name, 
-      symbol: tokenData.symbol
-    });
-
-    // Generate mint keypair for the new token
-    const mintKeypair = Keypair.generate();
-    const mintAddress = mintKeypair.publicKey;
-    
-    console.log('Generated mint address:', mintAddress.toString());
-
-    // Build transaction
-    const transaction = new Transaction();
-    
-    // Calculate rent for mint account
-    const mintRent = await getMinimumBalanceForRentExemptMint(connection);
-    
-    // Create mint account instruction
-    transaction.add(
-      SystemProgram.createAccount({
-        fromPubkey: creatorKeypair.publicKey,
-        newAccountPubkey: mintAddress,
-        space: MINT_SIZE,
-        lamports: mintRent,
-        programId: TOKEN_PROGRAM_ID,
-      })
-    );
-    
-    // Initialize mint instruction
-    transaction.add(
-      createInitializeMint2Instruction(
-        mintAddress,
-        9, // decimals
-        creatorKeypair.publicKey, // mint authority
-        null, // freeze authority (null = community safe)
-        TOKEN_PROGRAM_ID
-      )
-    );
-
-    // Get creator's associated token account
-    const creatorTokenAccount = await getAssociatedTokenAddress(
-      mintAddress,
-      creatorKeypair.publicKey
-    );
-
-    // Create associated token account instruction
-    transaction.add(
-      createAssociatedTokenAccountInstruction(
-        creatorKeypair.publicKey, // payer
-        creatorTokenAccount, // associated token account
-        creatorKeypair.publicKey, // owner
-        mintAddress // mint
-      )
-    );
-
-    // Mint initial supply (1 billion tokens)
-    const totalSupply = BigInt(1_000_000_000) * BigInt(10 ** 9);
-    transaction.add(
-      createMintToInstruction(
-        mintAddress,
-        creatorTokenAccount,
-        creatorKeypair.publicKey,
-        totalSupply
-      )
-    );
-
-    // Disable mint authority
-    transaction.add(
-      createSetAuthorityInstruction(
-        mintAddress,
-        creatorKeypair.publicKey,
-        AuthorityType.MintTokens,
-        null,
-        [],
-        TOKEN_PROGRAM_ID
-      )
-    );
-
-    // Get recent blockhash
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = creatorKeypair.publicKey;
-
-    // Sign transaction
-    transaction.sign(creatorKeypair, mintKeypair);
-
-    // Send and confirm transaction
-    const txSignature = await sendAndConfirmTransaction(
-      connection,
-      transaction,
-      [creatorKeypair, mintKeypair],
-      { commitment: 'confirmed' }
-    );
-
-    console.log('SPL Token created successfully:', {
-      mintAddress: mintAddress.toString(),
-      signature: txSignature,
-      totalSupply: totalSupply.toString()
-    });
-
-    return {
-      success: true,
-      mintAddress: mintAddress.toString(),
-      signature: txSignature
-    };
-
-  } catch (error) {
-    console.error('Token creation failed:', error);
-    return {
-      success: false,
-      error: error.message,
-      mintAddress: null
-    };
-  }
-}
 
 serve(async (req) => {
   console.log('=== CREATE TOKEN REQUEST START ===');
@@ -278,59 +157,100 @@ serve(async (req) => {
       xUrl
     });
 
-    // Check if platform wallet is configured
-    const platformPrivateKey = Deno.env.get('PLATFORM_WALLET_PRIVATE_KEY');
-    if (!platformPrivateKey) {
-      console.error('Platform wallet private key not configured');
-      return new Response(
-        JSON.stringify({ error: 'Platform wallet not configured. Please contact administrator.' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
-    }
+    // Create token transaction for user to sign
+    console.log('Creating token transaction for user wallet:', walletAddress);
     
-    let creatorKeypair;
-    try {
-      // Handle both base58 string (from Phantom) and JSON array formats
-      let privateKeyBytes;
-      
-      if (platformPrivateKey.startsWith('[')) {
-        // JSON array format: [123,45,67,...]
-        privateKeyBytes = new Uint8Array(JSON.parse(platformPrivateKey));
-      } else {
-        // Base58 string format (from Phantom wallet)
-        console.log('Decoding base58 private key from Phantom wallet');
-        privateKeyBytes = base58Decode(platformPrivateKey.trim());
-      }
-      
-      creatorKeypair = Keypair.fromSecretKey(privateKeyBytes);
-      console.log('Using platform wallet:', creatorKeypair.publicKey.toString());
-    } catch (error) {
-      console.error('Failed to parse platform wallet private key:', error);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid platform wallet configuration. Please use JSON array format like [123,45,67,...]',
-          details: error.message 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
-    }
+    // Generate mint keypair for the new token
+    const mintKeypair = Keypair.generate();
+    const mintAddress = mintKeypair.publicKey;
+    const userPublicKey = new PublicKey(walletAddress);
     
-    const tokenResult = await createBasicToken(connection, creatorKeypair, {
-      name,
-      symbol,
-      description,
-      imageUrl
+    console.log('Generated mint address:', mintAddress.toString());
+
+    // Build transaction that user will sign
+    const transaction = new Transaction();
+    
+    // Calculate rent for mint account
+    const mintRent = await getMinimumBalanceForRentExemptMint(connection);
+    
+    // Create mint account instruction
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: userPublicKey,
+        newAccountPubkey: mintAddress,
+        space: MINT_SIZE,
+        lamports: mintRent,
+        programId: TOKEN_PROGRAM_ID,
+      })
+    );
+    
+    // Initialize mint instruction
+    transaction.add(
+      createInitializeMint2Instruction(
+        mintAddress,
+        9, // decimals
+        userPublicKey, // mint authority (user owns the token)
+        null, // freeze authority (null = community safe)
+        TOKEN_PROGRAM_ID
+      )
+    );
+
+    // Get user's associated token account
+    const userTokenAccount = await getAssociatedTokenAddress(
+      mintAddress,
+      userPublicKey
+    );
+
+    // Create associated token account instruction
+    transaction.add(
+      createAssociatedTokenAccountInstruction(
+        userPublicKey, // payer
+        userTokenAccount, // associated token account
+        userPublicKey, // owner
+        mintAddress // mint
+      )
+    );
+
+    // Mint initial supply (1 billion tokens)
+    const totalSupply = BigInt(1_000_000_000) * BigInt(10 ** 9);
+    transaction.add(
+      createMintToInstruction(
+        mintAddress,
+        userTokenAccount,
+        userPublicKey,
+        totalSupply
+      )
+    );
+
+    // Disable mint authority (make it immutable)
+    transaction.add(
+      createSetAuthorityInstruction(
+        mintAddress,
+        userPublicKey,
+        AuthorityType.MintTokens,
+        null,
+        [],
+        TOKEN_PROGRAM_ID
+      )
+    );
+
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = userPublicKey;
+
+    // Partially sign with mint keypair (user will sign with their wallet)
+    transaction.partialSign(mintKeypair);
+
+    // Serialize transaction for frontend to sign
+    const serializedTransaction = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false
     });
 
-    let mintAddress = tokenResult.mintAddress;
-    let creationSuccess = tokenResult.success;
+    console.log('Transaction created successfully for user to sign');
 
-    if (!creationSuccess) {
-      console.log('Using mock implementation:', tokenResult.error);
-      mintAddress = Keypair.generate().publicKey.toString();
-    }
-
-    // Store token in database
+    // Store token in database (with pending status until transaction is confirmed)
     const { data: tokenData, error: dbError } = await supabase
       .from('tokens')
       .insert({
@@ -341,7 +261,7 @@ serve(async (req) => {
         image_url: imageUrl,
         telegram_url: telegramUrl,
         x_url: xUrl,
-        mint_address: mintAddress,
+        mint_address: mintAddress.toString(),
         total_supply: 1000000000,
         creation_fee: 0.02,
         market_cap: 0,
@@ -360,20 +280,20 @@ serve(async (req) => {
       );
     }
 
-    console.log('Token created successfully:', tokenData);
+    console.log('Token preparation successful:', tokenData);
 
     return new Response(
       JSON.stringify({
         success: true,
+        requiresSignature: true,
+        transaction: Array.from(serializedTransaction), // Send as array for easier handling
+        mintAddress: mintAddress.toString(),
         token: {
           ...tokenData,
-          contract_address: mintAddress,
+          contract_address: mintAddress.toString(),
         },
-        mintAddress: mintAddress,
-        initialBuyIn: initialBuyIn || 0,
-        creationMethod: creationSuccess ? 'solana_blockchain' : 'mock_fallback',
         metadataUri: metadataUri,
-        message: `Token "${name}" created successfully!`
+        message: `Transaction prepared for "${name}" token creation. Please sign to complete.`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

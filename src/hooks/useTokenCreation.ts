@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { Transaction } from '@solana/web3.js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAchievements } from './useAchievements';
@@ -20,6 +22,8 @@ export const useTokenCreation = () => {
   const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
   const { checkAchievements } = useAchievements();
+  const { signTransaction, sendTransaction } = useWallet();
+  const { connection } = useConnection();
 
   const createToken = useMutation({
     mutationFn: async ({ tokenData, walletAddress, initialBuyIn = 0, freeze = false }: { 
@@ -28,6 +32,7 @@ export const useTokenCreation = () => {
       initialBuyIn?: number;
       freeze?: boolean;
     }) => {
+      // Step 1: Get transaction from backend
       const { data, error } = await supabase.functions.invoke('create-token', {
         body: {
           name: tokenData.name,
@@ -38,11 +43,43 @@ export const useTokenCreation = () => {
           xUrl: tokenData.x_url,
           walletAddress,
           initialBuyIn,
-          freeze, // Pass freeze parameter (defaults to false for community safety)
+          freeze,
         },
       });
 
       if (error) throw error;
+
+      // Step 2: If backend returns a transaction, sign and send it
+      if (data.requiresSignature && data.transaction) {
+        if (!signTransaction || !sendTransaction) {
+          throw new Error('Wallet not connected for signing');
+        }
+
+        try {
+          // Deserialize transaction
+          const transactionBuffer = new Uint8Array(data.transaction);
+          const transaction = Transaction.from(transactionBuffer);
+          
+          // Sign transaction with user's wallet
+          const signedTransaction = await signTransaction(transaction);
+          
+          // Send transaction
+          const signature = await sendTransaction(signedTransaction, connection);
+          
+          console.log('Transaction sent:', signature);
+          
+          // Return success data
+          return {
+            ...data,
+            signature,
+            transactionConfirmed: true
+          };
+        } catch (signError) {
+          console.error('Transaction signing/sending failed:', signError);
+          throw new Error(`Transaction failed: ${signError.message}`);
+        }
+      }
+
       return data;
     },
     onSuccess: (data, variables) => {
