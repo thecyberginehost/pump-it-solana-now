@@ -245,17 +245,29 @@ serve(async (req) => {
       xUrl
     });
 
-    // Use platform wallet for token creation (funded with devnet SOL)
+    // Check if platform wallet is configured
     const platformPrivateKey = Deno.env.get('PLATFORM_WALLET_PRIVATE_KEY');
     if (!platformPrivateKey) {
-      throw new Error('Platform wallet private key not configured');
+      console.error('Platform wallet private key not configured');
+      return new Response(
+        JSON.stringify({ error: 'Platform wallet not configured. Please contact administrator.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
     }
     
-    const creatorKeypair = Keypair.fromSecretKey(
-      new Uint8Array(JSON.parse(platformPrivateKey))
-    );
-    
-    console.log('Using platform wallet:', creatorKeypair.publicKey.toString());
+    let creatorKeypair;
+    try {
+      creatorKeypair = Keypair.fromSecretKey(
+        new Uint8Array(JSON.parse(platformPrivateKey))
+      );
+      console.log('Using platform wallet:', creatorKeypair.publicKey.toString());
+    } catch (error) {
+      console.error('Failed to parse platform wallet private key:', error);
+      return new Response(
+        JSON.stringify({ error: 'Invalid platform wallet configuration' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
     
     const tokenResult = await createBasicToken(connection, creatorKeypair, {
       name,
