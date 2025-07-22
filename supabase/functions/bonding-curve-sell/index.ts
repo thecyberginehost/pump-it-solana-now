@@ -20,7 +20,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const BONDING_CURVE_PROGRAM_ID = new PublicKey('BondcurveMockProgramId11111111111111111111111');
+const BONDING_CURVE_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
 
 /**
  * Create sell instruction for bonding curve
