@@ -159,115 +159,111 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
   if (step === 'preview' && generatedToken) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-accent" />
               AI Generated Token Preview
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-6 py-4">
-            {/* Token Preview Card */}
-            <div className="border rounded-lg p-4 space-y-4">
-              <div className="flex items-start gap-4">
+          <div className="flex-1 overflow-y-auto space-y-4 py-2">
+            {/* Token Preview Card - More Compact */}
+            <div className="border rounded-lg p-3 space-y-3">
+              <div className="flex items-start gap-3">
                 {generatedToken.imageUrl && (
-                  <div className="relative group">
+                  <div className="relative group flex-shrink-0">
                     <img 
                       src={generatedToken.imageUrl} 
                       alt="Token logo" 
-                      className="w-16 h-16 rounded-full object-cover border-2 border-border"
+                      className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-border"
                     />
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-background border opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => handleRegenerateComponent('image')}
                       disabled={isGenerating}
                     >
-                      <RefreshCw className="h-3 w-3" />
+                      <RefreshCw className="h-2.5 w-2.5" />
                     </Button>
                   </div>
                 )}
                 
-                <div className="space-y-2 flex-1">
+                <div className="space-y-1.5 flex-1 min-w-0">
                   <div className="flex items-center gap-2 group">
-                    <h3 className="font-bold text-lg">{generatedToken.name}</h3>
+                    <h3 className="font-bold text-base sm:text-lg truncate">{generatedToken.name}</h3>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                       onClick={() => handleRegenerateComponent('name')}
                       disabled={isGenerating}
                     >
-                      <RefreshCw className="h-3 w-3" />
+                      <RefreshCw className="h-2.5 w-2.5" />
                     </Button>
                   </div>
                   
                   <div className="flex items-center gap-2 group">
-                    <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                    <span className="text-xs sm:text-sm font-mono bg-muted px-2 py-0.5 rounded">
                       ${generatedToken.symbol}
                     </span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                       onClick={() => handleRegenerateComponent('symbol')}
                       disabled={isGenerating}
                     >
-                      <RefreshCw className="h-3 w-3" />
+                      <RefreshCw className="h-2.5 w-2.5" />
                     </Button>
                   </div>
                   
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
                     {generatedToken.description}
                   </p>
                 </div>
               </div>
               
-              <div className="bg-muted/50 p-3 rounded text-xs">
+              <div className="bg-muted/50 p-2.5 rounded text-xs">
                 <p className="font-medium mb-1">💡 Why this could go viral:</p>
-                <p className="text-muted-foreground">{generatedToken.reasoning}</p>
+                <p className="text-muted-foreground line-clamp-2">{generatedToken.reasoning}</p>
               </div>
             </div>
 
-            {/* Initial Buy-In Section */}
-            <div className="border rounded-lg p-4 space-y-3">
+            {/* Initial Buy-In Section - More Compact */}
+            <div className="border rounded-lg p-3 space-y-2.5">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  💰 Initial Buy-In (optional)
+                <Label className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
+                  💰 Initial Buy-In
                 </Label>
                 {isLoadingBalance ? (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Analyzing wallet...
+                    Loading...
                   </div>
                 ) : walletBalance !== null ? (
                   <div className="text-xs text-muted-foreground">
-                    Balance: {walletBalance.toFixed(3)} SOL
+                    {walletBalance.toFixed(3)} SOL
                   </div>
                 ) : null}
               </div>
               
               <p className="text-xs text-muted-foreground">
-                Automatically purchase your own token at launch to show confidence and set initial price
+                Auto-purchase your token at launch (optional)
               </p>
               
               {walletBalance !== null && suggestedAmount !== "0" && (
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2">
                   <p className="text-xs text-blue-600 font-medium">
-                    💡 AI Suggestion: {suggestedAmount} SOL (~{Math.round(parseFloat(suggestedAmount) / parseFloat(walletBalance.toString()) * 100)}% of available balance)
+                    💡 Suggested: {suggestedAmount} SOL
                   </p>
                 </div>
               )}
               
-              <div className="space-y-2">
-                <Label htmlFor="aiBuyInAmount" className="text-xs font-medium">
-                  Amount in SOL
-                </Label>
+              <div className="space-y-1.5">
                 <div className="relative">
                   <Input
-                    id="aiBuyInAmount"
                     type="number"
                     placeholder="0.0"
                     value={initialBuyIn}
@@ -282,50 +278,54 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
                   </span>
                 </div>
                 
-                {suggestedAmount !== "0" && initialBuyIn !== suggestedAmount && (
+                <div className="flex gap-2 text-xs">
+                  {suggestedAmount !== "0" && initialBuyIn !== suggestedAmount && (
+                    <button
+                      type="button"
+                      onClick={() => setInitialBuyIn(suggestedAmount)}
+                      className="text-blue-600 hover:text-blue-700 underline"
+                    >
+                      Use suggested
+                    </button>
+                  )}
+                  
                   <button
                     type="button"
-                    onClick={() => setInitialBuyIn(suggestedAmount)}
-                    className="text-xs text-blue-600 hover:text-blue-700 underline"
+                    onClick={() => setInitialBuyIn("0")}
+                    className="text-gray-600 hover:text-gray-700 underline"
                   >
-                    Use suggested amount ({suggestedAmount} SOL)
+                    Skip
                   </button>
-                 )}
-                
-                <button
-                  type="button"
-                  onClick={() => setInitialBuyIn("0")}
-                  className="text-xs text-gray-600 hover:text-gray-700 underline"
-                >
-                  Skip initial investment
-                </button>
+                </div>
                 
                 {parseFloat(initialBuyIn) > 0 && (
                   <p className="text-xs text-green-600">
-                    ✓ Will purchase ~${((parseFloat(initialBuyIn) || 0) * 150).toFixed(2)} worth of tokens at launch
+                    ✓ ~${((parseFloat(initialBuyIn) || 0) * 150).toFixed(2)} worth at launch
                   </p>
                 )}
                 
                 {walletBalance !== null && parseFloat(initialBuyIn) > (walletBalance - 0.005) && (
                   <p className="text-xs text-red-600">
-                    ⚠️ Amount exceeds available balance (keeping 0.005 SOL for fees)
+                    ⚠️ Exceeds available balance
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Boost Upsell for AI Launch */}
-            <BoostUpsell isAIQuickLaunch={true} />
+            {/* Boost Upsell - Compact */}
+            <div className="border rounded-lg p-3">
+              <BoostUpsell isAIQuickLaunch={true} />
+            </div>
 
-            {/* Final Warning */}
-            <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                <div className="space-y-2">
-                  <p className="font-medium text-orange-500">Final Confirmation</p>
-                  <p className="text-sm text-muted-foreground">
-                    Once you proceed with payment ({(0.02 + (parseFloat(initialBuyIn) || 0)).toFixed(3)} SOL total), this token will be created with the exact details shown above. 
-                    <strong className="text-foreground"> Name, symbol, and image cannot be changed after creation.</strong>
+            {/* Final Warning - Compact */}
+            <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-medium text-orange-500 text-sm">Final Confirmation</p>
+                  <p className="text-xs text-muted-foreground">
+                    Total cost: {(0.02 + (parseFloat(initialBuyIn) || 0)).toFixed(3)} SOL. 
+                    <strong className="text-foreground"> Details cannot be changed after creation.</strong>
                   </p>
                 </div>
               </div>
@@ -333,7 +333,10 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
 
             {/* Subtle Disclaimer */}
             <SubtleDisclaimer />
+          </div>
 
+          {/* Fixed Footer with Buttons */}
+          <div className="flex-shrink-0 border-t pt-4 mt-2">
             <div className="flex gap-3">
               <Button variant="outline" onClick={handleClose} className="flex-1">
                 Cancel
@@ -345,7 +348,7 @@ const AIQuickLaunchModal = ({ open, onClose, onConfirm }: AIQuickLaunchModalProp
                 disabled={walletBalance !== null && parseFloat(initialBuyIn) > 0 && parseFloat(initialBuyIn) > (walletBalance - 0.005)}
               >
                 <Wallet className="h-4 w-4" />
-                Launch Token ({(0.02 + (parseFloat(initialBuyIn) || 0)).toFixed(3)} SOL)
+                Launch ({(0.02 + (parseFloat(initialBuyIn) || 0)).toFixed(3)} SOL)
               </Button>
             </div>
           </div>

@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom line clamp utilities */
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 /* Checker pattern for transparent backgrounds */
 .bg-checker-pattern {
   background-image: 
