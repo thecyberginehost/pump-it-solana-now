@@ -1,6 +1,11 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+// Import Node.js Buffer for Deno 2 compatibility
+import { Buffer } from "node:buffer";
+
+// Make Buffer globally available for Solana libraries
+globalThis.Buffer = Buffer;
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   Connection,
   PublicKey,
@@ -9,11 +14,11 @@ import {
   LAMPORTS_PER_SOL,
   AccountMeta,
   TransactionInstruction,
-} from "https://esm.sh/@solana/web3.js@1.98.2";
+} from "npm:@solana/web3.js@1.98.2";
 import {
   TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
-} from "https://esm.sh/@solana/spl-token@0.4.8";
+} from "npm:@solana/spl-token@0.4.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
