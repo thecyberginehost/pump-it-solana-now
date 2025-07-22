@@ -77,6 +77,17 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
   
   // Check if token is app-created (has mint address)
   const isAppToken = !!token.mint_address;
+  
+  // Debug logging
+  console.log('Trading Panel Debug:', {
+    isAuthenticated,
+    isTrading,
+    buyAmount,
+    isAppToken,
+    hasGraduated,
+    walletAddress,
+    tokenMintAddress: token.mint_address
+  });
 
   return (
     <Card className="w-full max-w-md">
@@ -147,24 +158,43 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
               </div>
             </div>
             
-            <Button 
-              onClick={handleBuy}
-              disabled={!isAuthenticated || isTrading || !buyAmount || !isAppToken || hasGraduated}
-              className="w-full"
-              variant="default"
-            >
-              {isTrading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  Buy {token.symbol}
-                </>
-              )}
-            </Button>
+            {/* Buy Button with Clear Status Messages */}
+            {!isAuthenticated ? (
+              <Button className="w-full" variant="outline" disabled>
+                Connect Wallet to Buy
+              </Button>
+            ) : !isAppToken ? (
+              <Button className="w-full" variant="outline" disabled>
+                Trading Not Available
+              </Button>
+            ) : hasGraduated ? (
+              <Button className="w-full" variant="outline" disabled>
+                Trade on Raydium
+              </Button>
+            ) : !buyAmount ? (
+              <Button className="w-full" variant="outline" disabled>
+                Enter Amount to Buy
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleBuy}
+                disabled={isTrading}
+                className="w-full"
+                variant="default"
+              >
+                {isTrading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    Buy {token.symbol}
+                  </>
+                )}
+              </Button>
+            )}
           </TabsContent>
           
           <TabsContent value="sell" className="space-y-4">
