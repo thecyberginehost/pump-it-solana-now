@@ -86,8 +86,9 @@ serve(async (req) => {
       );
     }
 
-    // Connect to Solana
-    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    // Connect to Solana using Alchemy RPC
+    const rpcUrl = Deno.env.get('ALCHEMY_RPC_URL') || clusterApiUrl('devnet');
+    const connection = new Connection(rpcUrl, 'confirmed');
     
     // Calculate trade parameters
     let tradeAmount: number;

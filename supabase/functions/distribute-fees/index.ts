@@ -77,7 +77,8 @@ serve(async (req) => {
       new Uint8Array(JSON.parse(platformWalletKey))
     );
 
-    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    const rpcUrl = Deno.env.get('ALCHEMY_RPC_URL') || clusterApiUrl('devnet');
+    const connection = new Connection(rpcUrl, 'confirmed');
 
     try {
       const transactions = [];

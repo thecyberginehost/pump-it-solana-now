@@ -326,8 +326,9 @@ serve(async (req) => {
       trustLevel: freeze ? 'Standard' : 'Community Safe (No Freeze Risk)'
     });
 
-    // Connect to Solana devnet
-    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    // Connect to Solana using Alchemy RPC
+    const rpcUrl = Deno.env.get('ALCHEMY_RPC_URL') || clusterApiUrl('devnet');
+    const connection = new Connection(rpcUrl, 'confirmed');
     
     // Create metadata JSON and upload it
     const metadataUri = await createTokenMetadata(supabase, {

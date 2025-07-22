@@ -15,11 +15,12 @@ interface WalletContextProviderProps {
 }
 
 export const WalletContextProvider = ({ children }: WalletContextProviderProps) => {
-  // Use devnet for development
-  const network = WalletAdapterNetwork.Devnet;
-  
-  // Configure the endpoint
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  // Configure the endpoint - replace with your actual Alchemy devnet RPC URL
+  const endpoint = useMemo(() => {
+    // For now, using standard devnet. In production, you'd configure your Alchemy URL here
+    // You can replace this with your actual Alchemy devnet URL for better performance
+    return clusterApiUrl(WalletAdapterNetwork.Devnet);
+  }, []);
   
   // Configure supported wallets
   const wallets = useMemo(

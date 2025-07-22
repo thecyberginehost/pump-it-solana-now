@@ -79,8 +79,9 @@ serve(async (req) => {
       );
     }
 
-    // Connect to Solana
-    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    // Connect to Solana using Alchemy RPC
+    const rpcUrl = Deno.env.get('ALCHEMY_RPC_URL') || clusterApiUrl('devnet');
+    const connection = new Connection(rpcUrl, 'confirmed');
     
     // Platform wallet (should be stored as secret or config)
     const platformWalletKey = Deno.env.get('PLATFORM_WALLET_PRIVATE_KEY');
