@@ -1,0 +1,203 @@
+
+import { useState } from "react";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { TrendingUp, TrendingDown, Loader2, DollarSign } from "lucide-react";
+import { useWalletAuth } from "@/hooks/useWalletAuth";
+import { useTrading } from "@/hooks/useTrading";
+import { Token } from "@/hooks/useTokens";
+import { toast } from "sonner";
+
+interface TokenTradingPanelProps {
+  token: Token;
+}
+
+const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
+  const [buyAmount, setBuyAmount] = useState("");
+  const [sellAmount, setSellAmount] = useState("");
+  const { isAuthenticated, walletAddress } = useWalletAuth();
+  const { executeTrade, isTrading } = useTrading();
+
+  const handleBuy = async () => {
+    if (!isAuthenticated || !walletAddress) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    const amount = parseFloat(buyAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+
+    await executeTrade({
+      tokenId: token.id,
+      tradeType: 'buy',
+      amount: amount,
+      walletAddress: walletAddress,
+      slippage: 5,
+    });
+
+    setBuyAmount("");
+  };
+
+  const handleSell = async () => {
+    if (!isAuthenticated || !walletAddress) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    const amount = parseFloat(sellAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+
+    await executeTrade({
+      tokenId: token.id,
+      tradeType: 'sell',
+      amount: amount,
+      walletAddress: walletAddress,
+      slippage: 5,
+    });
+
+    setSellAmount("");
+  };
+
+  const currentPrice = token.price || 0.001;
+  const estimatedTokens = buyAmount ? (parseFloat(buyAmount) / currentPrice) * 0.98 : 0;
+  const estimatedSOL = sellAmount ? (parseFloat(sellAmount) * currentPrice) * 0.98 : 0;
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <DollarSign className="h-5 w-5" />
+          Trade {token.symbol}
+        </CardTitle>
+        <div className="text-sm text-muted-foreground">
+          Current Price: {currentPrice.toFixed(6)} SOL
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="buy" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="buy" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Buy
+            </TabsTrigger>
+            <TabsTrigger value="sell" className="flex items-center gap-2">
+              <TrendingDown className="h-4 w-4" />
+              Sell
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="buy" className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="buyAmount">Amount (SOL)</Label>
+              <Input
+                id="buyAmount"
+                type="number"
+                placeholder="0.0"
+                value={buyAmount}
+                onChange={(e) => setBuyAmount(e.target.value)}
+                disabled={isTrading}
+                step="0.001"
+                min="0"
+              />
+              {buyAmount && (
+                <p className="text-xs text-muted-foreground">
+                  ≈ {estimatedTokens.toFixed(2)} {token.symbol} (after 2% fee)
+                </p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">
+                <div>Trading Fee: 2% (Auto-distributed)</div>
+                <div>• Platform: 1% | Creator: 0.7% | Community: 0.2% | Liquidity: 0.1%</div>
+              </div>
+            </div>
+            
+            <Button 
+              onClick={handleBuy}
+              disabled={!isAuthenticated || isTrading || !buyAmount}
+              className="w-full"
+              variant="default"
+            >
+              {isTrading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  Buy {token.symbol}
+                </>
+              )}
+            </Button>
+          </TabsContent>
+          
+          <TabsContent value="sell" className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="sellAmount">Amount ({token.symbol})</Label>
+              <Input
+                id="sellAmount"
+                type="number"
+                placeholder="0.0"
+                value={sellAmount}
+                onChange={(e) => setSellAmount(e.target.value)}
+                disabled={isTrading}
+                step="0.01"
+                min="0"
+              />
+              {sellAmount && (
+                <p className="text-xs text-muted-foreground">
+                  ≈ {estimatedSOL.toFixed(6)} SOL (after 2% fee)
+                </p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">
+                <div>Trading Fee: 2% (Auto-distributed)</div>
+                <div>• Platform: 1% | Creator: 0.7% | Community: 0.2% | Liquidity: 0.1%</div>
+              </div>
+            </div>
+            
+            <Button 
+              onClick={handleSell}
+              disabled={!isAuthenticated || isTrading || !sellAmount}
+              className="w-full"
+              variant="destructive"
+            >
+              {isTrading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <TrendingDown className="mr-2 h-4 w-4" />
+                  Sell {token.symbol}
+                </>
+              )}
+            </Button>
+          </TabsContent>
+        </Tabs>
+        
+        {!isAuthenticated && (
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            Connect your wallet to start trading
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default TokenTradingPanel;
