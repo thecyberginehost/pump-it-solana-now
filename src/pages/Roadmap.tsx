@@ -25,6 +25,7 @@ const Roadmap: React.FC = () => {
   const phases = [
     {
       id: 1,
+      phase: "Phase 1",
       title: "MoonForge Meme",
       subtitle: "AI-Powered Meme Token Platform",
       status: "current",
@@ -39,10 +40,6 @@ const Roadmap: React.FC = () => {
         "🚀 Boost System",
         "📊 Analytics Dashboard"
       ],
-      hiring: {
-        roles: ["Frontend Developer", "AI Engineer", "Community Manager"],
-        team_size: "2-3 people"
-      },
       benefits: {
         creators: "Launch viral memes with AI assistance",
         traders: "Earn achievements and unlock exclusive features",
@@ -53,6 +50,7 @@ const Roadmap: React.FC = () => {
     },
     {
       id: 2,
+      phase: "Phase 2",
       title: "MoonForge Utility",
       subtitle: "Enterprise Token Creation Platform",
       status: "planned",
@@ -67,10 +65,6 @@ const Roadmap: React.FC = () => {
         "🔗 Multi-Chain Support",
         "📋 Compliance Tools"
       ],
-      hiring: {
-        roles: ["Senior Blockchain Developer", "Smart Contract Auditor", "Enterprise Sales"],
-        team_size: "5-8 people"
-      },
       benefits: {
         startups: "Launch professional tokens for your company",
         enterprises: "Create internal tokens for employees and customers",
@@ -81,6 +75,7 @@ const Roadmap: React.FC = () => {
     },
     {
       id: 3,
+      phase: "Phase 3",
       title: "MoonForge Ecosystem",
       subtitle: "Cross-Chain Web3 Platform",
       status: "future",
@@ -95,10 +90,6 @@ const Roadmap: React.FC = () => {
         "📱 Native Mobile App (iOS & Android)",
         "🛠️ Developer SDK"
       ],
-      hiring: {
-        roles: ["Mobile App Developers", "DevOps Engineers", "Product Managers", "UI/UX Designers"],
-        team_size: "15-20 people"
-      },
       benefits: {
         users: "Access tokens across all major blockchains",
         developers: "Build on our platform with powerful APIs",
@@ -109,6 +100,7 @@ const Roadmap: React.FC = () => {
     },
     {
       id: 4,
+      phase: "Phase 4",
       title: "MoonForge Infrastructure",
       subtitle: "Web3 Development Platform",
       status: "vision",
@@ -123,10 +115,6 @@ const Roadmap: React.FC = () => {
         "🔬 Advanced Analytics",
         "🌟 AI Marketplace"
       ],
-      hiring: {
-        roles: ["VP Engineering", "Business Development", "AI/ML Engineers", "Enterprise Architects"],
-        team_size: "30+ people"
-      },
       benefits: {
         platforms: "Integrate our token creation into your app",
         enterprises: "Custom solutions for your specific needs",
@@ -206,6 +194,9 @@ const Roadmap: React.FC = () => {
                         </div>
                         <div>
                           <div className="flex items-center gap-3 mb-1">
+                            <Badge variant="secondary" className="text-xs font-medium">
+                              {phase.phase}
+                            </Badge>
                             <CardTitle className="text-2xl">{phase.title}</CardTitle>
                             <Badge variant="outline" className={`${statusInfo.color} text-white border-none`}>
                               <StatusIcon className="w-3 h-3 mr-1" />
@@ -245,27 +236,6 @@ const Roadmap: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Hiring Information */}
-                    {phase.hiring && (
-                      <div>
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <Users className="w-4 h-4 text-purple-500" />
-                          Team Growth ({phase.hiring.team_size})
-                        </h4>
-                        <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-                          <p className="text-sm text-purple-700 dark:text-purple-300 mb-2">
-                            <strong>We're hiring!</strong> Join us as we scale to {phase.hiring.team_size}
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {phase.hiring.roles.map((role, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-800 dark:text-purple-300">
-                                {role}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
 
                     {/* Benefits */}
                     <div>
@@ -303,47 +273,6 @@ const Roadmap: React.FC = () => {
           })}
         </div>
 
-        {/* Join Our Team Section */}
-        <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-200 dark:border-purple-800">
-          <CardContent className="p-8">
-            <div className="text-center space-y-4">
-              <Users className="w-12 h-12 mx-auto text-purple-600" />
-              <h3 className="text-2xl font-bold">Join the MoonForge Revolution</h3>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                We're building the future of Web3, and we need amazing people to join our journey. 
-                From blockchain developers to mobile engineers, we're hiring across all phases of our roadmap.
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <div className="text-left space-y-2">
-                  <h4 className="font-semibold text-purple-600">Current Openings</h4>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <div>• Frontend Developer (React/TypeScript)</div>
-                    <div>• AI Engineer (LLM/Computer Vision)</div>
-                    <div>• Community Manager</div>
-                  </div>
-                </div>
-                <div className="text-left space-y-2">
-                  <h4 className="font-semibold text-purple-600">Coming Soon</h4>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <div>• Mobile App Developers (iOS/Android)</div>
-                    <div>• Blockchain Engineers</div>
-                    <div>• Product Managers</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Interested? Send your resume and portfolio to <span className="font-mono bg-muted px-2 py-1 rounded">careers@moonforge.io</span>
-                </p>
-                <Badge variant="outline" className="text-purple-600 border-purple-300">
-                  Remote-First • Competitive Equity • Flexible Hours
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Why This Matters */}
         <Card className="bg-gradient-to-r from-primary/10 to-primary/5">
