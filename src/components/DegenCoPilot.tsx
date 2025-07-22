@@ -201,7 +201,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
   // Mobile minimized view
   if (isMobile && isMinimized) {
     return (
-      <div className="fixed bottom-24 right-4 z-40">
+      <div className="fixed bottom-32 right-4 z-40">
         <Button
           onClick={() => setIsMinimized(false)}
           className="w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
@@ -215,7 +215,7 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
   return (
     <Card className={`w-full ${
       isMobile 
-        ? 'fixed inset-x-2 bottom-24 top-20 z-30' 
+        ? 'fixed inset-x-2 bottom-32 top-20 z-30' 
         : 'max-w-4xl mx-auto h-[500px] sm:h-[600px]'
     } flex flex-col`}>
       <CardHeader className="flex-shrink-0 p-3 sm:p-6">
