@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievement_types: {
+        Row: {
+          badge_color: string
+          category: string
+          created_at: string
+          criteria: Json
+          description: string
+          icon: string
+          id: string
+          name: string
+          rarity: string
+          reward_type: string | null
+          reward_value: number | null
+        }
+        Insert: {
+          badge_color?: string
+          category: string
+          created_at?: string
+          criteria: Json
+          description: string
+          icon: string
+          id?: string
+          name: string
+          rarity?: string
+          reward_type?: string | null
+          reward_value?: number | null
+        }
+        Update: {
+          badge_color?: string
+          category?: string
+          created_at?: string
+          criteria?: Json
+          description?: string
+          icon?: string
+          id?: string
+          name?: string
+          rarity?: string
+          reward_type?: string | null
+          reward_value?: number | null
+        }
+        Relationships: []
+      }
       community_rewards: {
         Row: {
           created_at: string
@@ -363,6 +405,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_achievements: {
+        Row: {
+          achievement_type_id: string
+          created_at: string
+          earned_at: string
+          id: string
+          metadata: Json | null
+          token_id: string | null
+          user_wallet: string
+        }
+        Insert: {
+          achievement_type_id: string
+          created_at?: string
+          earned_at?: string
+          id?: string
+          metadata?: Json | null
+          token_id?: string | null
+          user_wallet: string
+        }
+        Update: {
+          achievement_type_id?: string
+          created_at?: string
+          earned_at?: string
+          id?: string
+          metadata?: Json | null
+          token_id?: string | null
+          user_wallet?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_type_id_fkey"
+            columns: ["achievement_type_id"]
+            isOneToOne: false
+            referencedRelation: "achievement_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_achievements_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -371,6 +458,14 @@ export type Database = {
       assign_top_10_position: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      check_and_award_achievements: {
+        Args: {
+          p_user_wallet: string
+          p_token_id?: string
+          p_check_type?: string
+        }
+        Returns: undefined
       }
       get_available_top_10_spots: {
         Args: Record<PropertyKey, never>

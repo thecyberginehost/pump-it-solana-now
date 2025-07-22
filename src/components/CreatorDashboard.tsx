@@ -18,6 +18,7 @@ import {
   Calendar,
   Share2
 } from "lucide-react";
+import AchievementDisplay from "@/components/AchievementDisplay";
 
 const CreatorDashboard = () => {
   const { isAuthenticated, walletAddress } = useWalletAuth();
@@ -222,6 +223,11 @@ const CreatorDashboard = () => {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        {/* Achievements Section */}
+        <div className="mt-8">
+          <AchievementDisplay walletAddress={walletAddress} compact />
         </div>
 
         {/* Quick Stats */}

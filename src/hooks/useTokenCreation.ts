@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAchievements } from './useAchievements';
 
 export interface TokenData {
   name: string;
@@ -18,6 +19,7 @@ export const useTokenCreation = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
+  const { checkAchievements } = useAchievements();
 
   const createToken = useMutation({
     mutationFn: async ({ tokenData, walletAddress, initialBuyIn = 0, freeze = false }: { 
@@ -43,13 +45,19 @@ export const useTokenCreation = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       const trustMessage = data.trustLevel === 'Community Safe' 
         ? ' 🛡️ No freeze authority = Community safe!' 
         : '';
       toast.success(`Token "${data.token.name}" created successfully!${trustMessage}`);
       queryClient.invalidateQueries({ queryKey: ['tokens'] });
       queryClient.invalidateQueries({ queryKey: ['recent-tokens'] });
+      
+      // Check for creator achievements
+      checkAchievements({
+        userWallet: variables.walletAddress,
+        checkType: 'creator',
+      });
       
       // Navigate to success page with token details
       const params = new URLSearchParams({
