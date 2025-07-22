@@ -23,7 +23,8 @@ import {
   ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
-import TokenTradingPanel from "@/components/TokenTradingPanel";
+import BondingCurvePanel from "@/components/BondingCurvePanel";
+import BondingCurveVisualization from "@/components/BondingCurveVisualization";
 import TokenTradingActivity from "@/components/TokenTradingActivity";
 import { TradingChart } from "@/components/TradingChart";
 
@@ -45,6 +46,10 @@ interface TokenDetail {
   updated_at: string;
   telegram_url?: string;
   x_url?: string;
+  // New bonding curve fields
+  sol_raised?: number;
+  tokens_sold?: number;
+  is_graduated?: boolean;
 }
 
 const TokenDetail = () => {
@@ -222,8 +227,15 @@ const TokenDetail = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content - Trading Chart and Stats */}
+          {/* Main Content - Bonding Curve Visualization */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Bonding Curve Visualization */}
+            <BondingCurveVisualization 
+              currentSolRaised={token.sol_raised || 0}
+              tokensSold={token.tokens_sold || 0}
+              tokenSymbol={token.symbol}
+            />
+
             {/* Trading Chart */}
             <TradingChart 
               tokenId={token.id}
@@ -297,8 +309,18 @@ const TokenDetail = () => {
 
           {/* Sidebar - Trading Panel */}
           <div className="space-y-6">
-            {/* Trading Panel */}
-            <TokenTradingPanel token={token} />
+            {/* Bonding Curve Trading Panel */}
+            <BondingCurvePanel 
+              tokenId={token.id}
+              tokenSymbol={token.symbol}
+              tokenName={token.name}
+              currentSolRaised={token.sol_raised || 0}
+              tokensSold={token.tokens_sold || 0}
+              onTrade={(result) => {
+                // Refresh token data after trade
+                fetchTokenDetail();
+              }}
+            />
             
             {/* Trading Activity */}
             <TokenTradingActivity tokenId={token.id} />

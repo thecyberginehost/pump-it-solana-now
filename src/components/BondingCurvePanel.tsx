@@ -9,6 +9,7 @@ import { Badge } from "./ui/badge";
 import { TrendingUp, TrendingDown, Loader2, DollarSign, Info, Zap } from "lucide-react";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import { useBondingCurve, formatPrice, formatMarketCap, formatTokenAmount } from "@/hooks/useBondingCurve";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface BondingCurvePanelProps {
@@ -75,26 +76,24 @@ const BondingCurvePanel = ({
 
     setIsTrading(true);
     try {
-      // TODO: Call bonding curve trade function
-      const response = await fetch('/api/bonding-curve-trade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // Call bonding curve trade function via Supabase
+      const { data, error } = await supabase.functions.invoke('bonding-curve-trade', {
+        body: {
           tokenId,
           tradeType: 'buy',
           solAmount: amount,
           walletAddress,
           expectedTokensOut: buyPreview.tokensOut,
-        }),
+        },
       });
 
-      if (!response.ok) throw new Error('Trade failed');
+      if (error) throw new Error(error.message || 'Trade failed');
+      if (!data.success) throw new Error(data.error || 'Trade failed');
       
-      const result = await response.json();
-      toast.success(`Successfully bought ${formatTokenAmount(result.tokensReceived)} ${tokenSymbol}!`);
+      toast.success(`Successfully bought ${formatTokenAmount(data.transaction.tokensReceived)} ${tokenSymbol}!`);
       
       setBuyAmount("");
-      onTrade?.(result);
+      onTrade?.(data);
     } catch (error: any) {
       console.error('Buy error:', error);
       toast.error(error?.message || 'Buy failed');
@@ -122,26 +121,24 @@ const BondingCurvePanel = ({
 
     setIsTrading(true);
     try {
-      // TODO: Call bonding curve trade function
-      const response = await fetch('/api/bonding-curve-trade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // Call bonding curve trade function via Supabase
+      const { data, error } = await supabase.functions.invoke('bonding-curve-trade', {
+        body: {
           tokenId,
           tradeType: 'sell',
           tokenAmount: amount,
           walletAddress,
           expectedSolOut: Math.abs(sellPreview.solIn),
-        }),
+        },
       });
 
-      if (!response.ok) throw new Error('Trade failed');
+      if (error) throw new Error(error.message || 'Trade failed');
+      if (!data.success) throw new Error(data.error || 'Trade failed');
       
-      const result = await response.json();
       toast.success(`Successfully sold ${formatTokenAmount(amount)} ${tokenSymbol}!`);
       
       setSellAmount("");
-      onTrade?.(result);
+      onTrade?.(data);
     } catch (error: any) {
       console.error('Sell error:', error);
       toast.error(error?.message || 'Sell failed');

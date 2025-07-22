@@ -304,12 +304,15 @@ export type Database = {
           holder_count: number | null
           id: string
           image_url: string | null
+          is_graduated: boolean | null
           market_cap: number | null
           mint_address: string | null
           name: string
           price: number | null
+          sol_raised: number | null
           symbol: string
           telegram_url: string | null
+          tokens_sold: number | null
           total_supply: number | null
           updated_at: string
           volume_24h: number | null
@@ -323,12 +326,15 @@ export type Database = {
           holder_count?: number | null
           id?: string
           image_url?: string | null
+          is_graduated?: boolean | null
           market_cap?: number | null
           mint_address?: string | null
           name: string
           price?: number | null
+          sol_raised?: number | null
           symbol: string
           telegram_url?: string | null
+          tokens_sold?: number | null
           total_supply?: number | null
           updated_at?: string
           volume_24h?: number | null
@@ -342,12 +348,15 @@ export type Database = {
           holder_count?: number | null
           id?: string
           image_url?: string | null
+          is_graduated?: boolean | null
           market_cap?: number | null
           mint_address?: string | null
           name?: string
           price?: number | null
+          sol_raised?: number | null
           symbol?: string
           telegram_url?: string | null
+          tokens_sold?: number | null
           total_supply?: number | null
           updated_at?: string
           volume_24h?: number | null

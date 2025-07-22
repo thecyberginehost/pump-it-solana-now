@@ -377,8 +377,12 @@ serve(async (req) => {
         mint_address: mintAddress.toString(),
         total_supply: 1000000000,
         creation_fee: 0.02,
+        // Initialize bonding curve values
+        sol_raised: 0,
+        tokens_sold: 0,
+        is_graduated: false,
         market_cap: 0,
-        price: 0,
+        price: 0.001 / 1000000000, // Very small initial price
         volume_24h: 0,
         holder_count: 1,
       })
