@@ -24,12 +24,7 @@ import {
   createSetAuthorityInstruction,
   AuthorityType,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
-import {
-  createCreateMetadataAccountV3Instruction,
-} from "https://esm.sh/@metaplex-foundation/mpl-token-metadata@3.2.1";
-
-// Define the metadata program ID directly
-const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+// Removed Metaplex imports for now to focus on core token creation
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -207,44 +202,9 @@ async function createTokenWithMetadata(
       )
     );
 
-    // Create Metaplex Metadata if URI is provided
-    if (metadataUri) {
-      const [metadataPDA] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("metadata"),
-          METADATA_PROGRAM_ID.toBuffer(),
-          mintAddress.toBuffer(),
-        ],
-        METADATA_PROGRAM_ID
-      );
-
-      transaction.add(
-        createCreateMetadataAccountV3Instruction(
-          {
-            metadata: metadataPDA,
-            mint: mintAddress,
-            mintAuthority: creatorKeypair.publicKey,
-            payer: creatorKeypair.publicKey,
-            updateAuthority: creatorKeypair.publicKey,
-          },
-          {
-            createMetadataAccountArgsV3: {
-              data: {
-                name: tokenData.name,
-                symbol: tokenData.symbol,
-                uri: metadataUri,
-                sellerFeeBasisPoints: 0,
-                creators: null,
-                collection: null,
-                uses: null,
-              },
-              isMutable: true,
-              collectionDetails: null,
-            },
-          }
-        )
-      );
-    }
+    // Metaplex metadata creation temporarily disabled for deployment stability
+    // Will be re-added once basic token creation is working
+    console.log('Token created without metadata - will add metadata support later');
 
     // Get recent blockhash
     const { blockhash } = await connection.getLatestBlockhash();
