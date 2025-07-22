@@ -245,8 +245,18 @@ serve(async (req) => {
       xUrl
     });
 
-    // Create token
-    const creatorKeypair = Keypair.generate();
+    // Use platform wallet for token creation (funded with devnet SOL)
+    const platformPrivateKey = Deno.env.get('PLATFORM_WALLET_PRIVATE_KEY');
+    if (!platformPrivateKey) {
+      throw new Error('Platform wallet private key not configured');
+    }
+    
+    const creatorKeypair = Keypair.fromSecretKey(
+      new Uint8Array(JSON.parse(platformPrivateKey))
+    );
+    
+    console.log('Using platform wallet:', creatorKeypair.publicKey.toString());
+    
     const tokenResult = await createBasicToken(connection, creatorKeypair, {
       name,
       symbol,
