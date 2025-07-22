@@ -24,10 +24,71 @@ import {
   AuthorityType,
 } from "https://esm.sh/@solana/spl-token@0.4.8";
 
+// Metaplex Token Metadata Program ID
+const TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Helper function to find metadata PDA
+function findMetadataPda(mint: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('metadata'),
+      TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+      mint.toBuffer(),
+    ],
+    TOKEN_METADATA_PROGRAM_ID
+  );
+}
+
+// Create metadata instruction
+function createMetadataInstruction(
+  mint: PublicKey,
+  metadata: PublicKey,
+  updateAuthority: PublicKey,
+  mintAuthority: PublicKey,
+  payer: PublicKey,
+  name: string,
+  symbol: string,
+  uri: string
+) {
+  const keys = [
+    { pubkey: metadata, isSigner: false, isWritable: true },
+    { pubkey: mint, isSigner: false, isWritable: false },
+    { pubkey: mintAuthority, isSigner: true, isWritable: false },
+    { pubkey: payer, isSigner: true, isWritable: true },
+    { pubkey: updateAuthority, isSigner: false, isWritable: false },
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+  ];
+
+  const nameBuffer = Buffer.alloc(32);
+  nameBuffer.write(name);
+  
+  const symbolBuffer = Buffer.alloc(10);
+  symbolBuffer.write(symbol);
+  
+  const uriBuffer = Buffer.alloc(200);
+  uriBuffer.write(uri);
+
+  const data = Buffer.concat([
+    Buffer.from([0]), // CreateMetadataAccountV3 instruction discriminator
+    nameBuffer,
+    symbolBuffer,
+    uriBuffer,
+    Buffer.from([0, 0]), // seller_fee_basis_points (0%)
+    Buffer.from([1]), // update_authority_is_signer
+    Buffer.from([1]), // is_mutable
+  ]);
+
+  return {
+    keys,
+    programId: TOKEN_METADATA_PROGRAM_ID,
+    data,
+  };
+}
 
 // Base58 decoding for Phantom wallet private keys
 function base58Decode(str: string): Uint8Array {
@@ -235,6 +296,21 @@ serve(async (req) => {
         totalSupply
       )
     );
+
+    // Add Metaplex Token Metadata (this makes tokens show proper names!)
+    const [metadataPda] = findMetadataPda(mintAddress);
+    const metadataInstruction = createMetadataInstruction(
+      mintAddress,
+      metadataPda,
+      userPublicKey, // update authority
+      userPublicKey, // mint authority
+      userPublicKey, // payer
+      name,
+      symbol,
+      metadataUri
+    );
+    
+    transaction.add(metadataInstruction);
 
     // Disable mint authority (make it immutable)
     transaction.add(

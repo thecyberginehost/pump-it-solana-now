@@ -72,14 +72,16 @@ export const useTokenCreation = () => {
           console.log('Transaction sent successfully:', signature);
           
           // Wait for confirmation before declaring success
+          console.log('Waiting for transaction confirmation...');
           await connection.confirmTransaction(signature, 'confirmed');
-          console.log('Transaction confirmed on blockchain');
+          console.log('✅ Transaction confirmed on blockchain!');
           
           // Return success data
           return {
             ...data,
             signature,
-            transactionConfirmed: true
+            transactionConfirmed: true,
+            message: `Token "${data.token.name}" created successfully with proper metadata!`
           };
         } catch (signError: any) {
           console.error('Detailed transaction error:', {
