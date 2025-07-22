@@ -363,6 +363,62 @@ export type Database = {
           },
         ]
       }
+      trading_activities: {
+        Row: {
+          activity_type: string
+          amount_sol: number
+          created_at: string
+          id: string
+          market_cap_at_time: number | null
+          profit_loss: number | null
+          profit_percentage: number | null
+          time_since_launch_minutes: number | null
+          token_amount: number
+          token_id: string
+          token_price: number
+          updated_at: string
+          user_wallet: string
+        }
+        Insert: {
+          activity_type: string
+          amount_sol: number
+          created_at?: string
+          id?: string
+          market_cap_at_time?: number | null
+          profit_loss?: number | null
+          profit_percentage?: number | null
+          time_since_launch_minutes?: number | null
+          token_amount: number
+          token_id: string
+          token_price: number
+          updated_at?: string
+          user_wallet: string
+        }
+        Update: {
+          activity_type?: string
+          amount_sol?: number
+          created_at?: string
+          id?: string
+          market_cap_at_time?: number | null
+          profit_loss?: number | null
+          profit_percentage?: number | null
+          time_since_launch_minutes?: number | null
+          token_amount?: number
+          token_id?: string
+          token_price?: number
+          updated_at?: string
+          user_wallet?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_activities_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trending_boosts: {
         Row: {
           boost_type: string
@@ -443,6 +499,53 @@ export type Database = {
           },
           {
             foreignKeyName: "user_achievements_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_portfolios: {
+        Row: {
+          average_buy_price: number
+          created_at: string
+          first_purchase_at: string
+          id: string
+          last_activity_at: string
+          token_amount: number
+          token_id: string
+          total_invested: number
+          updated_at: string
+          user_wallet: string
+        }
+        Insert: {
+          average_buy_price?: number
+          created_at?: string
+          first_purchase_at?: string
+          id?: string
+          last_activity_at?: string
+          token_amount?: number
+          token_id: string
+          total_invested?: number
+          updated_at?: string
+          user_wallet: string
+        }
+        Update: {
+          average_buy_price?: number
+          created_at?: string
+          first_purchase_at?: string
+          id?: string
+          last_activity_at?: string
+          token_amount?: number
+          token_id?: string
+          total_invested?: number
+          updated_at?: string
+          user_wallet?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_portfolios_token_id_fkey"
             columns: ["token_id"]
             isOneToOne: false
             referencedRelation: "tokens"
