@@ -235,7 +235,7 @@ serve(async (req) => {
       )
     );
 
-    // Get recent blockhash
+    // Get recent blockhash and set fee payer
     const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = userPublicKey;
