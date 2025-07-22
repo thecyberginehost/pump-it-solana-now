@@ -370,7 +370,7 @@ const BondingCurvePanel = ({
             <div>• Price increases with each buy</div>
             <div>• No slippage protection needed</div>
             <div>• Instant liquidity via formula</div>
-            <div>• Graduates at {formatMarketCap(69000)} market cap</div>
+            <div>• Graduates at {formatMarketCap(100000)} market cap</div>
           </div>
         </div>
 
