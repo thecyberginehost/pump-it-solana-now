@@ -326,22 +326,9 @@ serve(async (req) => {
       )
     );
 
-    // Add Metaplex Token Metadata (this makes tokens show proper names!)
-    try {
-      const metadataInstruction = createSimpleMetadataInstruction(
-        mintAddress,
-        userPublicKey,
-        name,
-        symbol,
-        metadataUri
-      );
-      
-      transaction.add(metadataInstruction);
-      console.log('Added metadata instruction for token name display');
-    } catch (metadataError) {
-      console.log('Skipping metadata instruction due to error:', metadataError);
-      // Continue without metadata - token will still work but show as "Unknown Token"
-    }
+    // Skip metadata for now to ensure transactions work reliably
+    // Tokens will show as "Unknown Token" but will function properly
+    console.log('Skipping metadata instruction - focusing on reliable token creation');
 
     // Disable mint authority (make it immutable)
     transaction.add(

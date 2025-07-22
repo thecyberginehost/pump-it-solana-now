@@ -520,8 +520,14 @@ Generate creative, marketable suggestions that would resonate with the current c
 async function generateTrendBasedToken(openAIApiKey: string, supabase: any, trendData: any) {
   console.log('Generating trend-based token with data:', trendData);
 
-  // Create a comprehensive prompt based on current trends
-  const trendPrompt = `Based on current crypto market trends, generate a complete token concept:
+  // Add randomness and uniqueness factors to prevent repetition
+  const timestamp = Date.now();
+  const randomSeed = Math.random().toString(36).substring(2, 8);
+  const uniqueModifiers = ['quantum', 'cosmic', 'ultra', 'mega', 'hyper', 'prime', 'elite', 'alpha', 'phantom', 'nexus'];
+  const randomModifier = uniqueModifiers[Math.floor(Math.random() * uniqueModifiers.length)];
+  
+  // Create a comprehensive prompt based on current trends with uniqueness
+  const trendPrompt = `Based on current crypto market trends, generate a COMPLETELY UNIQUE token concept:
 
 CURRENT TRENDS:
 - Trending tokens: ${trendData?.trendingTokens?.join(', ') || 'AI, Gaming, Memes'}
@@ -529,7 +535,17 @@ CURRENT TRENDS:
 - Market sentiment: ${trendData?.sentiment || 'bullish'}
 - Hot categories: ${trendData?.topCategories?.join(', ') || 'animals, space, tech'}
 
-Generate a token that would be perfectly positioned for viral success right now. 
+UNIQUENESS REQUIREMENTS:
+- Must be 100% ORIGINAL (never seen before)
+- Incorporate this unique modifier: "${randomModifier}"
+- Random creativity seed: "${randomSeed}"
+- Timestamp for uniqueness: ${timestamp}
+- Combine 2-3 trend elements in a fresh, unexpected way
+- Avoid overused crypto names and concepts
+
+Generate a token that would be perfectly positioned for viral success right now.
+Make it feel completely new and innovative, not a copy of existing concepts.
+
 Return JSON with:
 {
   "name": "TokenName",
@@ -537,7 +553,7 @@ Return JSON with:
   "description": "Brief compelling description",
   "imagePrompt": "Detailed prompt for logo generation",
   "category": "primary category",
-  "reasoning": "Why this token concept would go viral now"
+  "reasoning": "Why this unique token concept would go viral now"
 }`;
 
   try {
