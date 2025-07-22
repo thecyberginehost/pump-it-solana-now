@@ -33,9 +33,9 @@ export const MoreDropdown = () => {
       <DropdownMenuTrigger asChild>
         <Button 
           variant={hasActiveItem ? "default" : "ghost"} 
-          className="flex items-center space-x-2"
+          className="flex flex-col items-center justify-center p-2 rounded-lg text-xs font-medium min-w-16 h-auto md:flex-row md:space-x-2 md:h-9 md:px-3 md:text-sm"
         >
-          <MoreHorizontal className="w-4 h-4" />
+          <MoreHorizontal className="w-5 h-5 mb-1 md:w-4 md:h-4 md:mb-0" />
           <span>More</span>
         </Button>
       </DropdownMenuTrigger>

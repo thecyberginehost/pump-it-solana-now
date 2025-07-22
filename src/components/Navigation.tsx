@@ -226,9 +226,8 @@ const Navigation = () => {
             })}
             
             {/* More button for mobile */}
-            <div className="flex flex-col items-center justify-center p-2 rounded-lg text-xs font-medium min-w-16">
-              <MoreHorizontal className="w-5 h-5 mb-1" />
-              <span>More</span>
+            <div className="flex flex-col items-center justify-center min-w-16">
+              <MoreDropdown />
             </div>
           </div>
         </div>
