@@ -89,12 +89,25 @@ const BondingCurvePanel = ({
       });
 
       // Call the new bonding curve buy function (smart contract)
+      console.log('🚀 Calling bonding-curve-buy edge function:', {
+        tokenId,
+        walletAddress,
+        solAmount: amount
+      });
+
       const { data, error } = await supabase.functions.invoke('bonding-curve-buy', {
         body: {
           tokenId,
           walletAddress,
           solAmount: amount
         }
+      });
+
+      console.log('📡 Edge function returned:', {
+        hasData: !!data,
+        hasError: !!error,
+        errorMessage: error?.message,
+        dataKeys: data ? Object.keys(data) : null
       });
 
       if (error) {
