@@ -647,6 +647,10 @@ export type Database = {
         Args: { user_wallet: string }
         Returns: boolean
       }
+      initialize_creator_credits: {
+        Args: { p_user_wallet: string }
+        Returns: undefined
+      }
       reset_daily_credits: {
         Args: Record<PropertyKey, never>
         Returns: undefined

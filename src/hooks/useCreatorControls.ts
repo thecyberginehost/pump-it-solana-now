@@ -56,8 +56,30 @@ export const useCreatorControls = () => {
     enabled: !!walletAddress,
   });
 
+  // Initialize credits for new users
+  const initializeCredits = useMutation({
+    mutationFn: async () => {
+      if (!walletAddress) throw new Error('Wallet not connected');
+      
+      const { error } = await supabase.rpc('initialize_creator_credits', {
+        p_user_wallet: walletAddress
+      });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['creator-credits', walletAddress] });
+    },
+  });
+
   // Check if user can create tokens
   const canCreateToken = () => {
+    // If no credits found, try to initialize them
+    if (!credits && walletAddress) {
+      initializeCredits.mutate();
+      return false; // Will be true after re-query
+    }
+    
     if (!credits) return false;
     
     // Basic credit check
