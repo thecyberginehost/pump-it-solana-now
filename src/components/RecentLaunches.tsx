@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { TrendingUp, ExternalLink, Copy, Crown, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useRecentTokens } from "@/hooks/useTokens";
 import { toast } from "sonner";
 
@@ -83,8 +84,10 @@ const RecentLaunches = () => {
                         <h3 className="font-bold text-base sm:text-lg truncate">{launch.name}</h3>
                         <p className="text-sm text-muted-foreground">${launch.symbol}</p>
                       </div>
-                      <Button variant="ghost" size="icon" className="shrink-0">
-                        <ExternalLink size={16} />
+                      <Button variant="ghost" size="icon" className="shrink-0" asChild>
+                        <Link to={`/token/${launch.id}`}>
+                          <ExternalLink size={16} />
+                        </Link>
                       </Button>
                     </div>
 
@@ -112,8 +115,10 @@ const RecentLaunches = () => {
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-2">
-                      <Button variant="electric" size="sm" className="flex-1">
-                        Trade Now
+                      <Button variant="electric" size="sm" className="flex-1" asChild>
+                        <Link to={`/token/${launch.id}`}>
+                          Trade Now
+                        </Link>
                       </Button>
                       <Button size="sm" variant="outline" className="sm:w-auto">
                         Share
@@ -127,8 +132,10 @@ const RecentLaunches = () => {
         </div>
 
         <div className="text-center mt-8 sm:mt-12">
-          <Button variant="outline" className="w-full sm:w-auto">
-            View All Launches
+          <Button variant="outline" className="w-full sm:w-auto" asChild>
+            <Link to="/tokens">
+              View All Launches
+            </Link>
           </Button>
         </div>
       </div>

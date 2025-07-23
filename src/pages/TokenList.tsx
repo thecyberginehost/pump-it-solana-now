@@ -287,8 +287,10 @@ const TokenList = () => {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button className="flex-1" size="sm">
-                      Buy Token
+                    <Button className="flex-1" size="sm" asChild>
+                      <Link to={`/token/${token.id}`}>
+                        Buy Token
+                      </Link>
                     </Button>
                     <Button variant="outline" size="sm" asChild>
                       <Link to={`/token/${token.id}`}>
