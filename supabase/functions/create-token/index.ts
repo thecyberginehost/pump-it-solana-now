@@ -44,8 +44,7 @@ function getEnv(name: string): string {
 
 function getConnection(): Connection {
   const heliusKey = getEnv("HELIUS_RPC_API_KEY");
-  const url = `https://mainnet.helius-rpc.com/?api-key=${heliusKey}`;
-  return new Connection(url, { commitment: "confirmed" });
+  return new Connection(`https://mainnet.helius-rpc.com/?api-key=${heliusKey}`, { commitment: "confirmed" });
 }
 
 function getPlatformKeypair(): Keypair {
@@ -64,35 +63,37 @@ interface CreateTokenRequest {
 
 // ---------- Main ----------
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
-  if (req.method !== "POST") {
-    return jsonResponse({ error: "Use POST" }, 405);
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
-
-  let body: CreateTokenRequest;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonResponse({ error: "Invalid JSON body" }, 400);
-  }
-
-  const {
-    name,
-    symbol,
-    decimals = 9,
-    initialSupply = 0,
-    receiver,
-  } = body;
-
-  if (!name || !symbol) {
-    return jsonResponse({ error: "name and symbol required" }, 400);
-  }
-
-  const connection = getConnection();
-  const platform = getPlatformKeypair();
 
   try {
+    if (req.method !== "POST") {
+      return jsonResponse({ error: "Use POST" }, 405);
+    }
+
+    let body: CreateTokenRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return jsonResponse({ error: "Invalid JSON body" }, 400);
+    }
+
+    const {
+      name,
+      symbol,
+      decimals = 9,
+      initialSupply = 0,
+      receiver,
+    } = body;
+
+    if (!name || !symbol) {
+      return jsonResponse({ error: "name and symbol required" }, 400);
+    }
+
+    const connection = getConnection();
+    const platform = getPlatformKeypair();
+
     // 1. Create mint account
     const mintKeypair = Keypair.generate();
     const rentLamports = await getMinimumBalanceForRentExemptMint(connection);
@@ -216,7 +217,13 @@ serve(async (req: Request) => {
       authoritiesRevoked: true,
     });
   } catch (err) {
-    console.error("ERR:create-token", err);
-    return jsonResponse({ error: (err as Error).message }, 500);
+    console.error("ERR:create-token", {
+      message: (err as Error).message,
+      stack: (err as Error).stack,
+    });
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 });

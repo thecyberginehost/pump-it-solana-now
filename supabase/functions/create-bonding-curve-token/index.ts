@@ -1,3 +1,7 @@
+// supabase/functions/create-bonding-curve-token/index.ts
+// Mints a token AND initializes your internal bonding-curve pool (Pump.fun-like).
+// NOTE: Replace the TODO sections with your specific curve math & pool account logic.
+
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import {
   Connection,
@@ -41,8 +45,7 @@ function getEnv(name: string): string {
 
 function getConnection(): Connection {
   const heliusKey = getEnv("HELIUS_RPC_API_KEY");
-  const url = `https://mainnet.helius-rpc.com/?api-key=${heliusKey}`;
-  return new Connection(url, { commitment: "confirmed" });
+  return new Connection(`https://mainnet.helius-rpc.com/?api-key=${heliusKey}`, { commitment: "confirmed" });
 }
 
 function getPlatformKeypair(): Keypair {
@@ -66,32 +69,35 @@ interface CreateCurveTokenRequest {
 
 // ---------- Main ----------
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return jsonResponse({ error: "Use POST" }, 405);
-
-  let body: CreateCurveTokenRequest;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonResponse({ error: "Invalid JSON body" }, 400);
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
-  const {
-    name,
-    symbol,
-    decimals = 9,
-    totalSupply = 0,
-    curveConfig = {},
-  } = body;
-
-  if (!name || !symbol) {
-    return jsonResponse({ error: "name and symbol required" }, 400);
-  }
-
-  const connection = getConnection();
-  const platform = getPlatformKeypair();
-
   try {
+    if (req.method !== "POST") return jsonResponse({ error: "Use POST" }, 405);
+
+    let body: CreateCurveTokenRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return jsonResponse({ error: "Invalid JSON body" }, 400);
+    }
+
+    const {
+      name,
+      symbol,
+      decimals = 9,
+      totalSupply = 0,
+      curveConfig = {},
+    } = body;
+
+    if (!name || !symbol) {
+      return jsonResponse({ error: "name and symbol required" }, 400);
+    }
+
+    const connection = getConnection();
+    const platform = getPlatformKeypair();
+
     // 1. Create mint
     const mintKeypair = Keypair.generate();
     const rentLamports = await getMinimumBalanceForRentExemptMint(connection);
@@ -117,9 +123,12 @@ serve(async (req: Request) => {
     //    Option B: Custom PDA via your program (recommended)
     //
     // For simplicity, let's assume you use a PDA from your bonding curve program.
-    // Replace PROGRAM_ID, seeds, and logic as needed.
+    // TODO: Replace PROGRAM_ID, seeds, and logic as needed.
 
-    const BONDING_PROGRAM_ID = new PublicKey("11111111111111111111111111111111"); // TODO replace
+    // TODO: Replace this placeholder program ID with your actual bonding curve program ID
+    const BONDING_PROGRAM_ID = new PublicKey("11111111111111111111111111111111");
+    
+    // TODO: Update these seeds to match your bonding curve program's PDA derivation
     const [poolPda] = await PublicKey.findProgramAddress(
       [Buffer.from("pool"), mintKeypair.publicKey.toBuffer()],
       BONDING_PROGRAM_ID
@@ -154,10 +163,17 @@ serve(async (req: Request) => {
         )
       : null;
 
-    // 4. Initialize/seed your bonding curve state (TODO: your custom program ix)
-    //    Usually you'll send an ix to your on-chain curve program to store prices, slope, fees, etc.
-    const initCurveIx = SystemProgram.nop(); // placeholder
-    // TODO: Replace above with real instruction(s) to your curve program.
+    // 4. Initialize/seed your bonding curve state
+    // TODO: Replace this placeholder with real instruction(s) to your curve program.
+    // Usually you'll send an ix to your on-chain curve program to store prices, slope, fees, etc.
+    // For example:
+    // const initCurveIx = await createInitializeCurveInstruction({
+    //   curve: curvePda,
+    //   mint: mintKeypair.publicKey,
+    //   startingPrice: curveConfig.startingPriceLamports || 1000,
+    //   slope: curveConfig.slopeBps || 100,
+    //   fee: curveConfig.feeBps || 50,
+    // });
 
     // 5. Build and send tx
     const instructions = [
@@ -167,7 +183,8 @@ serve(async (req: Request) => {
       initMintIx,
       createPoolAtaIx,
       ...(mintToPoolIx ? [mintToPoolIx] : []),
-      initCurveIx,
+      // TODO: Add your curve initialization instruction here
+      // initCurveIx,
     ];
 
     const tx = new Transaction().add(...instructions);
@@ -211,7 +228,13 @@ serve(async (req: Request) => {
       authoritiesRevoked: true,
     });
   } catch (err) {
-    console.error("ERR:create-bonding-curve-token", err);
-    return jsonResponse({ error: (err as Error).message }, 500);
+    console.error("ERR:create-bonding-curve-token", {
+      message: (err as Error).message,
+      stack: (err as Error).stack,
+    });
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 });
