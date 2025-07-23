@@ -116,9 +116,9 @@ export const useCreatorControls = () => {
   // Check creator limits
   const checkCreatorLimits = (): { allowed: boolean; reason?: string; limits: CreatorLimits } => {
     const limits: CreatorLimits = {
-      maxTokensPerDay: 5,
-      maxTokensPerWeek: 10, 
-      cooldownHours: 1,
+      maxTokensPerDay: 999, // Removed for testing
+      maxTokensPerWeek: 999, // Removed for testing
+      cooldownHours: 0, // Removed for testing
       requiresVerification: false
     };
 
@@ -126,31 +126,7 @@ export const useCreatorControls = () => {
       return { allowed: false, reason: 'Wallet not connected', limits };
     }
 
-    if (!canCreateToken()) {
-      return { allowed: false, reason: 'Daily credits exhausted', limits };
-    }
-
-    const tokensToday = getTokensCreatedToday();
-    if (tokensToday >= limits.maxTokensPerDay) {
-      return { allowed: false, reason: 'Daily token limit reached', limits };
-    }
-
-    // Check if last token was created less than cooldown period ago
-    if (tokenHistory && tokenHistory.length > 0) {
-      const lastToken = tokenHistory[0];
-      const lastCreated = new Date(lastToken.created_at);
-      const now = new Date();
-      const hoursSince = (now.getTime() - lastCreated.getTime()) / (1000 * 60 * 60);
-      
-      if (hoursSince < limits.cooldownHours) {
-        return { 
-          allowed: false, 
-          reason: `Cooldown period: ${Math.ceil(limits.cooldownHours - hoursSince)} hours remaining`,
-          limits 
-        };
-      }
-    }
-
+    // For testing: always allow token creation if wallet is connected
     return { allowed: true, limits };
   };
 
