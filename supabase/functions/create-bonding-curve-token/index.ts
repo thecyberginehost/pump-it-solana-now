@@ -123,7 +123,7 @@ serve(async (req) => {
     console.log('Creating token:', { name, symbol, creatorWallet });
 
     // Validate required fields
-    if (!name || !symbol || !description || !creatorWallet || !signedTransaction) {
+    if (!name || !symbol || !description || !creatorWallet) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
@@ -196,12 +196,17 @@ serve(async (req) => {
       programId: realProgramId
     });
 
-    // Execute user's signed transaction (payment transaction)
-    const userTransaction = Transaction.from(Uint8Array.from(signedTransaction));
-    console.log('Submitting user payment transaction...');
-    const userTxId = await connection.sendRawTransaction(userTransaction.serialize());
-    await connection.confirmTransaction(userTxId);
-    console.log('✅ User payment confirmed:', userTxId);
+    // Execute user's signed transaction (payment transaction) - skip if no transaction provided
+    let userTxId = null;
+    if (signedTransaction) {
+      const userTransaction = Transaction.from(Uint8Array.from(signedTransaction));
+      console.log('Submitting user payment transaction...');
+      userTxId = await connection.sendRawTransaction(userTransaction.serialize());
+      await connection.confirmTransaction(userTxId);
+      console.log('✅ User payment confirmed:', userTxId);
+    } else {
+      console.log('⏭️ No payment transaction provided, proceeding without payment...');
+    }
 
     // Create token mint and bonding curve
     const createTokenTx = new Transaction();

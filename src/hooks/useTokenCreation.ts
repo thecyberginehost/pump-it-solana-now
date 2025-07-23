@@ -45,13 +45,12 @@ export const useTokenCreation = () => {
         body: {
           name: tokenData.name,
           symbol: tokenData.symbol,
+          description: tokenData.description || 'A new token created with Moonforge',
           imageUrl: tokenData.image,
-          description: tokenData.description,
-          telegramUrl: tokenData.telegram_url,
-          xUrl: tokenData.x_url,
+          telegram: tokenData.telegram_url,
+          twitter: tokenData.x_url,
           creatorWallet: walletAddress,
-          initialBuyIn,
-          freeze,
+          signedTransaction: null, // Will be updated when we have payment integration
         },
       });
 
