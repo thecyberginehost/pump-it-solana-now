@@ -44,7 +44,7 @@ export const useTokenCreation = () => {
       const { data, error } = await supabase.functions.invoke('create-bonding-curve-token', {
         body: {
           name: tokenData.name,
-          symbol: `${tokenData.symbol}.FORGE`, // Add forge suffix
+          symbol: tokenData.symbol,
           imageUrl: tokenData.image,
           description: tokenData.description,
           telegramUrl: tokenData.telegram_url,
