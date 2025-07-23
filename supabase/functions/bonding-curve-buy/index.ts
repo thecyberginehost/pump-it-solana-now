@@ -14,6 +14,9 @@ import {
   LAMPORTS_PER_SOL,
   AccountMeta,
   TransactionInstruction,
+  ComputeBudgetProgram,
+  VersionedTransaction,
+  TransactionMessage,
 } from "npm:@solana/web3.js@1.98.2";
 import {
   TOKEN_PROGRAM_ID,
@@ -26,6 +29,20 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Helius Sender designated tip accounts (mainnet-beta)
+const TIP_ACCOUNTS = [
+  "4ACfpUFoaSD9bfPdeu6DBt89gB6ENTeHBXCAi87NhDEE",
+  "D2L6yPZ2FmmmTKPgzaMKdhu6EWZcTpLy1Vhx8uvZe7NZ", 
+  "9bnz4RShgq1hAnLnZbP8kbgBg1kEmcJBYQq3gQbmnSta",
+  "5VY91ws6B2hMmBFRsXkoAAdsPHBJwRfBht4DXox3xkwn",
+  "2nyhqdwKcJZR2vcqCyrYsaPVdAnFoJjiksCXJ7hfEYgD",
+  "2q5pghRs6arqVjRvT5gfgWfWcHWmw1ZuCzphgd5KfWGJ",
+  "wyvPkWjVZz1M8fHQnMMCDTQDbkManefNNhweYk5WkcF",
+  "3KCKozbAaF75qEU33jtzozcJ29yJuaLJTy2jFdzUY8bT",
+  "4vieeGHPYPG2MmyPRcYjdiDmmhN3ww7hsFNap8pVN3Ey",
+  "4TQLFNWK8AovT1gFvda5jfw2oJeRMKEmw7aH6MGBJ3or"
+];
 
 const BONDING_CURVE_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
 
@@ -104,6 +121,105 @@ function calculateBuy(solIn: number, solRaised: number, tokensSold: number): {
   };
 }
 
+/**
+ * Get dynamic priority fee from Helius Priority Fee API
+ */
+async function getPriorityFee(
+  connection: Connection, 
+  instructions: TransactionInstruction[], 
+  payerKey: PublicKey, 
+  blockhash: string
+): Promise<number> {
+  try {
+    const tempTx = new VersionedTransaction(
+      new TransactionMessage({
+        instructions,
+        payerKey,
+        recentBlockhash: blockhash,
+      }).compileToV0Message()
+    );
+    
+    const response = await fetch(connection.rpcEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "1",
+        method: "getPriorityFeeEstimate",
+        params: [{
+          transaction: Buffer.from(tempTx.serialize()).toString('base64'),
+          options: { recommended: true },
+        }],   
+      }),
+    });
+    
+    const data = await response.json();
+    return data.result?.priorityFeeEstimate ? 
+      Math.ceil(data.result.priorityFeeEstimate * 1.2) : 50_000;
+  } catch {
+    return 50_000; // Fallback fee
+  }
+}
+
+/**
+ * Send transaction via Helius Sender with retry logic
+ */
+async function sendViaSender(
+  transaction: VersionedTransaction,
+  connection: Connection,
+  lastValidBlockHeight: number
+): Promise<string> {
+  const maxRetries = 3;
+  // Use Salt Lake City endpoint for best performance
+  const endpoint = 'http://slc-sender.helius-rpc.com/fast';
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Check blockhash validity
+      const currentHeight = await connection.getBlockHeight('confirmed');
+      if (currentHeight > lastValidBlockHeight) {
+        throw new Error('Blockhash expired');
+      }
+      
+      console.log(`🚀 Sending via Helius Sender (attempt ${attempt + 1})`);
+      
+      // Send transaction via Sender endpoint
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: Date.now().toString(),
+          method: "sendTransaction",
+          params: [
+            Buffer.from(transaction.serialize()).toString('base64'),
+            {
+              encoding: "base64",
+              skipPreflight: true,    // Required for Sender
+              maxRetries: 0           // Implement own retry logic
+            }
+          ]
+        })
+      });
+      
+      const result = await response.json();
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+      
+      console.log(`✅ Transaction sent via Sender: ${result.result}`);
+      return result.result;
+      
+    } catch (error) {
+      console.warn(`Sender attempt ${attempt + 1} failed:`, error);
+      if (attempt === maxRetries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  
+  throw new Error('All Sender retry attempts failed');
+}
+
 serve(async (req) => {
   console.log('=== BONDING CURVE BUY REQUEST ===');
   
@@ -150,13 +266,13 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Helius Solana connection with staked connections
+    // Initialize Helius Solana connection
     const heliusRpcApiKey = Deno.env.get('HELIUS_RPC_API_KEY');
     if (!heliusRpcApiKey) {
       throw new Error('Helius RPC API key not configured');
     }
     
-    const heliusRpcUrl = `https://devnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
+    const heliusRpcUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
     const connection = new Connection(heliusRpcUrl, 'confirmed');
     
     const mintAddress = new PublicKey(token.mint_address);
@@ -172,8 +288,12 @@ serve(async (req) => {
 
     console.log('Calculated buy trade:', trade);
 
-    // Build transaction
-    const transaction = new Transaction();
+    // Get latest blockhash with context
+    const { value: blockhashInfo } = await connection.getLatestBlockhashAndContext('confirmed');
+    const { blockhash, lastValidBlockHeight } = blockhashInfo;
+
+    // Build instructions array
+    const instructions: TransactionInstruction[] = [];
 
     // Get user's associated token account
     const userTokenAccount = await getAssociatedTokenAddress(
@@ -186,7 +306,7 @@ serve(async (req) => {
       await getAccount(connection, userTokenAccount);
     } catch (error) {
       // Account doesn't exist, create it
-      transaction.add(
+      instructions.push(
         createAssociatedTokenAccountInstruction(
           userPublicKey, // payer
           userTokenAccount, // account to create
@@ -204,7 +324,7 @@ serve(async (req) => {
     );
 
     // Add buy instruction
-    transaction.add(
+    instructions.push(
       createBuyInstruction(
         bondingCurveAddress,
         mintAddress,
@@ -215,45 +335,105 @@ serve(async (req) => {
       )
     );
 
-    // Set transaction metadata
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = userPublicKey;
-
-    // Serialize transaction
-    const serializedTransaction = transaction.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false
-    });
-
-    console.log('✅ Buy transaction prepared');
-    console.log('💰 SOL in:', solAmount);
-    console.log('🪙 Tokens out:', trade.tokensOut);
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        requiresSignature: true,
-        transaction: Array.from(serializedTransaction),
-        trade: {
-          type: 'buy',
-          solIn: solAmount,
-          tokensOut: trade.tokensOut,
-          priceAfter: trade.priceAfter,
-          newSolRaised: trade.newSolRaised,
-          newTokensSold: trade.newTokensSold,
-        },
-        message: `Buy transaction prepared: ${solAmount} SOL → ${trade.tokensOut.toFixed(2)} ${token.symbol}`
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    // Get dynamic priority fee
+    const priorityFee = await getPriorityFee(connection, instructions, userPublicKey, blockhash);
+    
+    // Add compute budget instructions at the beginning (required for Sender)
+    instructions.unshift(
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee })
     );
+    instructions.unshift(
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 100_000 })
+    );
+
+    // Add required tip transfer to random tip account (required for Sender)
+    const tipAccount = new PublicKey(TIP_ACCOUNTS[Math.floor(Math.random() * TIP_ACCOUNTS.length)]);
+    const tipAmountSOL = 0.001; // Minimum required tip
+    
+    instructions.push(
+      SystemProgram.transfer({
+        fromPubkey: userPublicKey,
+        toPubkey: tipAccount,
+        lamports: tipAmountSOL * LAMPORTS_PER_SOL,
+      })
+    );
+
+    // Build versioned transaction for Sender
+    const versionedTransaction = new VersionedTransaction(
+      new TransactionMessage({
+        instructions,
+        payerKey: userPublicKey,
+        recentBlockhash: blockhash,
+      }).compileToV0Message()
+    );
+
+    // Send via Helius Sender
+    try {
+      const signature = await sendViaSender(versionedTransaction, connection, lastValidBlockHeight);
+      
+      console.log('✅ Buy transaction sent via Sender');
+      console.log('💰 SOL in:', solAmount);
+      console.log('🪙 Tokens out:', trade.tokensOut);
+      console.log('🔗 Signature:', signature);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          signature,
+          requiresSignature: false, // Already sent via Sender
+          trade: {
+            type: 'buy',
+            solIn: solAmount,
+            tokensOut: trade.tokensOut,
+            priceAfter: trade.priceAfter,
+            newSolRaised: trade.newSolRaised,
+            newTokensSold: trade.newTokensSold,
+          },
+          message: `Buy executed via Sender: ${solAmount} SOL → ${trade.tokensOut.toFixed(2)} ${token.symbol}`,
+          tipAmount: tipAmountSOL
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } catch (senderError) {
+      console.error('Sender failed, falling back to standard transaction preparation');
+      
+      // Fallback: Return transaction for user to sign
+      const legacyTransaction = new Transaction();
+      legacyTransaction.add(...instructions);
+      legacyTransaction.recentBlockhash = blockhash;
+      legacyTransaction.feePayer = userPublicKey;
+
+      const serializedTransaction = legacyTransaction.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          requiresSignature: true,
+          transaction: Array.from(serializedTransaction),
+          trade: {
+            type: 'buy',
+            solIn: solAmount,
+            tokensOut: trade.tokensOut,
+            priceAfter: trade.priceAfter,
+            newSolRaised: trade.newSolRaised,
+            newTokensSold: trade.newTokensSold,
+          },
+          message: `Buy transaction prepared (Sender fallback): ${solAmount} SOL → ${trade.tokensOut.toFixed(2)} ${token.symbol}`,
+          senderError: senderError.message
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
   } catch (error) {
     console.error('=== BUY ERROR ===');
     console.error('Error:', error);
     return new Response(
       JSON.stringify({ 
-        error: 'Failed to prepare buy transaction', 
+        error: 'Failed to process buy transaction', 
         details: error.message 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }

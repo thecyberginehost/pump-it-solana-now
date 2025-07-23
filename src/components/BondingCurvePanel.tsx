@@ -82,13 +82,13 @@ const BondingCurvePanel = ({
 
     setIsTrading(true);
     try {
-      console.log('🚀 Initiating smart contract buy:', {
+      console.log('🚀 Initiating Helius Sender buy:', {
         tokenId,
         walletAddress,
         solAmount: amount
       });
 
-      // Call the bonding curve buy function (smart contract)
+      // Call the bonding curve buy function (uses Helius Sender)
       const { data, error } = await supabase.functions.invoke('bonding-curve-buy', {
         body: {
           tokenId,
@@ -98,13 +98,34 @@ const BondingCurvePanel = ({
       });
 
       if (error) {
-        console.error('Smart contract buy error:', error);
+        console.error('Helius Sender buy error:', error);
         toast.error(`Buy failed: ${error.message}`);
         return;
       }
 
+      // Check if transaction was already sent via Helius Sender
+      if (data?.signature && !data?.requiresSignature) {
+        console.log('✅ Transaction sent via Helius Sender:', data.signature);
+        toast.success(`✅ Successfully bought ${data.trade.tokensOut.toFixed(2)} ${tokenSymbol} for ${amount} SOL! ${data.tipAmount ? `(Tip: ${data.tipAmount} SOL)` : ''}`);
+        
+        // Call onTrade callback to refresh data
+        onTrade?.(data.trade);
+        setBuyAmount("");
+        
+        // Check for achievements after successful trade
+        if (walletAddress) {
+          checkAchievements({
+            userWallet: walletAddress,
+            tokenId,
+            checkType: 'trading'
+          });
+        }
+        return;
+      }
+
+      // Fallback: If Sender failed, transaction needs to be signed
       if (data?.requiresSignature && data?.transaction) {
-        console.log('🎯 Buy transaction prepared, signing with wallet...');
+        console.log('🎯 Sender fallback - Buy transaction prepared, signing with wallet...');
         
         if (!signTransaction || !sendTransaction) {
           throw new Error('Wallet not connected for signing');
