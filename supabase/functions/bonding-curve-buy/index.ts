@@ -328,16 +328,16 @@ serve(async (req) => {
       true // allowOwnerOffCurve
     );
 
-    // Add buy instruction
+    // For devnet simulation: just add a simple SOL transfer to platform
+    // This simulates "buying" tokens by sending SOL to the platform
+    const platformWallet = new PublicKey('DZm7tfhk7di4GG7XhSXzHJu5dduB4o91paKHQgcvNSAF'); // Platform wallet
+    
     instructions.push(
-      createBuyInstruction(
-        bondingCurveAddress,
-        mintAddress,
-        curveTokenAccount,
-        userTokenAccount,
-        userPublicKey,
-        solAmount
-      )
+      SystemProgram.transfer({
+        fromPubkey: userPublicKey,
+        toPubkey: platformWallet,
+        lamports: solAmount * LAMPORTS_PER_SOL,
+      })
     );
 
     // Get dynamic priority fee
