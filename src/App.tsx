@@ -43,7 +43,7 @@ const AppContent = () => {
           <Route path="/roadmap" element={<Roadmap />} />
           <Route path="/boosts" element={<Boosts />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
-          <Route path="/token-success" element={<TokenSuccess />} />
+          <Route path="/token-success/:tokenId" element={<TokenSuccess />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

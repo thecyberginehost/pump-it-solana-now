@@ -1,30 +1,53 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Copy, ExternalLink, Twitter, Send, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 const TokenSuccess = () => {
-  const [searchParams] = useSearchParams();
+  const { tokenId } = useParams();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   
-  const tokenName = searchParams.get('name') || 'Your Token';
-  const tokenSymbol = searchParams.get('symbol') || '';
-  const tokenAddress = searchParams.get('address') || '';
-  const tokenImage = searchParams.get('image') || '';
+  // Fetch token data from database
+  const { data: token, isLoading } = useQuery({
+    queryKey: ['token', tokenId],
+    queryFn: async () => {
+      if (!tokenId) return null;
+      const { data, error } = await supabase
+        .from('tokens')
+        .select('*')
+        .eq('id', tokenId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!tokenId,
+  });
 
   useEffect(() => {
-    // If no token data, redirect to home
-    if (!tokenName || !tokenSymbol) {
+    // If no token ID, redirect to home
+    if (!tokenId) {
       navigate('/');
     }
-  }, [tokenName, tokenSymbol, navigate]);
+  }, [tokenId, navigate]);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!token) {
+    navigate('/');
+    return null;
+  }
 
   const handleCopyAddress = async () => {
-    if (tokenAddress) {
-      await navigator.clipboard.writeText(tokenAddress);
+    if (token.mint_address) {
+      await navigator.clipboard.writeText(token.mint_address);
       setCopied(true);
       toast.success('Token address copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);
@@ -32,7 +55,7 @@ const TokenSuccess = () => {
   };
 
   const handleShare = () => {
-    const text = `🚀 Just launched ${tokenName} ($${tokenSymbol}) on the blockchain! Check it out!`;
+    const text = `🚀 Just launched ${token.name} ($${token.symbol}) on the blockchain! Check it out!`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
@@ -62,27 +85,27 @@ const TokenSuccess = () => {
           <Card className="mb-8 border-2 border-green-500/20 bg-green-500/5">
             <CardContent className="p-6">
               <div className="flex items-start gap-4 mb-6">
-                {tokenImage && (
+                {token.image_url && (
                   <img 
-                    src={tokenImage} 
-                    alt={`${tokenName} logo`}
+                    src={token.image_url} 
+                    alt={`${token.name} logo`}
                     className="w-16 h-16 rounded-full object-cover border-2 border-border"
                   />
                 )}
                 <div className="space-y-2 flex-1">
-                  <h3 className="text-2xl font-bold text-foreground">{tokenName}</h3>
+                  <h3 className="text-2xl font-bold text-foreground">{token.name}</h3>
                   <span className="text-lg font-mono bg-muted px-3 py-1 rounded">
-                    ${tokenSymbol}
+                    ${token.symbol}
                   </span>
                 </div>
               </div>
 
-              {tokenAddress && (
+              {token.mint_address && (
                 <div className="space-y-3">
                   <label className="text-sm font-medium text-muted-foreground">Token Address</label>
                   <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
                     <code className="flex-1 text-sm font-mono text-foreground truncate">
-                      {tokenAddress}
+                      {token.mint_address}
                     </code>
                     <Button
                       variant="ghost"
@@ -95,6 +118,18 @@ const TokenSuccess = () => {
                   </div>
                 </div>
               )}
+              
+              {/* Token view button */}
+              <div className="mt-4">
+                <Button
+                  onClick={() => navigate(`/token/${tokenId}`)}
+                  className="w-full gap-2"
+                  variant="outline"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View Token Details
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

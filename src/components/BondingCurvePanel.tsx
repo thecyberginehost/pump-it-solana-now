@@ -8,6 +8,8 @@ import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { TrendingUp, TrendingDown, Loader2, DollarSign, Info, Zap } from "lucide-react";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { Transaction } from '@solana/web3.js';
 import { useBondingCurve, formatPrice, formatMarketCap, formatTokenAmount } from "@/hooks/useBondingCurve";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -34,6 +36,8 @@ const BondingCurvePanel = ({
   const [sellAmount, setSellAmount] = useState("");
   const [isTrading, setIsTrading] = useState(false);
   const { isAuthenticated, walletAddress } = useWalletAuth();
+  const { signTransaction, sendTransaction } = useWallet();
+  const { connection } = useConnection();
   const { checkAchievements } = useAchievements();
   
   const { state, calculateBuy, calculateSell } = useBondingCurve(currentSolRaised, tokensSold);
@@ -100,20 +104,64 @@ const BondingCurvePanel = ({
       }
 
       if (data?.requiresSignature && data?.transaction) {
-        toast.success(`🎯 Smart contract buy prepared: ${amount} SOL → ${data.trade.tokensOut.toFixed(2)} ${tokenSymbol}`);
-        toast.info('📝 Transaction ready for wallet signature');
+        console.log('🎯 Transaction prepared, signing with wallet...');
         
-        // Call onTrade callback to refresh data
-        onTrade?.(data.trade);
-        setBuyAmount("");
-        
-        // Check for achievements after successful trade
-        if (walletAddress) {
-          checkAchievements({
-            userWallet: walletAddress,
-            tokenId,
-            checkType: 'trading'
+        if (!signTransaction || !sendTransaction) {
+          throw new Error('Wallet not connected for signing');
+        }
+
+        try {
+          // Deserialize and sign the transaction
+          const transactionBuffer = new Uint8Array(data.transaction);
+          const transaction = Transaction.from(transactionBuffer);
+          
+          console.log('Signing buy transaction...');
+          const signedTransaction = await signTransaction(transaction);
+          
+          console.log('Sending buy transaction...');
+          const signature = await sendTransaction(signedTransaction, connection);
+          
+          console.log('Buy transaction sent:', signature);
+          
+          // Wait for confirmation
+          const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+          
+          if (confirmation.value.err) {
+            throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+          }
+
+          // Execute the actual buy with the platform
+          const { data: executeData, error: executeError } = await supabase.functions.invoke('execute-bonding-curve-buy', {
+            body: {
+              tokenId,
+              walletAddress,
+              solAmount: amount,
+              signedTransaction: Array.from(signedTransaction.serialize()),
+              platformSignature: data.platformSignature
+            }
           });
+
+          if (executeError) {
+            throw new Error(`Execution failed: ${executeError.message}`);
+          }
+
+          toast.success(`✅ Successfully bought ${executeData.trade.tokensOut.toFixed(2)} ${tokenSymbol} for ${amount} SOL!`);
+          
+          // Call onTrade callback to refresh data
+          onTrade?.(executeData.trade);
+          setBuyAmount("");
+          
+          // Check for achievements after successful trade
+          if (walletAddress) {
+            checkAchievements({
+              userWallet: walletAddress,
+              tokenId,
+              checkType: 'trading'
+            });
+          }
+        } catch (txError) {
+          console.error('Transaction signing/sending error:', txError);
+          throw new Error(`Transaction failed: ${txError.message}`);
         }
       } else {
         toast.error('Failed to prepare buy transaction');
@@ -167,20 +215,64 @@ const BondingCurvePanel = ({
       }
 
       if (data?.requiresSignature && data?.transaction) {
-        toast.success(`🎯 Smart contract sell prepared: ${amount} ${tokenSymbol} → ${data.trade.solOut.toFixed(6)} SOL`);
-        toast.info('📝 Transaction ready for wallet signature');
+        console.log('🎯 Sell transaction prepared, signing with wallet...');
         
-        // Call onTrade callback to refresh data
-        onTrade?.(data.trade);
-        setSellAmount("");
-        
-        // Check for achievements after successful trade
-        if (walletAddress) {
-          checkAchievements({
-            userWallet: walletAddress,
-            tokenId,
-            checkType: 'trading'
+        if (!signTransaction || !sendTransaction) {
+          throw new Error('Wallet not connected for signing');
+        }
+
+        try {
+          // Deserialize and sign the transaction
+          const transactionBuffer = new Uint8Array(data.transaction);
+          const transaction = Transaction.from(transactionBuffer);
+          
+          console.log('Signing sell transaction...');
+          const signedTransaction = await signTransaction(transaction);
+          
+          console.log('Sending sell transaction...');
+          const signature = await sendTransaction(signedTransaction, connection);
+          
+          console.log('Sell transaction sent:', signature);
+          
+          // Wait for confirmation
+          const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+          
+          if (confirmation.value.err) {
+            throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+          }
+
+          // Execute the actual sell with the platform
+          const { data: executeData, error: executeError } = await supabase.functions.invoke('execute-bonding-curve-sell', {
+            body: {
+              tokenId,
+              walletAddress,
+              tokenAmount: amount,
+              signedTransaction: Array.from(signedTransaction.serialize()),
+              platformSignature: data.platformSignature
+            }
           });
+
+          if (executeError) {
+            throw new Error(`Execution failed: ${executeError.message}`);
+          }
+
+          toast.success(`✅ Successfully sold ${amount} ${tokenSymbol} for ${executeData.trade.solOut.toFixed(6)} SOL!`);
+          
+          // Call onTrade callback to refresh data
+          onTrade?.(executeData.trade);
+          setSellAmount("");
+          
+          // Check for achievements after successful trade
+          if (walletAddress) {
+            checkAchievements({
+              userWallet: walletAddress,
+              tokenId,
+              checkType: 'trading'
+            });
+          }
+        } catch (txError) {
+          console.error('Transaction signing/sending error:', txError);
+          throw new Error(`Transaction failed: ${txError.message}`);
         }
       } else {
         toast.error('Failed to prepare sell transaction');
