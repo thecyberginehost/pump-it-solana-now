@@ -180,7 +180,11 @@ export const useBondingCurve = (currentSolRaised: number = 0, tokensSold: number
 // Utility functions
 export const formatPrice = (price: number): string => {
   if (price < 0.000001) {
-    return price.toExponential(2);
+    // For very small numbers, show full decimal places with zeros
+    return price.toFixed(9);
+  }
+  if (price < 0.001) {
+    return price.toFixed(8);
   }
   return price.toFixed(6);
 };
