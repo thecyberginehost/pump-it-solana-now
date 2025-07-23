@@ -104,19 +104,45 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting POST request handling...');
+    console.log('=== DEBUGGING ENVIRONMENT ===');
+    console.log('All available env vars:', Object.keys(Deno.env.toObject()));
     
-    // Environment check
+    // Environment check with detailed logging
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const heliusKey = Deno.env.get('HELIUS_RPC_API_KEY');
+    const platformKey = Deno.env.get('PLATFORM_WALLET_PRIVATE_KEY');
+    
+    console.log('Environment variables check:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseKey: !!supabaseKey,
+      hasHeliusKey: !!heliusKey,
+      hasPlatformKey: !!platformKey,
+      supabaseUrlLength: supabaseUrl?.length || 0,
+      supabaseKeyLength: supabaseKey?.length || 0,
+      heliusKeyLength: heliusKey?.length || 0,
+      platformKeyLength: platformKey?.length || 0
+    });
     
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing required environment variables');
+      console.error('=== MISSING SUPABASE ENV VARS ===');
+      throw new Error(`Missing Supabase environment variables - URL: ${!!supabaseUrl}, Key: ${!!supabaseKey}`);
+    }
+    
+    if (!heliusKey) {
+      console.error('=== MISSING HELIUS KEY ===');
+      throw new Error('Helius RPC API key not configured');
+    }
+    
+    if (!platformKey) {
+      console.error('=== MISSING PLATFORM KEY ===');
+      throw new Error('Platform wallet private key not configured');
     }
     
     // Create Supabase client
+    console.log('Creating Supabase client...');
     const supabase = createClient(supabaseUrl, supabaseKey);
-    console.log('Supabase client created successfully');
+    console.log('✅ Supabase client created successfully');
 
     // Parse request body
     const requestBody = await req.json();
@@ -190,9 +216,26 @@ serve(async (req) => {
       throw new Error('Platform wallet private key not configured');
     }
 
-    const platformKeypair = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(platformPrivateKey))
-    );
+    let platformKeypair;
+    try {
+      // Try parsing as base58 string first (recommended format)
+      console.log('Attempting to parse private key as base58...');
+      const bs58 = await import('https://esm.sh/bs58@5.0.0');
+      const secretKeyBytes = bs58.default.decode(platformPrivateKey);
+      platformKeypair = Keypair.fromSecretKey(secretKeyBytes);
+      console.log('✅ Parsed private key as base58');
+    } catch (base58Error) {
+      try {
+        // Fallback: try parsing as JSON array
+        console.log('Base58 failed, trying JSON array format...');
+        const secretKeyArray = JSON.parse(platformPrivateKey);
+        platformKeypair = Keypair.fromSecretKey(Uint8Array.from(secretKeyArray));
+        console.log('✅ Parsed private key as JSON array');
+      } catch (jsonError) {
+        console.error('Both parsing methods failed:', { base58Error: base58Error.message, jsonError: jsonError.message });
+        throw new Error('Invalid private key format. Please provide as base58 string or JSON array');
+      }
+    }
 
     // Generate new mint and bonding curve addresses
     const mint = Keypair.generate();
