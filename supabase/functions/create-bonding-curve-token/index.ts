@@ -131,12 +131,27 @@ serve(async (req) => {
     }
 
     // Rate limiting check
+    console.log('Checking rate limit for creator:', creatorWallet);
     const { data: rateLimitResult, error: rateLimitError } = await supabase.rpc('check_creator_rate_limit', {
       p_creator_wallet: creatorWallet
     });
 
-    if (rateLimitError || !rateLimitResult?.[0]?.allowed) {
+    console.log('Rate limit check result:', { rateLimitResult, rateLimitError });
+
+    if (rateLimitError) {
+      console.error('Rate limit error:', rateLimitError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Rate limit check failed', 
+          details: rateLimitError.message 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    if (!rateLimitResult?.[0]?.allowed) {
       const reason = rateLimitResult?.[0]?.reason || 'Rate limit exceeded';
+      console.log('Rate limit exceeded:', reason);
       return new Response(
         JSON.stringify({ 
           error: 'Token creation not allowed', 
