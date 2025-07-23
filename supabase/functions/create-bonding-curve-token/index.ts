@@ -102,10 +102,16 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Starting edge function execution...');
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+    console.log('Supabase client created successfully');
+
+    const requestBody = await req.json();
+    console.log('Request body parsed:', Object.keys(requestBody));
 
     const {
       name,
@@ -118,7 +124,7 @@ serve(async (req) => {
       discord,
       creatorWallet,
       signedTransaction
-    } = await req.json();
+    } = requestBody;
 
     console.log('Creating token:', { name, symbol, creatorWallet });
 
