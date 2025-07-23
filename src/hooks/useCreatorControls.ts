@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWalletAuth } from './useWalletAuth';
 
@@ -72,14 +73,15 @@ export const useCreatorControls = () => {
     },
   });
 
+  // Initialize credits when wallet is connected but no credits exist
+  useEffect(() => {
+    if (walletAddress && !creditsLoading && !credits) {
+      initializeCredits.mutate();
+    }
+  }, [walletAddress, creditsLoading, credits]);
+
   // Check if user can create tokens
   const canCreateToken = () => {
-    // If no credits found, try to initialize them
-    if (!credits && walletAddress) {
-      initializeCredits.mutate();
-      return false; // Will be true after re-query
-    }
-    
     if (!credits) return false;
     
     // Basic credit check
