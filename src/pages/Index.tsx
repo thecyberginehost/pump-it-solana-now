@@ -4,6 +4,7 @@ import HeroSection from "@/components/HeroSection";
 import TokenCreator from "@/components/TokenCreator";
 import RecentLaunches from "@/components/RecentLaunches";
 import Footer from "@/components/Footer";
+import { WalletConfigUpdate } from "@/components/WalletConfigUpdate";
 import { useChatContext } from "@/contexts/ChatContext";
 
 const Index = () => {
@@ -15,6 +16,7 @@ const Index = () => {
       
       <div>
         <HeroSection />
+        <WalletConfigUpdate />
         <TokenCreator onChatToggle={toggleChat} />
         <RecentLaunches />
       </div>
