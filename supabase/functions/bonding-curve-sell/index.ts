@@ -153,7 +153,7 @@ serve(async (req) => {
       throw new Error('Helius RPC API key not configured');
     }
     
-    const heliusRpcUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
+    const heliusRpcUrl = `https://devnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
     const connection = new Connection(heliusRpcUrl, 'confirmed');
     
     const mintAddress = new PublicKey(token.mint_address);

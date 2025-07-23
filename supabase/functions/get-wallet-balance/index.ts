@@ -33,7 +33,7 @@ serve(async (req) => {
     console.log('Fetching balance for wallet:', walletAddress);
 
     // Get SOL balance using Helius RPC with staked connections
-    const heliusRpcUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
+    const heliusRpcUrl = `https://devnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
     const response = await fetch(heliusRpcUrl, {
       method: 'POST',
       headers: {
