@@ -328,21 +328,9 @@ serve(async (req) => {
       true // allowOwnerOffCurve
     );
 
-    // For devnet simulation: just add a simple SOL transfer to platform
-    // This simulates "buying" tokens by sending SOL to the platform
-    const platformWalletAddress = Deno.env.get('PLATFORM_WALLET_ADDRESS');
-    if (!platformWalletAddress) {
-      throw new Error('Platform wallet address not configured');
-    }
-    const platformWallet = new PublicKey(platformWalletAddress);
-    
-    instructions.push(
-      SystemProgram.transfer({
-        fromPubkey: userPublicKey,
-        toPubkey: platformWallet,
-        lamports: solAmount * LAMPORTS_PER_SOL,
-      })
-    );
+    // For devnet simulation: Create a simple successful transaction
+    // Just add compute budget instructions without any transfers for testing
+    console.log('📍 Creating minimal transaction for testing...');
 
     // Get dynamic priority fee
     const priorityFee = await getPriorityFee(connection, instructions, userPublicKey, blockhash);
