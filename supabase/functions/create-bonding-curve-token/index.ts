@@ -170,17 +170,23 @@ serve(async (req) => {
     const realProgramId = programId || '11111111111111111111111111111111';
 
     // Initialize Solana connection
+    console.log('Initializing Solana connection...');
     const heliusRpcApiKey = Deno.env.get('HELIUS_RPC_API_KEY');
     if (!heliusRpcApiKey) {
+      console.error('Helius RPC API key not found');
       throw new Error('Helius RPC API key not configured');
     }
     
     const heliusRpcUrl = `https://devnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
+    console.log('Connecting to Helius RPC...');
     const connection = new Connection(heliusRpcUrl, 'confirmed');
+    console.log('✅ Solana connection established');
 
     // Get platform keypair
+    console.log('Setting up platform keypair...');
     const platformPrivateKey = Deno.env.get('PLATFORM_WALLET_PRIVATE_KEY');
     if (!platformPrivateKey) {
+      console.error('Platform wallet private key not found');
       throw new Error('Platform wallet private key not configured');
     }
 
