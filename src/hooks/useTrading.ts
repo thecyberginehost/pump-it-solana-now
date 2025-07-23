@@ -4,6 +4,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAchievements } from './useAchievements';
+import { useWalletAuth } from './useWalletAuth';
+import { Transaction } from '@solana/web3.js';
 
 export interface TradeRequest {
   tokenId: string;
@@ -29,21 +31,66 @@ export const useTrading = () => {
   const { checkAchievements } = useAchievements();
 
   const executeTrade = useMutation({
-    mutationFn: async (tradeRequest: TradeRequest): Promise<TradeResult> => {
-      const { data, error } = await supabase.functions.invoke('execute-trade', {
-        body: tradeRequest,
+    mutationFn: async (tradeRequest: TradeRequest): Promise<any> => {
+      // Use the appropriate bonding curve function based on trade type
+      const functionName = tradeRequest.tradeType === 'buy' ? 'bonding-curve-buy' : 'bonding-curve-sell';
+      
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: {
+          tokenId: tradeRequest.tokenId,
+          walletAddress: tradeRequest.walletAddress,
+          solAmount: tradeRequest.amount, // For buy, this is SOL amount; for sell, we'll need to convert
+        },
       });
 
       if (error) throw error;
-      return data.transaction;
+      
+      // If the response requires user signature, handle wallet signing
+      if (data.requiresSignature && data.transaction) {
+        // Get wallet from context
+        const wallet = (window as any).solana;
+        if (!wallet) {
+          throw new Error('Wallet not found');
+        }
+        
+        try {
+          // Reconstruct transaction from array
+          const transactionArray = new Uint8Array(data.transaction);
+          const transaction = Transaction.from(transactionArray);
+          
+          // Sign and send transaction
+          const signedTx = await wallet.signTransaction(transaction);
+          const signature = await wallet.sendRawTransaction(signedTx.serialize());
+          
+          console.log('Transaction signed and sent:', signature);
+          
+          // Return success data
+          return {
+            signature: signature,
+            type: tradeRequest.tradeType,
+            trade: data.trade,
+            message: data.message
+          };
+        } catch (walletError) {
+          console.error('Wallet error:', walletError);
+          throw new Error(`Transaction failed: ${walletError.message}`);
+        }
+      }
+      
+      return data;
     },
     onSuccess: (data, variables) => {
       const action = variables.tradeType === 'buy' ? 'bought' : 'sold';
-      const amount = variables.tradeType === 'buy' 
-        ? `${data.tokensReceived.toFixed(2)} tokens` 
-        : `${data.solReceived.toFixed(3)} SOL`;
       
-      toast.success(`Successfully ${action} ${amount}!`);
+      // Handle new data format from bonding curve functions
+      let message = data.message || `Successfully ${action}!`;
+      if (data.trade) {
+        if (variables.tradeType === 'buy') {
+          message = `Bought ${data.trade.tokensOut.toFixed(2)} tokens for ${data.trade.solIn} SOL`;
+        }
+      }
+      
+      toast.success(message);
       
       // Check for trading achievements  
       checkAchievements({
