@@ -330,7 +330,11 @@ serve(async (req) => {
 
     // For devnet simulation: just add a simple SOL transfer to platform
     // This simulates "buying" tokens by sending SOL to the platform
-    const platformWallet = new PublicKey('DZm7tfhk7di4GG7XhSXzHJu5dduB4o91paKHQgcvNSAF'); // Platform wallet
+    const platformWalletAddress = Deno.env.get('PLATFORM_WALLET_ADDRESS');
+    if (!platformWalletAddress) {
+      throw new Error('Platform wallet address not configured');
+    }
+    const platformWallet = new PublicKey(platformWalletAddress);
     
     instructions.push(
       SystemProgram.transfer({
