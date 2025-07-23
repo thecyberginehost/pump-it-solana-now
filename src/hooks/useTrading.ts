@@ -32,14 +32,13 @@ export const useTrading = () => {
 
   const executeTrade = useMutation({
     mutationFn: async (tradeRequest: TradeRequest): Promise<any> => {
-      // Use the appropriate bonding curve function based on trade type
-      const functionName = tradeRequest.tradeType === 'buy' ? 'bonding-curve-buy' : 'bonding-curve-sell';
-      
-      const { data, error } = await supabase.functions.invoke(functionName, {
+      const { data, error } = await supabase.functions.invoke('bonding-curve-trade', {
         body: {
           tokenId: tradeRequest.tokenId,
           walletAddress: tradeRequest.walletAddress,
-          solAmount: tradeRequest.amount, // For buy, this is SOL amount; for sell, we'll need to convert
+          tradeType: tradeRequest.tradeType,
+          amount: tradeRequest.amount,
+          slippage: tradeRequest.slippage || 0.5,
         },
       });
 
