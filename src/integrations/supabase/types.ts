@@ -205,6 +205,39 @@ export type Database = {
           },
         ]
       }
+      fee_config: {
+        Row: {
+          created_at: string | null
+          creator_fee_bps: number
+          id: string
+          is_active: boolean | null
+          platform_fee_bps: number
+          prize_pool_fee_bps: number
+          reserves_fee_bps: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          creator_fee_bps?: number
+          id?: string
+          is_active?: boolean | null
+          platform_fee_bps?: number
+          prize_pool_fee_bps?: number
+          reserves_fee_bps?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          creator_fee_bps?: number
+          id?: string
+          is_active?: boolean | null
+          platform_fee_bps?: number
+          prize_pool_fee_bps?: number
+          reserves_fee_bps?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       fee_transactions: {
         Row: {
           community_fee: number
@@ -330,6 +363,36 @@ export type Database = {
           total_volume_traded?: number | null
           username?: string | null
           wallet_address?: string
+        }
+        Relationships: []
+      }
+      program_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          network: string
+          program_id: string
+          program_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          network?: string
+          program_id: string
+          program_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          network?: string
+          program_id?: string
+          program_name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -609,6 +672,33 @@ export type Database = {
           },
         ]
       }
+      wallet_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          updated_at: string | null
+          wallet_address: string
+          wallet_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          wallet_address: string
+          wallet_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          wallet_address?: string
+          wallet_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -635,6 +725,19 @@ export type Database = {
           daily_limit: number
         }[]
       }
+      get_active_fee_config: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          platform_fee_bps: number
+          creator_fee_bps: number
+          prize_pool_fee_bps: number
+          reserves_fee_bps: number
+        }[]
+      }
+      get_active_program_id: {
+        Args: { p_program_name?: string }
+        Returns: string
+      }
       get_available_top_10_spots: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -642,6 +745,10 @@ export type Database = {
       get_user_credits: {
         Args: { user_wallet: string }
         Returns: number
+      }
+      get_wallet_address: {
+        Args: { p_wallet_type: string }
+        Returns: string
       }
       has_unlimited_credits: {
         Args: { user_wallet: string }

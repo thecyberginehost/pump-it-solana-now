@@ -15,14 +15,16 @@ pub mod bonding_curve {
         virtual_sol_reserves: u64,
         virtual_token_reserves: u64,
         bonding_curve_supply: u64,
-        creator_fee_bps: u16, // basis points (100 = 1%)
-        platform_fee_bps: u16,
+        platform_fee_bps: u16,     // 1% = 100 bps
+        creator_fee_bps: u16,      // 0.07% = 7 bps
+        prize_pool_fee_bps: u16,   // 0.02% = 2 bps
+        reserves_fee_bps: u16,     // 0.01% = 1 bps
     ) -> Result<()> {
         let curve = &mut ctx.accounts.bonding_curve;
         
-        // Validate fee rates (max 10% each)
-        require!(creator_fee_bps <= 1000, BondingCurveError::FeeTooHigh);
-        require!(platform_fee_bps <= 1000, BondingCurveError::FeeTooHigh);
+        // Validate fee rates (total max 5%)
+        let total_fees = platform_fee_bps + creator_fee_bps + prize_pool_fee_bps + reserves_fee_bps;
+        require!(total_fees <= 500, BondingCurveError::FeeTooHigh);
         
         curve.mint = ctx.accounts.mint.key();
         curve.creator = ctx.accounts.creator.key();
@@ -33,8 +35,10 @@ pub mod bonding_curve {
         curve.tokens_sold = 0;
         curve.is_graduated = false;
         curve.graduation_threshold = 85_000 * LAMPORTS_PER_SOL; // 85k SOL
-        curve.creator_fee_bps = creator_fee_bps;
         curve.platform_fee_bps = platform_fee_bps;
+        curve.creator_fee_bps = creator_fee_bps;
+        curve.prize_pool_fee_bps = prize_pool_fee_bps;
+        curve.reserves_fee_bps = reserves_fee_bps;
         curve.total_fees_collected = 0;
         curve.creator_fees_pending = 0;
         curve.bump = ctx.bumps.bonding_curve;
@@ -77,10 +81,13 @@ pub mod bonding_curve {
         require!(tokens_out >= min_tokens_out, BondingCurveError::SlippageExceeded);
         require!(tokens_out <= curve.real_token_reserves, BondingCurveError::InsufficientTokens);
 
-        // Calculate fees
-        let creator_fee = (sol_amount as u128 * curve.creator_fee_bps as u128 / 10000) as u64;
+        // Calculate fees (new structure)
         let platform_fee = (sol_amount as u128 * curve.platform_fee_bps as u128 / 10000) as u64;
-        let sol_to_curve = sol_amount - creator_fee - platform_fee;
+        let creator_fee = (sol_amount as u128 * curve.creator_fee_bps as u128 / 10000) as u64;
+        let prize_pool_fee = (sol_amount as u128 * curve.prize_pool_fee_bps as u128 / 10000) as u64;
+        let reserves_fee = (sol_amount as u128 * curve.reserves_fee_bps as u128 / 10000) as u64;
+        let total_fees = platform_fee + creator_fee + prize_pool_fee + reserves_fee;
+        let sol_to_curve = sol_amount - total_fees;
 
         // Transfer SOL from buyer to curve (minus fees)
         let cpi_context = CpiContext::new(
@@ -92,7 +99,19 @@ pub mod bonding_curve {
         );
         anchor_lang::system_program::transfer(cpi_context, sol_to_curve)?;
 
-        // Transfer creator fee to creator
+        // Transfer platform fee (1%)
+        if platform_fee > 0 {
+            let platform_transfer = CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: ctx.accounts.buyer.to_account_info(),
+                    to: ctx.accounts.platform_wallet.to_account_info(),
+                },
+            );
+            anchor_lang::system_program::transfer(platform_transfer, platform_fee)?;
+        }
+
+        // Transfer creator fee (0.07%) - automatically distributed
         if creator_fee > 0 {
             let creator_transfer = CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
@@ -104,16 +123,28 @@ pub mod bonding_curve {
             anchor_lang::system_program::transfer(creator_transfer, creator_fee)?;
         }
 
-        // Transfer platform fee to platform wallet
-        if platform_fee > 0 {
-            let platform_transfer = CpiContext::new(
+        // Transfer prize pool fee (0.02%)
+        if prize_pool_fee > 0 {
+            let prize_pool_transfer = CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
                 anchor_lang::system_program::Transfer {
                     from: ctx.accounts.buyer.to_account_info(),
-                    to: ctx.accounts.platform_wallet.to_account_info(),
+                    to: ctx.accounts.prize_pool_wallet.to_account_info(),
                 },
             );
-            anchor_lang::system_program::transfer(platform_transfer, platform_fee)?;
+            anchor_lang::system_program::transfer(prize_pool_transfer, prize_pool_fee)?;
+        }
+
+        // Transfer reserves fee (0.01%)
+        if reserves_fee > 0 {
+            let reserves_transfer = CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: ctx.accounts.buyer.to_account_info(),
+                    to: ctx.accounts.reserves_wallet.to_account_info(),
+                },
+            );
+            anchor_lang::system_program::transfer(reserves_transfer, reserves_fee)?;
         }
 
         // Transfer tokens from curve to buyer
@@ -137,7 +168,7 @@ pub mod bonding_curve {
         curve.real_sol_reserves += sol_to_curve;
         curve.real_token_reserves -= tokens_out;
         curve.tokens_sold += tokens_out;
-        curve.total_fees_collected += creator_fee + platform_fee;
+        curve.total_fees_collected += total_fees;
         curve.creator_fees_pending += creator_fee;
 
         // Check for graduation
@@ -156,8 +187,10 @@ pub mod bonding_curve {
             mint: curve.mint,
             sol_amount,
             tokens_received: tokens_out,
-            creator_fee,
             platform_fee,
+            creator_fee,
+            prize_pool_fee,
+            reserves_fee,
         });
 
         Ok(())
@@ -375,6 +408,14 @@ pub struct BuyTokens<'info> {
     #[account(mut)]
     pub platform_wallet: UncheckedAccount<'info>,
     
+    /// CHECK: Prize pool wallet for fee distribution
+    #[account(mut)]
+    pub prize_pool_wallet: UncheckedAccount<'info>,
+    
+    /// CHECK: Reserves wallet for fee distribution
+    #[account(mut)]
+    pub reserves_wallet: UncheckedAccount<'info>,
+    
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -457,15 +498,17 @@ pub struct BondingCurve {
     pub tokens_sold: u64,               // Total tokens sold
     pub is_graduated: bool,             // Whether token has graduated
     pub graduation_threshold: u64,      // SOL threshold for graduation
-    pub creator_fee_bps: u16,           // Creator fee in basis points
-    pub platform_fee_bps: u16,         // Platform fee in basis points
+    pub platform_fee_bps: u16,         // Platform fee in basis points (1%)
+    pub creator_fee_bps: u16,           // Creator fee in basis points (0.07%)
+    pub prize_pool_fee_bps: u16,        // Prize pool fee in basis points (0.02%)
+    pub reserves_fee_bps: u16,          // Reserves fee in basis points (0.01%)
     pub total_fees_collected: u64,     // Total fees collected
     pub creator_fees_pending: u64,     // Creator fees available to claim
     pub bump: u8,                       // PDA bump
 }
 
 impl BondingCurve {
-    pub const LEN: usize = 32 + 32 + 8 + 8 + 8 + 8 + 8 + 1 + 8 + 2 + 2 + 8 + 8 + 1;
+    pub const LEN: usize = 32 + 32 + 8 + 8 + 8 + 8 + 8 + 1 + 8 + 2 + 2 + 2 + 2 + 8 + 8 + 1;
 }
 
 // Events
@@ -484,8 +527,10 @@ pub struct TokensPurchased {
     pub mint: Pubkey,
     pub sol_amount: u64,
     pub tokens_received: u64,
-    pub creator_fee: u64,
     pub platform_fee: u64,
+    pub creator_fee: u64,
+    pub prize_pool_fee: u64,
+    pub reserves_fee: u64,
 }
 
 #[event]
