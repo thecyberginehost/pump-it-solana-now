@@ -1,6 +1,4 @@
 // supabase/functions/create-bonding-curve-token/index.ts
-// Mints a token AND initializes your internal bonding-curve pool (Pump.fun-like).
-// NOTE: Replace the TODO sections with your specific curve math & pool account logic.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import {
@@ -22,6 +20,7 @@ import {
   createAssociatedTokenAccountInstruction,
   createMintToInstruction,
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress,
 } from "https://esm.sh/@solana/spl-token@0.4.6";
 import bs58 from "https://esm.sh/bs58@5.0.0";
 
@@ -50,17 +49,18 @@ function getConnection(): Connection {
 
 function getPlatformKeypair(): Keypair {
   const raw = getEnv("PLATFORM_WALLET_PRIVATE_KEY").trim();
-  return Keypair.fromSecretKey(bs58.decode(raw));
+  const secret = bs58.decode(raw);
+  if (secret.length !== 64) throw new Error("PLATFORM_WALLET_PRIVATE_KEY length invalid");
+  return Keypair.fromSecretKey(secret);
 }
 
 // ---------- Request Types ----------
 interface CreateCurveTokenRequest {
   name: string;
   symbol: string;
-  decimals?: number;        // default 9
-  totalSupply?: number;     // how many tokens to mint into the pool at start (whole tokens)
+  decimals?: number;
+  totalSupply?: number;
   curveConfig?: {
-    // put whatever params you need for your curve
     startingPriceLamports?: number;
     slopeBps?: number;
     feeBps?: number;
@@ -69,36 +69,21 @@ interface CreateCurveTokenRequest {
 
 // ---------- Main ----------
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     if (req.method !== "POST") return jsonResponse({ error: "Use POST" }, 405);
 
-    let body: CreateCurveTokenRequest;
-    try {
-      body = await req.json();
-    } catch {
-      return jsonResponse({ error: "Invalid JSON body" }, 400);
-    }
+    const body = (await req.json().catch(() => null)) as CreateCurveTokenRequest | null;
+    if (!body) return jsonResponse({ error: "Invalid JSON body" }, 400);
 
-    const {
-      name,
-      symbol,
-      decimals = 9,
-      totalSupply = 0,
-      curveConfig = {},
-    } = body;
-
-    if (!name || !symbol) {
-      return jsonResponse({ error: "name and symbol required" }, 400);
-    }
+    const { name, symbol, decimals = 9, totalSupply = 0, curveConfig = {} } = body;
+    if (!name || !symbol) return jsonResponse({ error: "name and symbol required" }, 400);
 
     const connection = getConnection();
     const platform = getPlatformKeypair();
 
-    // 1. Create mint
+    // 1. Mint account
     const mintKeypair = Keypair.generate();
     const rentLamports = await getMinimumBalanceForRentExemptMint(connection);
 
@@ -114,46 +99,37 @@ serve(async (req: Request) => {
       mintKeypair.publicKey,
       decimals,
       platform.publicKey,
-      platform.publicKey, // freeze authority (revoke later)
+      platform.publicKey, // freeze authority initially
       TOKEN_PROGRAM_ID
     );
 
-    // 2. Create internal bonding-curve pool token account (owned by your curve program or the platform)
-    //    Option A: Use an ATA owned by a pool PDA
-    //    Option B: Custom PDA via your program (recommended)
-    //
-    // For simplicity, let's assume you use a PDA from your bonding curve program.
-    // TODO: Replace PROGRAM_ID, seeds, and logic as needed.
-
-    // TODO: Replace this placeholder program ID with your actual bonding curve program ID
-    const BONDING_PROGRAM_ID = new PublicKey("11111111111111111111111111111111");
-    
-    // TODO: Update these seeds to match your bonding curve program's PDA derivation
+    // 2. Pool PDA (replace with your real program ID + seeds)
+    const BONDING_PROGRAM_ID = new PublicKey("11111111111111111111111111111111"); // TODO
     const [poolPda] = await PublicKey.findProgramAddress(
       [Buffer.from("pool"), mintKeypair.publicKey.toBuffer()],
       BONDING_PROGRAM_ID
     );
 
-    const poolAta = await PublicKey.findProgramAddress(
-      [
-        poolPda.toBuffer(),
-        TOKEN_PROGRAM_ID.toBuffer(),
-        mintKeypair.publicKey.toBuffer(),
-      ],
+    // 2a. Pool ATA owned by PDA (off-curve => allowOwnerOffCurve = true)
+    const poolAta = await getAssociatedTokenAddress(
+      mintKeypair.publicKey,
+      poolPda,
+      true,
+      TOKEN_PROGRAM_ID,
       ASSOCIATED_TOKEN_PROGRAM_ID
-    ).then(([addr]) => addr);
+    );
 
     const createPoolAtaIx = createAssociatedTokenAccountInstruction(
-      platform.publicKey,   // payer
+      platform.publicKey, // payer
       poolAta,
-      poolPda,              // owner
+      poolPda,
       mintKeypair.publicKey,
       TOKEN_PROGRAM_ID,
       ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
-    // 3. Mint initial supply into the pool
-    const mintAmount = BigInt(totalSupply) * BigInt(10 ** decimals);
+    // 3. Mint initial supply to pool
+    const mintAmount = BigInt(totalSupply) * (BigInt(10) ** BigInt(decimals));
     const mintToPoolIx = totalSupply > 0
       ? createMintToInstruction(
           mintKeypair.publicKey,
@@ -163,19 +139,12 @@ serve(async (req: Request) => {
         )
       : null;
 
-    // 4. Initialize/seed your bonding curve state
-    // TODO: Replace this placeholder with real instruction(s) to your curve program.
-    // Usually you'll send an ix to your on-chain curve program to store prices, slope, fees, etc.
-    // For example:
-    // const initCurveIx = await createInitializeCurveInstruction({
-    //   curve: curvePda,
-    //   mint: mintKeypair.publicKey,
-    //   startingPrice: curveConfig.startingPriceLamports || 1000,
-    //   slope: curveConfig.slopeBps || 100,
-    //   fee: curveConfig.feeBps || 50,
-    // });
+    // 4. Initialize bonding curve state (TODO: real instruction(s))
+    // const initCurveIx = yourProgram.createInitCurveIx({ ...curveConfig, mint: mintKeypair.publicKey, poolPda });
+    // For now, skip to avoid invalid IX
+    // -----
 
-    // 5. Build and send tx
+    // 5. Build & send tx
     const instructions = [
       ComputeBudgetProgram.setComputeUnitLimit({ units: 600000 }),
       ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000 }),
@@ -183,8 +152,7 @@ serve(async (req: Request) => {
       initMintIx,
       createPoolAtaIx,
       ...(mintToPoolIx ? [mintToPoolIx] : []),
-      // TODO: Add your curve initialization instruction here
-      // initCurveIx,
+      // initCurveIx  // TODO
     ];
 
     const tx = new Transaction().add(...instructions);
@@ -196,23 +164,9 @@ serve(async (req: Request) => {
       commitment: "confirmed",
     });
 
-    // 6. Revoke mint & freeze authorities so trading is only via your pool logic
-    await setAuthority(
-      connection,
-      platform,
-      mintKeypair.publicKey,
-      platform.publicKey,
-      AuthorityType.MintTokens,
-      null
-    );
-    await setAuthority(
-      connection,
-      platform,
-      mintKeypair.publicKey,
-      platform.publicKey,
-      AuthorityType.FreezeAccount,
-      null
-    );
+    // 6. Revoke authorities
+    await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.MintTokens, null);
+    await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.FreezeAccount, null);
 
     return jsonResponse({
       success: true,
@@ -227,12 +181,9 @@ serve(async (req: Request) => {
       txSig: sig,
       authoritiesRevoked: true,
     });
-  } catch (err) {
-    console.error("ERR:create-bonding-curve-token", {
-      message: (err as Error).message,
-      stack: (err as Error).stack,
-    });
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
+  } catch (err: any) {
+    console.error("ERR:create-bonding-curve-token", err?.message, err?.stack, err?.logs);
+    return new Response(JSON.stringify({ error: err?.message ?? "Unknown error" }), {
       status: 500,
       headers: corsHeaders,
     });
