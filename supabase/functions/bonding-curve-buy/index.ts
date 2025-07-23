@@ -234,8 +234,13 @@ serve(async (req) => {
     );
 
     const { tokenId, walletAddress, solAmount } = await req.json();
-
-    console.log('Processing buy:', { tokenId, walletAddress, solAmount });
+    
+    console.log('📝 Request details:', {
+      tokenId,
+      walletAddress,
+      solAmount,
+      timestamp: new Date().toISOString()
+    });
 
     if (!tokenId || !walletAddress || !solAmount || solAmount <= 0) {
       return new Response(
@@ -272,7 +277,7 @@ serve(async (req) => {
       throw new Error('Helius RPC API key not configured');
     }
     
-    const heliusRpcUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
+    const heliusRpcUrl = `https://devnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
     const connection = new Connection(heliusRpcUrl, 'confirmed');
     
     const mintAddress = new PublicKey(token.mint_address);
@@ -367,66 +372,48 @@ serve(async (req) => {
       }).compileToV0Message()
     );
 
-    // Send via Helius Sender
-    try {
-      const signature = await sendViaSender(versionedTransaction, connection, lastValidBlockHeight);
-      
-      console.log('✅ Buy transaction sent via Sender');
-      console.log('💰 SOL in:', solAmount);
-      console.log('🪙 Tokens out:', trade.tokensOut);
-      console.log('🔗 Signature:', signature);
+    // For devnet, skip Helius Sender and go directly to user signing
+    console.log('📍 Running on devnet - using standard transaction flow (no Sender)');
+    
+    // Remove tip transfer for devnet (not needed without Sender)
+    const devnetInstructions = instructions.slice(0, -1); // Remove last instruction (tip)
+    
+    // Build standard transaction for user to sign
+    const legacyTransaction = new Transaction();
+    legacyTransaction.add(...devnetInstructions);
+    legacyTransaction.recentBlockhash = blockhash;
+    legacyTransaction.feePayer = userPublicKey;
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          signature,
-          requiresSignature: false, // Already sent via Sender
-          trade: {
-            type: 'buy',
-            solIn: solAmount,
-            tokensOut: trade.tokensOut,
-            priceAfter: trade.priceAfter,
-            newSolRaised: trade.newSolRaised,
-            newTokensSold: trade.newTokensSold,
-          },
-          message: `Buy executed via Sender: ${solAmount} SOL → ${trade.tokensOut.toFixed(2)} ${token.symbol}`,
-          tipAmount: tipAmountSOL
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } catch (senderError) {
-      console.error('Sender failed, falling back to standard transaction preparation');
-      
-      // Fallback: Return transaction for user to sign
-      const legacyTransaction = new Transaction();
-      legacyTransaction.add(...instructions);
-      legacyTransaction.recentBlockhash = blockhash;
-      legacyTransaction.feePayer = userPublicKey;
+    const serializedTransaction = legacyTransaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false
+    });
 
-      const serializedTransaction = legacyTransaction.serialize({
-        requireAllSignatures: false,
-        verifySignatures: false
-      });
+    console.log('🔄 Transaction prepared for user signing');
+    console.log('💰 SOL in:', solAmount);
+    console.log('🪙 Tokens out:', trade.tokensOut);
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          requiresSignature: true,
-          transaction: Array.from(serializedTransaction),
-          trade: {
-            type: 'buy',
-            solIn: solAmount,
-            tokensOut: trade.tokensOut,
-            priceAfter: trade.priceAfter,
-            newSolRaised: trade.newSolRaised,
-            newTokensSold: trade.newTokensSold,
-          },
-          message: `Buy transaction prepared (Sender fallback): ${solAmount} SOL → ${trade.tokensOut.toFixed(2)} ${token.symbol}`,
-          senderError: senderError.message
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    return new Response(
+      JSON.stringify({
+        success: true,
+        requiresSignature: true,
+        transaction: Array.from(serializedTransaction),
+        trade: {
+          type: 'buy',
+          solIn: solAmount,
+          tokensOut: trade.tokensOut,
+          priceAfter: trade.priceAfter,
+          newSolRaised: trade.newSolRaised,
+          newTokensSold: trade.newTokensSold,
+        },
+        message: `Buy transaction prepared: ${solAmount} SOL → ${trade.tokensOut.toFixed(2)} ${token.symbol}`,
+        platformSignature: {
+          signature: `platform_sig_${Date.now()}`,
+          expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString()
+        }
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('=== BUY ERROR ===');
