@@ -96,45 +96,49 @@ function createInitializeCurveInstruction(
 
 serve(async (req) => {
   console.log('=== CREATE BONDING CURVE TOKEN ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
   
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Starting edge function execution...');
+    console.log('Starting POST request handling...');
     
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-    console.log('Supabase client created successfully');
-
-    const requestBody = await req.json();
-    console.log('Request body parsed:', Object.keys(requestBody));
-
-    const {
-      name,
-      symbol,
-      description,
-      imageUrl,
-      website,
-      twitter,
-      telegram,
-      discord,
-      creatorWallet,
-      signedTransaction
-    } = requestBody;
-
-    console.log('Creating token:', { name, symbol, creatorWallet });
-
-    // Validate required fields
-    if (!name || !symbol || !description || !creatorWallet) {
+    // Test environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    console.log('Environment check:', { 
+      hasUrl: !!supabaseUrl, 
+      hasKey: !!supabaseKey,
+      urlLength: supabaseUrl?.length || 0,
+      keyLength: supabaseKey?.length || 0
+    });
+    
+    // Test JSON parsing
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('JSON parsed successfully, keys:', Object.keys(requestBody));
+    } catch (jsonError) {
+      console.error('JSON parse error:', jsonError);
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Invalid JSON in request body', details: jsonError.message }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
+
+    // Return success for now
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'Function is working - environment and JSON parsing OK',
+        receivedKeys: Object.keys(requestBody)
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
     // Rate limiting check
     console.log('Checking rate limit for creator:', creatorWallet);
