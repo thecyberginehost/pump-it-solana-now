@@ -168,7 +168,12 @@ const BondingCurvePanel = ({
       }
     } catch (error: any) {
       console.error('Buy error:', error);
-      toast.error(error?.message || 'Failed to prepare buy transaction');
+      console.error('Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        type: error?.constructor?.name
+      });
+      toast.error(error?.message || 'Unexpected error occurred during buy transaction');
     } finally {
       setIsTrading(false);
     }
