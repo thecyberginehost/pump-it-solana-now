@@ -153,7 +153,14 @@ serve(async (req) => {
       );
     }
 
-    const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+    // Initialize Helius Solana connection with staked connections
+    const heliusRpcApiKey = Deno.env.get('HELIUS_RPC_API_KEY');
+    if (!heliusRpcApiKey) {
+      throw new Error('Helius RPC API key not configured');
+    }
+    
+    const heliusRpcUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
+    const connection = new Connection(heliusRpcUrl, 'confirmed');
     
     // Create metadata
     const metadataUri = await createTokenMetadata(supabase, {

@@ -25,15 +25,16 @@ serve(async (req) => {
       );
     }
 
-    const alchemyRpcUrl = Deno.env.get('ALCHEMY_RPC_URL');
-    if (!alchemyRpcUrl) {
-      throw new Error('Alchemy RPC URL not configured');
+    const heliusRpcApiKey = Deno.env.get('HELIUS_RPC_API_KEY');
+    if (!heliusRpcApiKey) {
+      throw new Error('Helius RPC API key not configured');
     }
 
     console.log('Fetching balance for wallet:', walletAddress);
 
-    // Get SOL balance using Alchemy RPC
-    const response = await fetch(alchemyRpcUrl, {
+    // Get SOL balance using Helius RPC with staked connections
+    const heliusRpcUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
+    const response = await fetch(heliusRpcUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
