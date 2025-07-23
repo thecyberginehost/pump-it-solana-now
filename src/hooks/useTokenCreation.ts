@@ -36,7 +36,7 @@ export const useTokenCreation = () => {
       const { data, error } = await supabase.functions.invoke('create-token', {
         body: {
           name: tokenData.name,
-          symbol: tokenData.symbol,
+          symbol: `${tokenData.symbol}.FORGE`, // Add forge suffix
           imageUrl: tokenData.image,
           description: tokenData.description,
           telegramUrl: tokenData.telegram_url,
