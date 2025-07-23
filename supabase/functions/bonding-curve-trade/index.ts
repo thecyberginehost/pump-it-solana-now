@@ -1,6 +1,22 @@
-import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "https://esm.sh/@solana/web3.js@1.95.0";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+  SystemProgram,
+  LAMPORTS_PER_SOL,
+  sendAndConfirmTransaction,
+  Keypair,
+  TransactionInstruction,
+  AccountMeta,
+} from "https://esm.sh/@solana/web3.js@1.98.2";
+import {
+  TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+  getAccount,
+} from "https://esm.sh/@solana/spl-token@0.4.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,290 +25,494 @@ const corsHeaders = {
 
 // Bonding curve constants
 const BONDING_CURVE_CONFIG = {
-  TOTAL_SUPPLY: 1_000_000_000,
-  BONDING_CURVE_SUPPLY: 800_000_000,
-  GRADUATION_THRESHOLD: 69_000,
   VIRTUAL_SOL_RESERVES: 30,
-  VIRTUAL_TOKEN_RESERVES: 1_073_000_000,
+  VIRTUAL_TOKEN_RESERVES: 1073000000,
+  GRADUATION_THRESHOLD: 85000,
 };
 
-interface BondingCurveTradeRequest {
-  tokenId: string;
-  tradeType: 'buy' | 'sell';
-  solAmount?: number;
-  tokenAmount?: number;
-  walletAddress: string;
-  expectedTokensOut?: number;
-  expectedSolOut?: number;
+/**
+ * Get bonding curve PDA
+ */
+function getBondingCurvePDA(mint: PublicKey, programId: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("bonding_curve"), mint.toBuffer()],
+    programId
+  );
 }
 
-interface BondingCurveState {
-  solRaised: number;
-  tokensSold: number;
-  virtualSolReserves: number;
-  virtualTokenReserves: number;
+/**
+ * Calculate tokens for SOL using bonding curve formula
+ */
+function calculateBuy(solIn: number, solRaised: number, tokensSold: number): {
+  tokensOut: number;
+  priceAfter: number;
+  newSolRaised: number;
+  newTokensSold: number;
+  marketCapAfter: number;
+} {
+  const currentVirtualSol = BONDING_CURVE_CONFIG.VIRTUAL_SOL_RESERVES + solRaised;
+  const currentVirtualTokens = BONDING_CURVE_CONFIG.VIRTUAL_TOKEN_RESERVES - tokensSold;
+
+  const k = currentVirtualSol * currentVirtualTokens;
+  const newVirtualSol = currentVirtualSol + solIn;
+  const newVirtualTokens = k / newVirtualSol;
+  const tokensOut = currentVirtualTokens - newVirtualTokens;
+
+  const newSolRaised = solRaised + solIn;
+  const newTokensSold = tokensSold + tokensOut;
+  const priceAfter = newVirtualSol / newVirtualTokens;
+  const marketCapAfter = priceAfter * 1000000000; // 1B total supply
+
+  return {
+    tokensOut,
+    priceAfter,
+    newSolRaised,
+    newTokensSold,
+    marketCapAfter,
+  };
+}
+
+/**
+ * Calculate SOL for tokens using bonding curve formula
+ */
+function calculateSell(tokensIn: number, solRaised: number, tokensSold: number): {
+  solOut: number;
+  priceAfter: number;
+  newSolRaised: number;
+  newTokensSold: number;
+  marketCapAfter: number;
+} {
+  const currentVirtualSol = BONDING_CURVE_CONFIG.VIRTUAL_SOL_RESERVES + solRaised;
+  const currentVirtualTokens = BONDING_CURVE_CONFIG.VIRTUAL_TOKEN_RESERVES - tokensSold;
+
+  const k = currentVirtualSol * currentVirtualTokens;
+  const newVirtualTokens = currentVirtualTokens + tokensIn;
+  const newVirtualSol = k / newVirtualTokens;
+  const solOut = currentVirtualSol - newVirtualSol;
+
+  const newSolRaised = solRaised - solOut;
+  const newTokensSold = tokensSold - tokensIn;
+  const priceAfter = newVirtualSol / newVirtualTokens;
+  const marketCapAfter = priceAfter * 1000000000; // 1B total supply
+
+  return {
+    solOut,
+    priceAfter,
+    newSolRaised,
+    newTokensSold,
+    marketCapAfter,
+  };
+}
+
+/**
+ * Create bonding curve buy instruction
+ */
+function createBuyInstruction(
+  bondingCurve: PublicKey,
+  curveTokenAccount: PublicKey,
+  buyerTokenAccount: PublicKey,
+  buyer: PublicKey,
+  creator: PublicKey,
+  platformWallet: PublicKey,
+  prizePoolWallet: PublicKey,
+  reservesWallet: PublicKey,
+  programId: PublicKey,
+  solAmount: number,
+  minTokensOut: number
+): TransactionInstruction {
+  const instructionData = new Uint8Array(8 + 8 + 8);
+  const dataView = new DataView(instructionData.buffer);
+  
+  // Buy instruction discriminator
+  dataView.setBigUint64(0, BigInt(1), true);
+  dataView.setBigUint64(8, BigInt(solAmount * LAMPORTS_PER_SOL), true);
+  dataView.setBigUint64(16, BigInt(minTokensOut), true);
+
+  const accounts: AccountMeta[] = [
+    { pubkey: bondingCurve, isSigner: false, isWritable: true },
+    { pubkey: curveTokenAccount, isSigner: false, isWritable: true },
+    { pubkey: buyerTokenAccount, isSigner: false, isWritable: true },
+    { pubkey: buyer, isSigner: true, isWritable: true },
+    { pubkey: creator, isSigner: false, isWritable: true },
+    { pubkey: platformWallet, isSigner: false, isWritable: true },
+    { pubkey: prizePoolWallet, isSigner: false, isWritable: true },
+    { pubkey: reservesWallet, isSigner: false, isWritable: true },
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+  ];
+
+  return new TransactionInstruction({
+    keys: accounts,
+    programId,
+    data: instructionData,
+  });
+}
+
+/**
+ * Create bonding curve sell instruction
+ */
+function createSellInstruction(
+  bondingCurve: PublicKey,
+  curveTokenAccount: PublicKey,
+  sellerTokenAccount: PublicKey,
+  seller: PublicKey,
+  creator: PublicKey,
+  platformWallet: PublicKey,
+  prizePoolWallet: PublicKey,
+  reservesWallet: PublicKey,
+  programId: PublicKey,
+  tokenAmount: number,
+  minSolOut: number
+): TransactionInstruction {
+  const instructionData = new Uint8Array(8 + 8 + 8);
+  const dataView = new DataView(instructionData.buffer);
+  
+  // Sell instruction discriminator
+  dataView.setBigUint64(0, BigInt(2), true);
+  dataView.setBigUint64(8, BigInt(tokenAmount * Math.pow(10, 9)), true);
+  dataView.setBigUint64(16, BigInt(minSolOut * LAMPORTS_PER_SOL), true);
+
+  const accounts: AccountMeta[] = [
+    { pubkey: bondingCurve, isSigner: false, isWritable: true },
+    { pubkey: curveTokenAccount, isSigner: false, isWritable: true },
+    { pubkey: sellerTokenAccount, isSigner: false, isWritable: true },
+    { pubkey: seller, isSigner: true, isWritable: true },
+    { pubkey: creator, isSigner: false, isWritable: true },
+    { pubkey: platformWallet, isSigner: false, isWritable: true },
+    { pubkey: prizePoolWallet, isSigner: false, isWritable: true },
+    { pubkey: reservesWallet, isSigner: false, isWritable: true },
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+  ];
+
+  return new TransactionInstruction({
+    keys: accounts,
+    programId,
+    data: instructionData,
+  });
 }
 
 serve(async (req) => {
+  console.log('=== BONDING CURVE TRADE ===');
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseClient = createClient(
+    const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const request: BondingCurveTradeRequest = await req.json();
-    
-    console.log(`Processing bonding curve ${request.tradeType} for token ${request.tokenId}:`, {
-      tradeType: request.tradeType,
-      solAmount: request.solAmount,
-      tokenAmount: request.tokenAmount,
-      walletAddress: request.walletAddress
-    });
+    const { 
+      tokenId, 
+      walletAddress, 
+      tradeType, // 'buy' or 'sell'
+      amount, // SOL amount for buy, token amount for sell
+      signedTransaction, 
+      platformSignature,
+      slippageBps = 500 // 5% default slippage
+    } = await req.json();
 
-    // Get token details
-    const { data: token, error: tokenError } = await supabaseClient
+    console.log('Processing trade:', { tokenId, walletAddress, tradeType, amount });
+
+    // Validate inputs
+    if (!tokenId || !walletAddress || !tradeType || !amount || !signedTransaction) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required parameters' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    if (!['buy', 'sell'].includes(tradeType)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid trade type. Must be "buy" or "sell"' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // Verify platform signature
+    if (!platformSignature || !platformSignature.signature) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Platform signature required',
+          code: 'PLATFORM_SIGNATURE_REQUIRED'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
+
+    // Get token data
+    const { data: token, error: tokenError } = await supabase
       .from('tokens')
       .select('*')
-      .eq('id', request.tokenId)
+      .eq('id', tokenId)
       .single();
 
     if (tokenError || !token) {
-      throw new Error(`Token not found: ${tokenError?.message}`);
+      return new Response(
+        JSON.stringify({ error: 'Token not found' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+      );
     }
 
-    // Check if token is app-created
-    if (!token.mint_address) {
-      throw new Error('Only tokens created through our platform can be traded on bonding curve');
+    // Validate platform signature
+    const { data: signatureValid, error: sigError } = await supabase.rpc('validate_platform_signature', {
+      p_token_id: tokenId,
+      p_signature: platformSignature.signature
+    });
+
+    if (sigError || !signatureValid) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid or expired platform signature',
+          code: 'INVALID_PLATFORM_SIGNATURE'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
     }
 
-    // Get current bonding curve state
-    const currentState: BondingCurveState = {
-      solRaised: token.sol_raised || 0,
-      tokensSold: token.tokens_sold || 0,
-      virtualSolReserves: BONDING_CURVE_CONFIG.VIRTUAL_SOL_RESERVES + (token.sol_raised || 0),
-      virtualTokenReserves: BONDING_CURVE_CONFIG.VIRTUAL_TOKEN_RESERVES - (token.tokens_sold || 0),
-    };
+    // Check graduation status
+    if (token.is_graduated) {
+      return new Response(
+        JSON.stringify({ error: 'Token has graduated to Raydium' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
 
-    console.log('Current bonding curve state:', currentState);
+    // Get configuration
+    const { data: programId } = await supabase.rpc('get_active_program_id');
+    const realProgramId = programId || '11111111111111111111111111111111';
 
-    // Check if graduated
-    const currentPrice = currentState.virtualSolReserves / currentState.virtualTokenReserves;
-    const currentMarketCap = currentPrice * BONDING_CURVE_CONFIG.TOTAL_SUPPLY;
+    // Get wallet addresses
+    const { data: walletConfigs } = await supabase
+      .from('wallet_config')
+      .select('wallet_type, wallet_address')
+      .eq('is_active', true);
+
+    const walletMap = {};
+    walletConfigs?.forEach(config => {
+      walletMap[config.wallet_type] = config.wallet_address;
+    });
+
+    // Initialize Solana connection
+    const heliusRpcApiKey = Deno.env.get('HELIUS_RPC_API_KEY');
+    if (!heliusRpcApiKey) {
+      throw new Error('Helius RPC API key not configured');
+    }
     
-    if (currentMarketCap >= BONDING_CURVE_CONFIG.GRADUATION_THRESHOLD) {
-      throw new Error('Token has graduated to Raydium! Please trade on external DEX platforms.');
+    const heliusRpcUrl = `https://devnet.helius-rpc.com/?api-key=${heliusRpcApiKey}`;
+    const connection = new Connection(heliusRpcUrl, 'confirmed');
+
+    // Get platform keypair
+    const platformPrivateKey = Deno.env.get('PLATFORM_WALLET_PRIVATE_KEY');
+    if (!platformPrivateKey) {
+      throw new Error('Platform wallet private key not configured');
     }
 
-    let transaction: any;
-    let newState: BondingCurveState;
-
-    if (request.tradeType === 'buy') {
-      if (!request.solAmount) {
-        throw new Error('SOL amount required for buy orders');
-      }
-
-      // Calculate tokens out using constant product formula
-      const k = currentState.virtualSolReserves * currentState.virtualTokenReserves;
-      const newSolReserves = currentState.virtualSolReserves + request.solAmount;
-      const newTokenReserves = k / newSolReserves;
-      const tokensOut = currentState.virtualTokenReserves - newTokenReserves;
-
-      // Check if we have enough tokens remaining
-      const tokensRemaining = BONDING_CURVE_CONFIG.BONDING_CURVE_SUPPLY - currentState.tokensSold;
-      if (tokensOut > tokensRemaining) {
-        throw new Error(`Insufficient tokens remaining. Only ${tokensRemaining.toFixed(0)} tokens available.`);
-      }
-
-      // Validate against expected output (5% tolerance)
-      if (request.expectedTokensOut && Math.abs(tokensOut - request.expectedTokensOut) / request.expectedTokensOut > 0.05) {
-        throw new Error('Price has changed significantly. Please refresh and try again.');
-      }
-
-      newState = {
-        solRaised: currentState.solRaised + request.solAmount,
-        tokensSold: currentState.tokensSold + tokensOut,
-        virtualSolReserves: newSolReserves,
-        virtualTokenReserves: newTokenReserves,
-      };
-
-      transaction = {
-        type: 'buy',
-        solIn: request.solAmount,
-        tokensOut: tokensOut,
-        priceAfter: newSolReserves / newTokenReserves,
-        marketCapAfter: (newSolReserves / newTokenReserves) * BONDING_CURVE_CONFIG.TOTAL_SUPPLY,
-      };
-
-    } else if (request.tradeType === 'sell') {
-      if (!request.tokenAmount) {
-        throw new Error('Token amount required for sell orders');
-      }
-
-      // Calculate SOL out using constant product formula
-      const k = currentState.virtualSolReserves * currentState.virtualTokenReserves;
-      const newTokenReserves = currentState.virtualTokenReserves + request.tokenAmount;
-      const newSolReserves = k / newTokenReserves;
-      const solOut = currentState.virtualSolReserves - newSolReserves;
-
-      // Validate against expected output (5% tolerance)
-      if (request.expectedSolOut && Math.abs(solOut - request.expectedSolOut) / request.expectedSolOut > 0.05) {
-        throw new Error('Price has changed significantly. Please refresh and try again.');
-      }
-
-      newState = {
-        solRaised: Math.max(0, currentState.solRaised - solOut),
-        tokensSold: Math.max(0, currentState.tokensSold - request.tokenAmount),
-        virtualSolReserves: newSolReserves,
-        virtualTokenReserves: newTokenReserves,
-      };
-
-      transaction = {
-        type: 'sell',
-        tokensIn: request.tokenAmount,
-        solOut: solOut,
-        priceAfter: newSolReserves / newTokenReserves,
-        marketCapAfter: (newSolReserves / newTokenReserves) * BONDING_CURVE_CONFIG.TOTAL_SUPPLY,
-      };
-    } else {
-      throw new Error('Invalid trade type');
-    }
-
-    console.log('Calculated transaction:', transaction);
-    console.log('New bonding curve state:', newState);
-
-    // Simulate blockchain transaction
-    const connection = new Connection(
-      Deno.env.get('ALCHEMY_RPC_URL') || 'https://api.devnet.solana.com'
+    const platformKeypair = Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(platformPrivateKey))
     );
 
-    // Generate mock transaction signature
-    const mockSignature = `bonding_curve_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const mintAddress = new PublicKey(token.mint_address);
+    const userPublicKey = new PublicKey(walletAddress);
+    const creatorPublicKey = new PublicKey(token.creator_wallet);
+    const bondingCurveProgramId = new PublicKey(realProgramId);
+    const [bondingCurve] = getBondingCurvePDA(mintAddress, bondingCurveProgramId);
 
-    // Calculate fees (1% of trade amount)
-    const feeRate = 0.01;
-    let totalFeeAmount: number;
-    
-    if (request.tradeType === 'buy') {
-      totalFeeAmount = request.solAmount! * feeRate;
+    // Calculate trade
+    let trade;
+    if (tradeType === 'buy') {
+      trade = calculateBuy(amount, token.sol_raised || 0, token.tokens_sold || 0);
+      trade.type = 'buy';
+      trade.solIn = amount;
+      trade.tokensOut = trade.tokensOut;
     } else {
-      totalFeeAmount = transaction.solOut * feeRate;
+      trade = calculateSell(amount, token.sol_raised || 0, token.tokens_sold || 0);
+      trade.type = 'sell';
+      trade.tokensIn = amount;
+      trade.solOut = trade.solOut;
     }
 
-    // Process fees
+    console.log('Trade calculation:', trade);
+
+    // Execute user's transaction first
+    const userTransaction = Transaction.from(Uint8Array.from(signedTransaction));
+    console.log('Submitting user transaction...');
+    const userTxId = await connection.sendRawTransaction(userTransaction.serialize());
+    await connection.confirmTransaction(userTxId);
+    console.log('✅ User transaction confirmed:', userTxId);
+
+    // Execute bonding curve trade
+    const tradeTx = new Transaction();
+
+    // Get token accounts
+    const curveTokenAccount = await getAssociatedTokenAddress(
+      mintAddress,
+      bondingCurve,
+      true
+    );
+
+    const userTokenAccount = await getAssociatedTokenAddress(
+      mintAddress,
+      userPublicKey
+    );
+
+    // Create user token account if needed
     try {
-      await supabaseClient.functions.invoke('process-trading-fees', {
-        body: {
-          tokenId: request.tokenId,
-          transactionType: request.tradeType,
-          tradeAmount: request.tradeType === 'buy' ? request.solAmount : transaction.solOut,
-          traderWallet: request.walletAddress,
-          totalFeeAmount: totalFeeAmount,
-        },
-      });
-    } catch (feeError) {
-      console.warn('Fee processing failed:', feeError);
-      // Continue with trade even if fee processing fails
+      await getAccount(connection, userTokenAccount);
+    } catch (error) {
+      tradeTx.add(
+        createAssociatedTokenAccountInstruction(
+          platformKeypair.publicKey,
+          userTokenAccount,
+          userPublicKey,
+          mintAddress
+        )
+      );
     }
+
+    // Use real bonding curve instruction if program ID is available
+    if (realProgramId !== '11111111111111111111111111111111') {
+      const platformWallet = new PublicKey(walletMap.platform || '11111111111111111111111111111111');
+      const prizePoolWallet = new PublicKey(walletMap.prize_pool || '11111111111111111111111111111111');
+      const reservesWallet = new PublicKey(walletMap.reserves || '11111111111111111111111111111111');
+
+      if (tradeType === 'buy') {
+        const minTokensOut = Math.floor(trade.tokensOut * (10000 - slippageBps) / 10000 * Math.pow(10, 9));
+        tradeTx.add(
+          createBuyInstruction(
+            bondingCurve,
+            curveTokenAccount,
+            userTokenAccount,
+            userPublicKey,
+            creatorPublicKey,
+            platformWallet,
+            prizePoolWallet,
+            reservesWallet,
+            bondingCurveProgramId,
+            amount,
+            minTokensOut
+          )
+        );
+      } else {
+        const minSolOut = Math.floor(trade.solOut * (10000 - slippageBps) / 10000);
+        tradeTx.add(
+          createSellInstruction(
+            bondingCurve,
+            curveTokenAccount,
+            userTokenAccount,
+            userPublicKey,
+            creatorPublicKey,
+            platformWallet,
+            prizePoolWallet,
+            reservesWallet,
+            bondingCurveProgramId,
+            amount,
+            minSolOut
+          )
+        );
+      }
+    } else {
+      // Fallback simulation until contract is deployed
+      console.log('⚠️ Using simulation mode - real contract not deployed yet');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Smart contract not deployed yet',
+          message: 'Please deploy the bonding curve contract first',
+          simulatedTrade: trade
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // Send trade transaction
+    const { blockhash } = await connection.getLatestBlockhash();
+    tradeTx.recentBlockhash = blockhash;
+    tradeTx.feePayer = userPublicKey; // User pays for their trade
+
+    console.log('Executing bonding curve trade...');
+    const tradeTxId = await sendAndConfirmTransaction(
+      connection,
+      tradeTx,
+      [] // Will be signed by user
+    );
+    console.log('✅ Trade transaction confirmed:', tradeTxId);
 
     // Update token state in database
-    const { error: updateError } = await supabaseClient
+    const { error: updateError } = await supabase
       .from('tokens')
       .update({
-        sol_raised: newState.solRaised,
-        tokens_sold: newState.tokensSold,
-        price: transaction.priceAfter,
-        market_cap: transaction.marketCapAfter,
-        volume_24h: (token.volume_24h || 0) + (request.tradeType === 'buy' ? request.solAmount! : transaction.solOut),
+        sol_raised: trade.newSolRaised,
+        tokens_sold: trade.newTokensSold,
+        market_cap: trade.marketCapAfter,
+        price: trade.priceAfter,
+        is_graduated: trade.marketCapAfter >= 100000, // $100k graduation
         updated_at: new Date().toISOString(),
       })
-      .eq('id', request.tokenId);
+      .eq('id', tokenId);
 
     if (updateError) {
-      console.error('Failed to update token state:', updateError);
-      throw new Error('Failed to update token state');
+      console.error('Database update error:', updateError);
     }
 
     // Record trading activity
-    await supabaseClient
-      .from('trading_activities')
-      .insert({
-        user_wallet: request.walletAddress,
-        token_id: request.tokenId,
-        activity_type: request.tradeType,
-        amount_sol: request.tradeType === 'buy' ? request.solAmount! : transaction.solOut,
-        token_amount: request.tradeType === 'buy' ? transaction.tokensOut : request.tokenAmount!,
-        token_price: transaction.priceAfter,
-        market_cap_at_time: transaction.marketCapAfter,
-      });
+    await supabase.from('trading_activities').insert({
+      token_id: tokenId,
+      user_wallet: walletAddress,
+      activity_type: tradeType,
+      amount_sol: tradeType === 'buy' ? amount : trade.solOut,
+      token_amount: tradeType === 'buy' ? trade.tokensOut : amount,
+      token_price: trade.priceAfter,
+      market_cap_at_time: trade.marketCapAfter,
+    });
 
-    // Update user portfolio
-    await supabaseClient
-      .from('user_portfolios')
-      .upsert({
-        user_wallet: request.walletAddress,
-        token_id: request.tokenId,
-        token_amount: request.tradeType === 'buy' ? 
-          (await supabaseClient
-            .from('user_portfolios')
-            .select('token_amount')
-            .eq('user_wallet', request.walletAddress)
-            .eq('token_id', request.tokenId)
-            .single()
-          ).data?.token_amount || 0 + transaction.tokensOut :
-          Math.max(0, (await supabaseClient
-            .from('user_portfolios')
-            .select('token_amount')
-            .eq('user_wallet', request.walletAddress)
-            .eq('token_id', request.tokenId)
-            .single()
-          ).data?.token_amount || 0 - request.tokenAmount!),
-        total_invested: request.tradeType === 'buy' ? request.solAmount! : 0,
-        average_buy_price: transaction.priceAfter,
-        last_activity_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_wallet,token_id'
+    // Check for achievements
+    try {
+      await supabase.rpc('check_and_award_achievements', {
+        p_user_wallet: token.creator_wallet,
+        p_token_id: tokenId,
+        p_check_type: 'milestone'
       });
+    } catch (error) {
+      console.error('Achievement check failed:', error);
+    }
 
-    console.log(`Successfully processed bonding curve ${request.tradeType} transaction`);
+    console.log(`🎉 ${tradeType.toUpperCase()} COMPLETED!`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        transaction: {
-          signature: mockSignature,
-          type: request.tradeType,
-          solAmount: request.tradeType === 'buy' ? request.solAmount : transaction.solOut,
-          tokenAmount: request.tradeType === 'buy' ? transaction.tokensOut : request.tokenAmount,
-          tokensReceived: request.tradeType === 'buy' ? transaction.tokensOut : 0,
-          solReceived: request.tradeType === 'sell' ? transaction.solOut : 0,
-          priceAfter: transaction.priceAfter,
-          marketCapAfter: transaction.marketCapAfter,
-          fee: totalFeeAmount,
-          timestamp: new Date().toISOString(),
+        userTxId,
+        tradeTxId,
+        trade: {
+          type: tradeType,
+          ...(tradeType === 'buy' ? {
+            solIn: amount,
+            tokensOut: trade.tokensOut,
+          } : {
+            tokensIn: amount,
+            solOut: trade.solOut,
+          }),
+          priceAfter: trade.priceAfter,
+          marketCapAfter: trade.marketCapAfter,
         },
-        bondingCurveState: newState,
+        message: `✅ Successfully ${tradeType === 'buy' ? 'bought' : 'sold'} ${token.symbol}`,
+        graduationStatus: trade.marketCapAfter >= 100000 ? 'GRADUATED' : 'ACCUMULATING',
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Bonding curve trade error:', error);
+    console.error('=== TRADE ERROR ===');
+    console.error('Error:', error);
     return new Response(
-      JSON.stringify({
-        error: error.message,
-        success: false
+      JSON.stringify({ 
+        error: 'Failed to execute bonding curve trade', 
+        details: error.message 
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });

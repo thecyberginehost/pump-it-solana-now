@@ -766,6 +766,10 @@ export type Database = {
         Args: { p_user_wallet: string; p_token_id: string }
         Returns: Json
       }
+      update_existing_tokens_program_id: {
+        Args: { new_program_id: string; old_program_id: string }
+        Returns: number
+      }
       validate_platform_signature: {
         Args: { p_token_id: string; p_signature: string }
         Returns: boolean
