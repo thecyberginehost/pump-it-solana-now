@@ -113,7 +113,21 @@ const BondingCurvePanel = ({
         try {
           // Deserialize and sign the transaction
           const transactionBuffer = new Uint8Array(data.transaction);
+          
+          console.log('Transaction buffer details:', {
+            length: transactionBuffer.length,
+            firstBytes: Array.from(transactionBuffer.slice(0, 10)),
+            hasValidData: transactionBuffer.length > 0
+          });
+          
           const transaction = Transaction.from(transactionBuffer);
+          
+          console.log('Parsed transaction:', {
+            recentBlockhash: transaction.recentBlockhash,
+            feePayer: transaction.feePayer?.toString(),
+            signatures: transaction.signatures.length,
+            instructions: transaction.instructions.length
+          });
           
           // Check wallet balance before proceeding
           const balance = await connection.getBalance(publicKey);
