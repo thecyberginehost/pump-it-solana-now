@@ -36,7 +36,7 @@ const BondingCurvePanel = ({
   const [sellAmount, setSellAmount] = useState("");
   const [isTrading, setIsTrading] = useState(false);
   const { isAuthenticated, walletAddress } = useWalletAuth();
-  const { signTransaction, sendTransaction } = useWallet();
+  const { signTransaction, sendTransaction, publicKey } = useWallet();
   const { connection } = useConnection();
   const { checkAchievements } = useAchievements();
   
@@ -114,6 +114,21 @@ const BondingCurvePanel = ({
           // Deserialize and sign the transaction
           const transactionBuffer = new Uint8Array(data.transaction);
           const transaction = Transaction.from(transactionBuffer);
+          
+          // Check wallet balance before proceeding
+          const balance = await connection.getBalance(publicKey);
+          const requiredLamports = amount * 1e9; // Convert SOL to lamports
+          const estimatedFee = 5000; // Estimated transaction fee in lamports
+          
+          console.log('Wallet balance check:', {
+            balance: balance / 1e9,
+            required: amount,
+            hasEnoughBalance: balance >= requiredLamports + estimatedFee
+          });
+          
+          if (balance < requiredLamports + estimatedFee) {
+            throw new Error(`Insufficient balance. You need ${amount} SOL + fees but only have ${(balance / 1e9).toFixed(4)} SOL`);
+          }
           
           console.log('Signing buy transaction...');
           const signedTransaction = await signTransaction(transaction);
