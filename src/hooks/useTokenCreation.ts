@@ -49,7 +49,7 @@ export const useTokenCreation = () => {
           description: tokenData.description,
           telegramUrl: tokenData.telegram_url,
           xUrl: tokenData.x_url,
-          walletAddress,
+          creatorWallet: walletAddress,
           initialBuyIn,
           freeze,
         },
