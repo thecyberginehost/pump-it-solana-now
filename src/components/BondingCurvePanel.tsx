@@ -105,6 +105,13 @@ const BondingCurvePanel = ({
 
       if (data?.requiresSignature && data?.transaction) {
         console.log('🎯 Transaction prepared, signing with wallet...');
+        console.log('Edge function response:', {
+          hasTransaction: !!data.transaction,
+          transactionType: typeof data.transaction,
+          transactionLength: data.transaction?.length,
+          hasSignature: !!data.platformSignature,
+          tradeData: data.trade
+        });
         
         if (!signTransaction || !sendTransaction) {
           throw new Error('Wallet not connected for signing');
