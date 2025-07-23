@@ -153,6 +153,32 @@ serve(async (req) => {
       );
     }
 
+    // Check creator rate limits and permissions
+    const { data: rateLimitCheck, error: rateLimitError } = await supabase.rpc('check_creator_rate_limit', {
+      p_creator_wallet: walletAddress
+    });
+
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to check creator permissions' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    const rateLimitResult = rateLimitCheck[0];
+    if (!rateLimitResult.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Creator limit exceeded',
+          reason: rateLimitResult.reason,
+          tokensCreatedToday: rateLimitResult.tokens_created_today,
+          dailyLimit: rateLimitResult.daily_limit
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+      );
+    }
+
     // Initialize Helius Solana connection with staked connections
     const heliusRpcApiKey = Deno.env.get('HELIUS_RPC_API_KEY');
     if (!heliusRpcApiKey) {

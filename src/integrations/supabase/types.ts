@@ -265,6 +265,44 @@ export type Database = {
           },
         ]
       }
+      platform_access_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          signature_hash: string
+          timestamp: string
+          token_id: string | null
+          user_wallet: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          signature_hash: string
+          timestamp?: string
+          token_id?: string | null
+          user_wallet: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          signature_hash?: string
+          timestamp?: string
+          token_id?: string | null
+          user_wallet?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_access_logs_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -309,7 +347,9 @@ export type Database = {
           market_cap: number | null
           mint_address: string | null
           name: string
+          platform_signature: string | null
           price: number | null
+          signature_expires_at: string | null
           sol_raised: number | null
           symbol: string
           telegram_url: string | null
@@ -332,7 +372,9 @@ export type Database = {
           market_cap?: number | null
           mint_address?: string | null
           name: string
+          platform_signature?: string | null
           price?: number | null
+          signature_expires_at?: string | null
           sol_raised?: number | null
           symbol: string
           telegram_url?: string | null
@@ -355,7 +397,9 @@ export type Database = {
           market_cap?: number | null
           mint_address?: string | null
           name?: string
+          platform_signature?: string | null
           price?: number | null
+          signature_expires_at?: string | null
           sol_raised?: number | null
           symbol?: string
           telegram_url?: string | null
@@ -582,6 +626,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      check_creator_rate_limit: {
+        Args: { p_creator_wallet: string }
+        Returns: {
+          allowed: boolean
+          reason: string
+          tokens_created_today: number
+          daily_limit: number
+        }[]
+      }
       get_available_top_10_spots: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -597,6 +650,10 @@ export type Database = {
       reset_daily_credits: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      validate_platform_signature: {
+        Args: { p_token_id: string; p_signature: string }
+        Returns: boolean
       }
     }
     Enums: {

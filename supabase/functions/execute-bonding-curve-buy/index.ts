@@ -76,7 +76,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { tokenId, walletAddress, solAmount, signedTransaction } = await req.json();
+    const { tokenId, walletAddress, solAmount, signedTransaction, platformSignature } = await req.json();
 
     console.log('Processing real buy:', { tokenId, walletAddress, solAmount });
 
@@ -84,6 +84,17 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Transaction signature required' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // CRITICAL: Verify platform signature for exclusive access
+    if (!platformSignature || !platformSignature.signature) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Platform signature required - trades must go through official platform',
+          code: 'PLATFORM_SIGNATURE_REQUIRED'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
       );
     }
 
@@ -98,6 +109,22 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Token not found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+      );
+    }
+
+    // Validate platform signature
+    const { data: signatureValid, error: sigError } = await supabase.rpc('validate_platform_signature', {
+      p_token_id: tokenId,
+      p_signature: platformSignature.signature
+    });
+
+    if (sigError || !signatureValid) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid or expired platform signature',
+          code: 'INVALID_PLATFORM_SIGNATURE'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
       );
     }
 

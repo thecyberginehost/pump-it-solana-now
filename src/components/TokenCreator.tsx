@@ -80,7 +80,7 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
     
     // Auto-launch the token immediately with the new data (always community safe)
     setTimeout(async () => {
-      await createToken(newTokenData, walletAddress, parseFloat(aiTokenData.initialBuyIn || "0"), false);
+      await createToken(newTokenData, parseFloat(aiTokenData.initialBuyIn || "0"), false);
     }, 1000);
   };
 
@@ -353,7 +353,7 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
     }
 
     // Always use community mode (freeze = false)
-    await createToken(tokenData, walletAddress, buyInAmount, false);
+    await createToken(tokenData, buyInAmount, false);
   };
 
   return (

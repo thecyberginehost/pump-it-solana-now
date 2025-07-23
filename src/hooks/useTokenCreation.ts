@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +6,7 @@ import { Transaction } from '@solana/web3.js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAchievements } from './useAchievements';
+import { useCreatorControls } from './useCreatorControls';
 
 export interface TokenData {
   name: string;
@@ -22,8 +22,9 @@ export const useTokenCreation = () => {
   const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
   const { checkAchievements } = useAchievements();
-  const { signTransaction, sendTransaction } = useWallet();
+  const { signTransaction, sendTransaction, publicKey } = useWallet();
   const { connection } = useConnection();
+  const { creatorLimits, consumeCredit } = useCreatorControls();
 
   const createToken = useMutation({
     mutationFn: async ({ tokenData, walletAddress, initialBuyIn = 0, freeze = false }: { 
@@ -32,8 +33,15 @@ export const useTokenCreation = () => {
       initialBuyIn?: number;
       freeze?: boolean;
     }) => {
+      // Check creator limits before proceeding
+      if (!creatorLimits.allowed) {
+        throw new Error(`Creator limit: ${creatorLimits.reason}`);
+      }
+
+      console.log('Starting token creation with creator controls validated');
+
       // Step 1: Get transaction from backend
-      const { data, error } = await supabase.functions.invoke('create-token', {
+      const { data, error } = await supabase.functions.invoke('create-bonding-curve-token', {
         body: {
           name: tokenData.name,
           symbol: `${tokenData.symbol}.FORGE`, // Add forge suffix
@@ -79,98 +87,105 @@ export const useTokenCreation = () => {
             console.error('Transaction failed on blockchain:', confirmation.value.err);
             throw new Error(`Blockchain transaction failed: ${JSON.stringify(confirmation.value.err)}`);
           }
+
+          console.log('Transaction confirmed successfully');
           
-          console.log('✅ Transaction confirmed on blockchain!');
-          
-          // Return success data
+          // Return the confirmation result along with token data
           return {
             ...data,
             signature,
-            transactionConfirmed: true,
-            message: `Token "${data.token.name}" created successfully with proper metadata!`
+            confirmed: true
           };
-        } catch (signError: any) {
-          console.error('Detailed transaction error:', {
-            error: signError,
-            message: signError?.message,
-            code: signError?.code,
-            name: signError?.name
-          });
           
-          // Check if transaction actually succeeded despite the error
-          if (signError?.message?.includes('Transaction was not confirmed') || 
-              signError?.message?.includes('User rejected')) {
-            console.log('Transaction may have succeeded despite error, checking...');
-            // Return partial success - token may have been created
+        } catch (txError) {
+          console.error('Transaction error:', txError);
+          // Check if it's a partial success (token created but transaction pending)
+          if (data.token) {
+            console.log('Token was created but transaction may be pending');
             return {
               ...data,
-              partialSuccess: true,
               signature: null,
-              message: 'Token may have been created. Check your wallet for new tokens.'
+              confirmed: false,
+              partialSuccess: true,
+              error: txError.message
             };
           }
-          
-          throw new Error(`Transaction failed: ${signError?.message || 'Unknown error'}`);
+          throw txError;
         }
       }
 
+      // If no transaction required, return the data directly
       return data;
     },
-    onSuccess: (data, variables) => {
-      const successMessage = data.partialSuccess 
-        ? `🎉 Token "${data.token.name}" created successfully!`
-        : `🎉 Token "${data.token.name}" created and confirmed on blockchain!`;
-      
-      toast.success(successMessage);
-      queryClient.invalidateQueries({ queryKey: ['tokens'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-tokens'] });
-      
-      // Check for creator achievements
-      checkAchievements({
-        userWallet: variables.walletAddress,
-        checkType: 'creator',
-      });
-      
-      // Navigate to success page with token details
-      const params = new URLSearchParams({
-        name: data.token.name,
-        symbol: data.token.symbol,
-        address: data.token.contract_address || '',
-        image: data.token.image_url || '',
-        trustLevel: data.trustLevel || 'Community Safe'
-      });
-      navigate(`/token-success?${params.toString()}`);
+    onSuccess: (data) => {
+      // Consume creator credit after successful creation
+      consumeCredit.mutate();
+
+      if (data.confirmed || data.partialSuccess) {
+        toast.success(
+          data.confirmed 
+            ? "Token created successfully! 🎉" 
+            : "Token created! Transaction may still be processing..."
+        );
+        
+        // Invalidate related queries
+        queryClient.invalidateQueries({ queryKey: ['tokens'] });
+        queryClient.invalidateQueries({ queryKey: ['recent-tokens'] });
+        queryClient.invalidateQueries({ queryKey: ['creator-tokens'] });
+        
+        // Check for creator achievements
+        if (data.token?.id && data.token?.creator_wallet) {
+          checkAchievements(data.token.creator_wallet, data.token.id);
+        }
+        
+        // Navigate to token success page
+        if (data.token?.id) {
+          navigate(`/token-success/${data.token.id}`);
+        }
+      } else {
+        toast.info("Token creation initiated. Please check back in a moment.");
+      }
     },
-    onError: (error: any) => {
+    onError: (error) => {
       console.error('Token creation error:', error);
-      toast.error(error?.message || 'Failed to create token');
+      toast.error(`Failed to create token: ${error.message}`);
+      setIsCreating(false);
     },
   });
 
-  const handleTokenCreation = async (
-    tokenData: TokenData, 
-    walletAddress: string, 
-    initialBuyIn: number = 0,
-    freeze: boolean = false // Default to false for community trust
-  ) => {
-    if (!tokenData.name || !tokenData.symbol) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    if (!walletAddress) {
+  const handleTokenCreation = async (tokenData: TokenData, initialBuyIn: number = 0, freeze: boolean = false) => {
+    if (!publicKey) {
       toast.error('Please connect your wallet first');
       return;
     }
 
+    if (!tokenData.name || !tokenData.symbol) {
+      toast.error('Please provide token name and symbol');
+      return;
+    }
+
     if (initialBuyIn < 0) {
-      toast.error('Initial buy-in amount cannot be negative');
+      toast.error('Initial buy-in amount must be non-negative');
+      return;
+    }
+
+    // Check creator limits
+    if (!creatorLimits.allowed) {
+      toast.error(`Cannot create token: ${creatorLimits.reason}`);
       return;
     }
 
     setIsCreating(true);
+    
     try {
-      await createToken.mutateAsync({ tokenData, walletAddress, initialBuyIn, freeze });
+      await createToken.mutateAsync({
+        tokenData,
+        walletAddress: publicKey.toString(),
+        initialBuyIn,
+        freeze,
+      });
+    } catch (error) {
+      console.error('Creation failed:', error);
     } finally {
       setIsCreating(false);
     }
@@ -178,7 +193,8 @@ export const useTokenCreation = () => {
 
   return {
     createToken: handleTokenCreation,
-    isCreating: isCreating || createToken.isPending,
+    isCreating: createToken.isPending || isCreating,
     error: createToken.error,
+    creatorLimits,
   };
 };
