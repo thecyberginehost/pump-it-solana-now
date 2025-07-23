@@ -328,9 +328,17 @@ serve(async (req) => {
       true // allowOwnerOffCurve
     );
 
-    // For devnet simulation: Create a simple successful transaction
-    // Just add compute budget instructions without any transfers for testing
-    console.log('📍 Creating minimal transaction for testing...');
+    // For devnet simulation: Send SOL to a treasury/burn address
+    // This simulates buying tokens by sending SOL to the platform
+    const platformWallet = new PublicKey('11111111111111111111111111111111'); // System Program (valid burn address)
+    
+    instructions.push(
+      SystemProgram.transfer({
+        fromPubkey: userPublicKey,
+        toPubkey: platformWallet,
+        lamports: solAmount * LAMPORTS_PER_SOL,
+      })
+    );
 
     // Get dynamic priority fee
     const priorityFee = await getPriorityFee(connection, instructions, userPublicKey, blockhash);
