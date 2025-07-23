@@ -328,9 +328,9 @@ serve(async (req) => {
       true // allowOwnerOffCurve
     );
 
-    // For devnet simulation: Send SOL to a treasury/burn address
-    // This simulates buying tokens by sending SOL to the platform
-    const platformWallet = new PublicKey('11111111111111111111111111111111'); // System Program (valid burn address)
+    // Send SOL to the bonding curve contract (proper bonding curve mechanism)
+    // The bonding curve contract will hold the SOL as liquidity reserves
+    const platformWallet = bondingCurveAddress; // SOL goes to the bonding curve contract
     
     instructions.push(
       SystemProgram.transfer({
