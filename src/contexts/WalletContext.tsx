@@ -15,11 +15,9 @@ interface WalletContextProviderProps {
 }
 
 export const WalletContextProvider = ({ children }: WalletContextProviderProps) => {
-  // Configure the endpoint - replace with your actual Alchemy devnet RPC URL
+  // Use Helius devnet endpoint to match the backend configuration
   const endpoint = useMemo(() => {
-    // For now, using standard devnet. In production, you'd configure your Alchemy URL here
-    // You can replace this with your actual Alchemy devnet URL for better performance
-    return clusterApiUrl(WalletAdapterNetwork.Devnet);
+    return 'https://devnet.helius-rpc.com/?api-key=afc3ad0b-e71e-4d3d-a96a-aed1dd5aa6c3';
   }, []);
   
   // Configure supported wallets
