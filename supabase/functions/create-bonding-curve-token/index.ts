@@ -97,7 +97,6 @@ function createInitializeCurveInstruction(
 serve(async (req) => {
   console.log('=== CREATE BONDING CURVE TOKEN ===');
   console.log('Request method:', req.method);
-  console.log('Request URL:', req.url);
   
   if (req.method === 'OPTIONS') {
     console.log('Handling OPTIONS request');
@@ -107,48 +106,26 @@ serve(async (req) => {
   try {
     console.log('Starting POST request handling...');
     
-    
-    // Test environment variables
+    // Environment check
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    console.log('Environment check:', { 
-      hasUrl: !!supabaseUrl, 
-      hasKey: !!supabaseKey,
-      urlLength: supabaseUrl?.length || 0,
-      keyLength: supabaseKey?.length || 0
-    });
     
-    // Test JSON parsing
-    let requestBody;
-    try {
-      requestBody = await req.json();
-      console.log('JSON parsed successfully, keys:', Object.keys(requestBody));
-    } catch (jsonError) {
-      console.error('JSON parse error:', jsonError);
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON in request body', details: jsonError.message }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing required environment variables');
     }
+    
+    // Create Supabase client
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    console.log('Supabase client created successfully');
 
-    // Test Supabase client creation
-    let supabase;
-    try {
-      supabase = createClient(supabaseUrl, supabaseKey);
-      console.log('Supabase client created successfully');
-    } catch (supabaseError) {
-      console.error('Supabase client creation error:', supabaseError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to create Supabase client', details: supabaseError.message }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
-    }
+    // Parse request body
+    const requestBody = await req.json();
+    console.log('JSON parsed successfully, keys:', Object.keys(requestBody));
 
-    // Extract required fields
-    const { name, symbol, description, creatorWallet } = requestBody;
-    console.log('Extracted fields:', { name, symbol, description, creatorWallet });
+    // Extract and validate required fields
+    const { name, symbol, description, creatorWallet, imageUrl, telegram, twitter, signedTransaction } = requestBody;
+    console.log('Extracted fields:', { name, symbol, creatorWallet });
 
-    // Validate required fields
     if (!name || !symbol || !description || !creatorWallet) {
       console.log('Missing required fields');
       return new Response(
@@ -156,39 +133,6 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
-
-    // Test rate limit check
-    try {
-      console.log('Testing rate limit check...');
-      const { data: rateLimitResult, error: rateLimitError } = await supabase.rpc('check_creator_rate_limit', {
-        p_creator_wallet: creatorWallet
-      });
-      console.log('Rate limit result:', { rateLimitResult, rateLimitError });
-      
-      if (rateLimitError) {
-        console.error('Rate limit error:', rateLimitError);
-        return new Response(
-          JSON.stringify({ error: 'Rate limit check failed', details: rateLimitError.message }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
-      }
-    } catch (rpcError) {
-      console.error('RPC call error:', rpcError);
-      return new Response(
-        JSON.stringify({ error: 'Database RPC call failed', details: rpcError.message }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
-    }
-
-    // Return success for now - database operations work
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Database operations successful - ready for Solana integration',
-        token: { name, symbol, creatorWallet }
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
 
     // Rate limiting check
     console.log('Checking rate limit for creator:', creatorWallet);
@@ -201,10 +145,7 @@ serve(async (req) => {
     if (rateLimitError) {
       console.error('Rate limit error:', rateLimitError);
       return new Response(
-        JSON.stringify({ 
-          error: 'Rate limit check failed', 
-          details: rateLimitError.message 
-        }),
+        JSON.stringify({ error: 'Rate limit check failed', details: rateLimitError.message }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
@@ -398,10 +339,8 @@ serve(async (req) => {
         symbol,
         description,
         image_url: imageUrl,
-        website,
         x_url: twitter,
         telegram_url: telegram,
-        discord,
         creator_wallet: creatorWallet,
         mint_address: mint.publicKey.toString(),
         bonding_curve_address: bondingCurve.toString(),
