@@ -15,9 +15,10 @@ interface WalletContextProviderProps {
 }
 
 export const WalletContextProvider = ({ children }: WalletContextProviderProps) => {
-  // Use Helius devnet endpoint to match the backend configuration
+  // Use public devnet endpoint for wallet connection
+  // Backend edge functions use authenticated Helius RPC for actual transactions
   const endpoint = useMemo(() => {
-    return 'https://devnet.helius-rpc.com/?api-key=afc3ad0b-e71e-4d3d-a96a-aed1dd5aa6c3';
+    return clusterApiUrl(WalletAdapterNetwork.Devnet);
   }, []);
   
   // Configure supported wallets
