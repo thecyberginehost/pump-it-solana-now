@@ -340,6 +340,11 @@ serve(async (req) => {
       })
     );
 
+    // TODO: Add token transfer from bonding curve contract to user
+    // In a real implementation, the bonding curve contract would automatically
+    // transfer tokens back to the user. For devnet simulation, we would need
+    // either a real contract or a platform-controlled token account to transfer from.
+
     // Get dynamic priority fee
     const priorityFee = await getPriorityFee(connection, instructions, userPublicKey, blockhash);
     
