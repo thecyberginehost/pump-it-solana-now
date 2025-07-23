@@ -651,6 +651,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      test_achievement_system: {
+        Args: { p_user_wallet: string; p_token_id: string }
+        Returns: Json
+      }
       validate_platform_signature: {
         Args: { p_token_id: string; p_signature: string }
         Returns: boolean
