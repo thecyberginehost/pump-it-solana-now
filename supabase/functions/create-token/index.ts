@@ -1,5 +1,4 @@
 // supabase/functions/create-token/index.ts
-// Creates a plain SPL token (no bonding curve), revokes mint/freeze authorities Pump.fun-style.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import {
@@ -21,6 +20,7 @@ import {
   createAssociatedTokenAccountInstruction,
   createMintToInstruction,
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress,
 } from "https://esm.sh/@solana/spl-token@0.4.6";
 import bs58 from "https://esm.sh/bs58@5.0.0";
 
@@ -31,7 +31,6 @@ const corsHeaders = {
   "Content-Type": "application/json",
 };
 
-// ---------- Helpers ----------
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
 }
@@ -49,47 +48,30 @@ function getConnection(): Connection {
 
 function getPlatformKeypair(): Keypair {
   const raw = getEnv("PLATFORM_WALLET_PRIVATE_KEY").trim();
-  return Keypair.fromSecretKey(bs58.decode(raw));
+  const secret = bs58.decode(raw);
+  if (secret.length !== 64) throw new Error("PLATFORM_WALLET_PRIVATE_KEY length invalid");
+  return Keypair.fromSecretKey(secret);
 }
 
-// ---------- Request Types ----------
 interface CreateTokenRequest {
-  name: string;          // e.g. "MoonForge Token"
-  symbol: string;        // e.g. "MOON"
-  decimals?: number;     // default 9
-  initialSupply?: number;// optional initial supply in whole tokens
-  receiver?: string;     // optional wallet to receive initial supply
+  name: string;
+  symbol: string;
+  decimals?: number;
+  initialSupply?: number;
+  receiver?: string;
 }
 
-// ---------- Main ----------
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    if (req.method !== "POST") {
-      return jsonResponse({ error: "Use POST" }, 405);
-    }
+    if (req.method !== "POST") return jsonResponse({ error: "Use POST" }, 405);
 
-    let body: CreateTokenRequest;
-    try {
-      body = await req.json();
-    } catch {
-      return jsonResponse({ error: "Invalid JSON body" }, 400);
-    }
+    const body = (await req.json().catch(() => null)) as CreateTokenRequest | null;
+    if (!body) return jsonResponse({ error: "Invalid JSON body" }, 400);
 
-    const {
-      name,
-      symbol,
-      decimals = 9,
-      initialSupply = 0,
-      receiver,
-    } = body;
-
-    if (!name || !symbol) {
-      return jsonResponse({ error: "name and symbol required" }, 400);
-    }
+    const { name, symbol, decimals = 9, initialSupply = 0, receiver } = body;
+    if (!name || !symbol) return jsonResponse({ error: "name and symbol required" }, 400);
 
     const connection = getConnection();
     const platform = getPlatformKeypair();
@@ -110,43 +92,36 @@ serve(async (req: Request) => {
       mintKeypair.publicKey,
       decimals,
       platform.publicKey,
-      platform.publicKey, // freeze authority initially, revoke later
+      platform.publicKey, // revoke later
       TOKEN_PROGRAM_ID
     );
 
-    const instructions = [
-      // optional: raise compute budget if needed
+    const tx1 = new Transaction().add(
       ComputeBudgetProgram.setComputeUnitLimit({ units: 400000 }),
       ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000 }),
       createMintIx,
-      initMintIx,
-    ];
+      initMintIx
+    );
+    tx1.feePayer = platform.publicKey;
+    tx1.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    tx1.partialSign(mintKeypair, platform);
 
-    const tx = new Transaction().add(...instructions);
-    tx.feePayer = platform.publicKey;
-    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-    // Partial sign by mint (new account) & platform
-    tx.partialSign(mintKeypair, platform);
-
-    const sig1 = await sendAndConfirmTransaction(connection, tx, [mintKeypair, platform], {
+    const sigCreateMint = await sendAndConfirmTransaction(connection, tx1, [mintKeypair, platform], {
       commitment: "confirmed",
     });
 
-    // 2. If initial supply > 0, mint to receiver (or platform ATA)
+    // 2. Optional initial mint
     let mintedTo: PublicKey | undefined;
     if (initialSupply > 0) {
       const dest = receiver ? new PublicKey(receiver) : platform.publicKey;
 
-      // Associated token account
-      const ata = await PublicKey.findProgramAddress(
-        [
-          dest.toBuffer(),
-          TOKEN_PROGRAM_ID.toBuffer(),
-          mintKeypair.publicKey.toBuffer(),
-        ],
+      const ata = await getAssociatedTokenAddress(
+        mintKeypair.publicKey,
+        dest,
+        false,
+        TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
-      ).then(([addr]) => addr);
+      );
 
       const createAtaIx = createAssociatedTokenAccountInstruction(
         platform.publicKey,
@@ -157,11 +132,12 @@ serve(async (req: Request) => {
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
+      const amount = BigInt(initialSupply) * (BigInt(10) ** BigInt(decimals));
       const mintToIx = createMintToInstruction(
         mintKeypair.publicKey,
         ata,
         platform.publicKey,
-        BigInt(initialSupply) * BigInt(10 ** decimals)
+        amount
       );
 
       const tx2 = new Transaction().add(
@@ -173,34 +149,13 @@ serve(async (req: Request) => {
       tx2.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
       tx2.partialSign(platform);
 
-      const sig2 = await sendAndConfirmTransaction(connection, tx2, [platform], {
-        commitment: "confirmed",
-      });
+      await sendAndConfirmTransaction(connection, tx2, [platform], { commitment: "confirmed" });
       mintedTo = ata;
     }
 
-    // 3. Revoke mint & freeze authorities (Pump.fun posture)
-    const revokeMintIx = await setAuthority(
-      connection,
-      platform, // payer
-      mintKeypair.publicKey,
-      platform.publicKey,
-      AuthorityType.MintTokens,
-      null
-    );
-
-    const revokeFreezeIx = await setAuthority(
-      connection,
-      platform,
-      mintKeypair.publicKey,
-      platform.publicKey,
-      AuthorityType.FreezeAccount,
-      null
-    );
-
-    // setAuthority util above actually sends a tx for you; if you want manual control, use spl-token raw ix instead.
-    // But the helper returns signature; you may prefer bundling into one tx.
-    // For clarity, we'll leave as-is.
+    // 3. Revoke mint & freeze authorities
+    await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.MintTokens, null);
+    await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.FreezeAccount, null);
 
     return jsonResponse({
       success: true,
@@ -210,18 +165,12 @@ serve(async (req: Request) => {
       decimals,
       initialSupply,
       mintedTo: mintedTo?.toBase58() ?? null,
-      tx: {
-        createMint: sig1,
-        // mintTo included only if supply > 0
-      },
+      tx: { createMint: sigCreateMint },
       authoritiesRevoked: true,
     });
-  } catch (err) {
-    console.error("ERR:create-token", {
-      message: (err as Error).message,
-      stack: (err as Error).stack,
-    });
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
+  } catch (err: any) {
+    console.error("ERR:create-token", err?.message, err?.stack, err?.logs);
+    return new Response(JSON.stringify({ error: err?.message ?? "Unknown error" }), {
       status: 500,
       headers: corsHeaders,
     });
