@@ -216,6 +216,25 @@ serve(async (req) => {
   }
 
   try {
+    // Verify HELIUS_KEY environment variable
+    const heliusKey = Deno.env.get('HELIUS_KEY');
+    console.log('HELIUS_KEY check:', {
+      isDefined: heliusKey !== undefined,
+      hasValue: !!heliusKey,
+      length: heliusKey?.length || 0
+    });
+    
+    if (!heliusKey) {
+      console.error('❌ HELIUS_KEY is undefined');
+      return new Response(
+        JSON.stringify({ 
+          error: 'HELIUS_KEY environment variable is not configured',
+          details: 'Missing required Helius API key'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -226,17 +245,60 @@ serve(async (req) => {
     
     console.log('Delegating to bonding curve token creation:', requestData);
 
-    // Call the new bonding curve token creation function
-    const bondingCurveResponse = await supabase.functions.invoke('create-bonding-curve-token', {
-      body: requestData
-    });
+    // Call the new bonding curve token creation function with enhanced error handling
+    let bondingCurveResponse;
+    try {
+      bondingCurveResponse = await supabase.functions.invoke('create-bonding-curve-token', {
+        body: requestData
+      });
+    } catch (sendError) {
+      console.error('❌ SUPABASE FUNCTION CALL ERROR:', sendError);
+      console.error('Send error details:', {
+        message: sendError.message,
+        stack: sendError.stack,
+        name: sendError.name,
+        cause: sendError.cause
+      });
+      
+      // Log the actual RPC error body if available
+      if (sendError.response) {
+        try {
+          const errorBody = await sendError.response.text();
+          console.error('RPC Error Body:', errorBody);
+          return new Response(
+            JSON.stringify({ 
+              error: 'RPC call failed', 
+              details: sendError.message,
+              rpcErrorBody: errorBody,
+              errorType: 'SUPABASE_FUNCTION_INVOKE_ERROR'
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          );
+        } catch (parseError) {
+          console.error('Could not parse error response body:', parseError);
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to invoke bonding curve function', 
+          details: sendError.message,
+          errorType: 'SUPABASE_FUNCTION_INVOKE_ERROR'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
 
     if (bondingCurveResponse.error) {
       console.error('Bonding curve creation error:', bondingCurveResponse.error);
+      console.error('Full error details:', JSON.stringify(bondingCurveResponse.error, null, 2));
+      
       return new Response(
         JSON.stringify({ 
           error: 'Failed to create bonding curve token', 
-          details: bondingCurveResponse.error.message 
+          details: bondingCurveResponse.error.message || 'Unknown error',
+          fullError: bondingCurveResponse.error,
+          errorType: 'BONDING_CURVE_ERROR'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
@@ -251,10 +313,18 @@ serve(async (req) => {
   } catch (error) {
     console.error('=== TOKEN CREATION ERROR ===');
     console.error('Error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      cause: error.cause
+    });
+    
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 
-        details: error.message 
+        details: error.message,
+        errorType: 'INTERNAL_SERVER_ERROR'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
