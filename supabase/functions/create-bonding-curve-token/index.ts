@@ -107,6 +107,7 @@ serve(async (req) => {
   try {
     console.log('Starting POST request handling...');
     
+    
     // Test environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -130,12 +131,61 @@ serve(async (req) => {
       );
     }
 
-    // Return success for now
+    // Test Supabase client creation
+    let supabase;
+    try {
+      supabase = createClient(supabaseUrl, supabaseKey);
+      console.log('Supabase client created successfully');
+    } catch (supabaseError) {
+      console.error('Supabase client creation error:', supabaseError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create Supabase client', details: supabaseError.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    // Extract required fields
+    const { name, symbol, description, creatorWallet } = requestBody;
+    console.log('Extracted fields:', { name, symbol, description, creatorWallet });
+
+    // Validate required fields
+    if (!name || !symbol || !description || !creatorWallet) {
+      console.log('Missing required fields');
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: name, symbol, description, creatorWallet' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // Test rate limit check
+    try {
+      console.log('Testing rate limit check...');
+      const { data: rateLimitResult, error: rateLimitError } = await supabase.rpc('check_creator_rate_limit', {
+        p_creator_wallet: creatorWallet
+      });
+      console.log('Rate limit result:', { rateLimitResult, rateLimitError });
+      
+      if (rateLimitError) {
+        console.error('Rate limit error:', rateLimitError);
+        return new Response(
+          JSON.stringify({ error: 'Rate limit check failed', details: rateLimitError.message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+    } catch (rpcError) {
+      console.error('RPC call error:', rpcError);
+      return new Response(
+        JSON.stringify({ error: 'Database RPC call failed', details: rpcError.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    // Return success for now - database operations work
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Function is working - environment and JSON parsing OK',
-        receivedKeys: Object.keys(requestBody)
+        message: 'Database operations successful - ready for Solana integration',
+        token: { name, symbol, creatorWallet }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
