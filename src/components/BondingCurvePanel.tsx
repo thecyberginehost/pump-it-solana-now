@@ -11,6 +11,7 @@ import { useWalletAuth } from "@/hooks/useWalletAuth";
 import { useBondingCurve, formatPrice, formatMarketCap, formatTokenAmount } from "@/hooks/useBondingCurve";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAchievements } from "@/hooks/useAchievements";
 
 interface BondingCurvePanelProps {
   tokenId: string;
@@ -33,6 +34,7 @@ const BondingCurvePanel = ({
   const [sellAmount, setSellAmount] = useState("");
   const [isTrading, setIsTrading] = useState(false);
   const { isAuthenticated, walletAddress } = useWalletAuth();
+  const { checkAchievements } = useAchievements();
   
   const { state, calculateBuy, calculateSell } = useBondingCurve(currentSolRaised, tokensSold);
 
@@ -104,6 +106,15 @@ const BondingCurvePanel = ({
         // Call onTrade callback to refresh data
         onTrade?.(data.trade);
         setBuyAmount("");
+        
+        // Check for achievements after successful trade
+        if (walletAddress) {
+          checkAchievements({
+            userWallet: walletAddress,
+            tokenId,
+            checkType: 'trading'
+          });
+        }
       } else {
         toast.error('Failed to prepare buy transaction');
       }
@@ -162,6 +173,15 @@ const BondingCurvePanel = ({
         // Call onTrade callback to refresh data
         onTrade?.(data.trade);
         setSellAmount("");
+        
+        // Check for achievements after successful trade
+        if (walletAddress) {
+          checkAchievements({
+            userWallet: walletAddress,
+            tokenId,
+            checkType: 'trading'
+          });
+        }
       } else {
         toast.error('Failed to prepare sell transaction');
       }

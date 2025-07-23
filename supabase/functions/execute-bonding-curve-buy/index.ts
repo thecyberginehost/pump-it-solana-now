@@ -243,6 +243,24 @@ serve(async (req) => {
       })
       .eq('id', tokenId);
 
+
+    // Check for milestone achievements after market cap update
+    try {
+      const { error: achievementError } = await supabase.rpc('check_and_award_achievements', {
+        p_user_wallet: token.creator_wallet,
+        p_token_id: tokenId,
+        p_check_type: 'milestone'
+      });
+      
+      if (achievementError) {
+        console.error('Achievement check error:', achievementError);
+        // Don't fail the transaction for achievement errors
+      }
+    } catch (error) {
+      console.error('Achievement check failed:', error);
+      // Don't fail the transaction for achievement errors
+    }
+
     if (updateError) {
       console.error('Database update error:', updateError);
     }

@@ -45,9 +45,10 @@ export const useTrading = () => {
       
       toast.success(`Successfully ${action} ${amount}!`);
       
-      // Check for trading achievements
+      // Check for trading achievements  
       checkAchievements({
         userWallet: variables.walletAddress,
+        tokenId: variables.tokenId,
         checkType: 'trading',
       });
       

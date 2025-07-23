@@ -135,7 +135,11 @@ export const useTokenCreation = () => {
         
         // Check for creator achievements
         if (data.token?.id && data.token?.creator_wallet) {
-          checkAchievements(data.token.creator_wallet, data.token.id);
+          checkAchievements({
+            userWallet: data.token.creator_wallet,
+            tokenId: data.token.id,
+            checkType: 'creator'
+          });
         }
         
         // Navigate to token success page
