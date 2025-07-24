@@ -63,3 +63,15 @@ verify_jwt = false
 
 [functions.get-priority-fee]
 verify_jwt = false
+
+[functions.helius-price-feed]
+verify_jwt = false
+
+[functions.helius-priority-fees]
+verify_jwt = false
+
+[functions.helius-parsed-transactions]
+verify_jwt = false
+
+[functions.helius-webhooks]
+verify_jwt = false
