@@ -5,7 +5,7 @@ export const BONDING_CURVE_CONFIG = {
   TOTAL_SUPPLY: 1_000_000_000, // 1B tokens
   BONDING_CURVE_SUPPLY: 800_000_000, // 800M tokens in bonding curve
   CREATOR_SUPPLY: 200_000_000, // 200M tokens to creator
-  GRADUATION_THRESHOLD: 100_000, // $100k market cap
+  GRADUATION_THRESHOLD: 75_000, // $75k market cap
   VIRTUAL_SOL_RESERVES: 30, // Virtual SOL liquidity
   VIRTUAL_TOKEN_RESERVES: 1_073_000_000, // Virtual token liquidity
 };

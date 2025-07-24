@@ -118,9 +118,18 @@ serve(async (req: Request) => {
       .select("program_id")
       .eq("program_name", "bonding_curve")
       .eq("is_active", true)
-      .eq("network", "mainnet")
-      .single();
-    if (progErr) throw new Error("program_config fetch failed: " + progErr.message);
+      .limit(1)
+      .maybeSingle();
+      
+    if (progErr) {
+      console.error("program_config fetch failed:", progErr);
+      throw new Error(`program_config fetch failed: ${progErr.message}`);
+    }
+
+    if (!progRow) {
+      console.error("No active bonding_curve program_config found");
+      throw new Error("No active bonding_curve program configuration found");
+    }
     const BONDING_PROGRAM_ID = new PublicKey(progRow.program_id);
     
     const [poolPda] = await PublicKey.findProgramAddress(

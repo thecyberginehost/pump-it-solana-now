@@ -34,7 +34,7 @@ pub mod bonding_curve {
         curve.real_token_reserves = bonding_curve_supply;
         curve.tokens_sold = 0;
         curve.is_graduated = false;
-        curve.graduation_threshold = 85_000 * LAMPORTS_PER_SOL; // 85k SOL
+        curve.graduation_threshold = 326 * LAMPORTS_PER_SOL; // 326 SOL (~$75k market cap)
         curve.platform_fee_bps = platform_fee_bps;
         curve.creator_fee_bps = creator_fee_bps;
         curve.prize_pool_fee_bps = prize_pool_fee_bps;
