@@ -23,6 +23,14 @@ import {
   getAssociatedTokenAddress,
 } from "https://esm.sh/@solana/spl-token@0.4.6";
 import bs58 from "https://esm.sh/bs58@5.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
+
+function getSupa() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -103,8 +111,18 @@ serve(async (req: Request) => {
       TOKEN_PROGRAM_ID
     );
 
-    // 2. Pool PDA (replace with your real program ID + seeds)
-    const BONDING_PROGRAM_ID = new PublicKey("11111111111111111111111111111111"); // TODO
+    // 2. Get dynamic program ID from database
+    const supa = getSupa();
+    const { data: progRow, error: progErr } = await supa
+      .from("program_config")
+      .select("program_id")
+      .eq("program_name", "bonding_curve")
+      .eq("is_active", true)
+      .eq("network", "mainnet")
+      .single();
+    if (progErr) throw new Error("program_config fetch failed: " + progErr.message);
+    const BONDING_PROGRAM_ID = new PublicKey(progRow.program_id);
+    
     const [poolPda] = await PublicKey.findProgramAddress(
       [Buffer.from("pool"), mintKeypair.publicKey.toBuffer()],
       BONDING_PROGRAM_ID
@@ -163,6 +181,19 @@ serve(async (req: Request) => {
     const sig = await sendAndConfirmTransaction(connection, tx, [mintKeypair, platform], {
       commitment: "confirmed",
     });
+
+    // 5. Insert token into database
+    const { error: upsertErr } = await supa.from("tokens").upsert({
+      creator_wallet: platform.publicKey.toBase58(),
+      name,
+      symbol,
+      mint_address: mintKeypair.publicKey.toBase58(),
+      total_supply: totalSupply,
+      bonding_curve_address: poolPda.toBase58(),
+      platform_signature: sig,
+      signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+    }, { onConflict: "mint_address" });
+    if (upsertErr) console.error("DB upsert tokens failed", upsertErr.message);
 
     // 6. Revoke authorities
     await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.MintTokens, null);

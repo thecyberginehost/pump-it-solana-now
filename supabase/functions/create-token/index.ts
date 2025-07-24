@@ -23,6 +23,14 @@ import {
   getAssociatedTokenAddress,
 } from "https://esm.sh/@solana/spl-token@0.4.6";
 import bs58 from "https://esm.sh/bs58@5.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
+
+function getSupa() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -156,6 +164,20 @@ serve(async (req: Request) => {
     // 3. Revoke mint & freeze authorities
     await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.MintTokens, null);
     await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.FreezeAccount, null);
+
+    // 4. Insert token into database
+    const supa = getSupa();
+    const { error: insertErr } = await supa.from("tokens").insert({
+      creator_wallet: (receiver ?? platform.publicKey).toBase58(),
+      name,
+      symbol,
+      mint_address: mintKeypair.publicKey.toBase58(),
+      total_supply: initialSupply,
+      bonding_curve_address: null,
+      platform_signature: sigCreateMint,
+      signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+    });
+    if (insertErr) console.error("DB insert tokens failed", insertErr.message);
 
     return jsonResponse({
       success: true,
