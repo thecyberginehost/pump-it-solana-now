@@ -7,6 +7,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { WalletContextProvider } from "@/contexts/WalletContext";
 import { ChatProvider, useChatContext } from "@/contexts/ChatContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ProductionMonitor } from "@/components/ProductionMonitor";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TokenSuccess from "./pages/TokenSuccess";
@@ -43,6 +45,7 @@ const AppContent = () => {
           <Route path="/roadmap" element={<Roadmap />} />
           <Route path="/boosts" element={<Boosts />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
+          <Route path="/monitor" element={<ProductionMonitor />} />
           <Route path="/token-success/:tokenId" element={<TokenSuccess />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
@@ -59,19 +62,21 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <WalletContextProvider>
-      <ChatProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </TooltipProvider>
-      </ChatProvider>
-    </WalletContextProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <WalletContextProvider>
+        <ChatProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </TooltipProvider>
+        </ChatProvider>
+      </WalletContextProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
