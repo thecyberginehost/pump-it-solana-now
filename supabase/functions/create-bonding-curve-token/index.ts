@@ -124,7 +124,7 @@ serve(async (req: Request) => {
     const BONDING_PROGRAM_ID = new PublicKey(progRow.program_id);
     
     const [poolPda] = await PublicKey.findProgramAddress(
-      [Buffer.from("pool"), mintKeypair.publicKey.toBuffer()],
+      [new TextEncoder().encode("pool"), mintKeypair.publicKey.toBuffer()],
       BONDING_PROGRAM_ID
     );
 
