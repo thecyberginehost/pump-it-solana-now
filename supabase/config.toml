@@ -75,3 +75,9 @@ verify_jwt = false
 
 [functions.helius-webhooks]
 verify_jwt = false
+
+[functions.mev-protection]
+verify_jwt = false
+
+[functions.auto-graduation]
+verify_jwt = false
