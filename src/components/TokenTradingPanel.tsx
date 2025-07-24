@@ -40,6 +40,7 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
       amount: amount,
       walletAddress: walletAddress,
       slippage: 5,
+      isGraduated: hasGraduated,
     });
 
     setBuyAmount("");
@@ -63,6 +64,7 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
       amount: amount,
       walletAddress: walletAddress,
       slippage: 5,
+      isGraduated: hasGraduated,
     });
 
     setSellAmount("");
@@ -112,10 +114,10 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
         )}
         
         {hasGraduated && (
-          <Alert className="mb-4 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-            <ExternalLink className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-800 dark:text-blue-200">
-              This token has graduated to Raydium! Please trade on external DEX platforms.
+          <Alert className="mb-4 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+            <TrendingUp className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800 dark:text-green-200">
+              🎉 This token has graduated to Raydium! Trading via wrapper contract - creators and platform continue earning fees.
             </AlertDescription>
           </Alert>
         )}
@@ -168,8 +170,23 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
                 Trading Not Available
               </Button>
             ) : hasGraduated ? (
-              <Button className="w-full" variant="outline" disabled>
-                Trade on Raydium
+              <Button 
+                onClick={handleBuy}
+                disabled={isTrading}
+                className="w-full"
+                variant="default"
+              >
+                {isTrading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="mr-2 h-4 w-4" />
+                    Buy via Wrapper
+                  </>
+                )}
               </Button>
             ) : !buyAmount ? (
               <Button className="w-full" variant="outline" disabled>
@@ -226,7 +243,7 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
             
             <Button 
               onClick={handleSell}
-              disabled={!isAuthenticated || isTrading || !sellAmount || !isAppToken || hasGraduated}
+              disabled={!isAuthenticated || isTrading || !sellAmount || !isAppToken}
               className="w-full"
               variant="destructive"
             >
@@ -234,6 +251,11 @@ const TokenTradingPanel = ({ token }: TokenTradingPanelProps) => {
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Processing...
+                </>
+              ) : hasGraduated ? (
+                <>
+                  <TrendingDown className="mr-2 h-4 w-4" />
+                  Sell via Wrapper
                 </>
               ) : (
                 <>

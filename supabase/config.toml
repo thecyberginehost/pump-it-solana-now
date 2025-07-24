@@ -81,3 +81,6 @@ verify_jwt = false
 
 [functions.auto-graduation]
 verify_jwt = false
+
+[functions.wrapper-trade]
+verify_jwt = false

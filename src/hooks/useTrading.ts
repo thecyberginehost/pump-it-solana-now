@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAchievements } from './useAchievements';
+import { useWrapperTrade } from './useWrapperTrade';
 import { useWalletAuth } from './useWalletAuth';
 import { Transaction } from '@solana/web3.js';
 
@@ -13,6 +14,7 @@ export interface TradeRequest {
   amount: number;
   walletAddress: string;
   slippage?: number;
+  isGraduated?: boolean;
 }
 
 export interface TradeResult {
@@ -29,6 +31,7 @@ export const useTrading = () => {
   const queryClient = useQueryClient();
   const [isTrading, setIsTrading] = useState(false);
   const { checkAchievements } = useAchievements();
+  const { executeWrapperTrade, isExecutingWrapper } = useWrapperTrade();
 
   const executeTrade = useMutation({
     mutationFn: async (tradeRequest: TradeRequest): Promise<any> => {
@@ -130,7 +133,18 @@ export const useTrading = () => {
 
     setIsTrading(true);
     try {
-      return await executeTrade.mutateAsync(tradeRequest);
+      // Use wrapper trade for graduated tokens
+      if (tradeRequest.isGraduated) {
+        await executeWrapperTrade({
+          tokenId: tradeRequest.tokenId,
+          tradeType: tradeRequest.tradeType,
+          amount: tradeRequest.amount,
+          walletAddress: tradeRequest.walletAddress,
+        });
+      } else {
+        // Use bonding curve for non-graduated tokens
+        await executeTrade.mutateAsync(tradeRequest);
+      }
     } finally {
       setIsTrading(false);
     }
@@ -138,7 +152,7 @@ export const useTrading = () => {
 
   return {
     executeTrade: handleTrade,
-    isTrading: isTrading || executeTrade.isPending,
+    isTrading: isTrading || executeTrade.isPending || isExecutingWrapper,
     error: executeTrade.error,
   };
 };
