@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ForumCategory } from '@/hooks/useForums';
-import { MessageSquare, Clock } from 'lucide-react';
+import { MessageSquare, Clock, Shield } from 'lucide-react';
 
 interface ForumCategoryCardProps {
   category: ForumCategory;
@@ -32,7 +32,15 @@ export const ForumCategoryCard: React.FC<ForumCategoryCardProps> = ({
               {category.icon}
             </div>
             <div>
-              <h3 className="font-semibold text-lg">{category.name}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-lg">{category.name}</h3>
+                {category.admin_only_posting && (
+                  <Badge variant="outline" className="text-xs flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    Admin Only
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
                 {category.description}
               </p>

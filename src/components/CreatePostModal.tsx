@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useForumCategories, useCreateForumPost } from '@/hooks/useForums';
+import { useForumCategories, useCreateForumPost, useCanPostInCategory } from '@/hooks/useForums';
 import { Plus } from 'lucide-react';
 
 interface CreatePostModalProps {
@@ -19,13 +20,14 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   onClose,
   categoryId,
 }) => {
-  const { data: categories = [] } = useForumCategories();
-  const createPost = useCreateForumPost();
-  
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId || '');
   const [postType, setPostType] = useState('discussion');
+
+  const { data: categories = [] } = useForumCategories();
+  const createPost = useCreateForumPost();
+  const { data: canPostInSelected = true } = useCanPostInCategory(selectedCategoryId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,19 +36,34 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       return;
     }
 
-    await createPost.mutateAsync({
-      category_id: selectedCategoryId,
-      title: title.trim(),
-      content: content.trim(),
-      post_type: postType,
-    });
+    try {
+      await createPost.mutateAsync({
+        category_id: selectedCategoryId,
+        title: title.trim(),
+        content: content.trim(),
+        post_type: postType,
+      });
 
-    // Reset form
+      // Reset form
+      setTitle('');
+      setContent('');
+      setSelectedCategoryId('');
+      setPostType('discussion');
+      onClose();
+    } catch (error) {
+      console.error('Failed to create post:', error);
+    }
+  };
+
+  const resetForm = () => {
     setTitle('');
     setContent('');
+    setSelectedCategoryId(categoryId || '');
     setPostType('discussion');
-    if (!categoryId) setSelectedCategoryId('');
-    
+  };
+
+  const handleClose = () => {
+    resetForm();
     onClose();
   };
 
@@ -58,44 +75,45 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   ];
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
             Create New Post
           </DialogTitle>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Category Selection */}
-          {!categoryId && (
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      <div className="flex items-center space-x-2">
-                        <span>{category.icon}</span>
-                        <span>{category.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
 
-          {/* Post Type */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Category Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    <div className="flex items-center space-x-2">
+                      <span>{category.icon}</span>
+                      <span>{category.name}</span>
+                      {category.admin_only_posting && (
+                        <Badge variant="outline" className="text-xs">Admin Only</Badge>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Post Type Selection */}
           <div className="space-y-2">
             <Label htmlFor="postType">Post Type</Label>
             <Select value={postType} onValueChange={setPostType}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select post type" />
               </SelectTrigger>
               <SelectContent>
                 {postTypeOptions.map((option) => (
@@ -115,15 +133,14 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
             <Label htmlFor="title">Title</Label>
             <Input
               id="title"
-              placeholder="Enter a descriptive title for your post"
+              placeholder="Enter your post title..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={200}
-              required
             />
-            <p className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground text-right">
               {title.length}/200 characters
-            </p>
+            </div>
           </div>
 
           {/* Content */}
@@ -131,37 +148,34 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
             <Label htmlFor="content">Content</Label>
             <Textarea
               id="content"
-              placeholder="Share your thoughts, ask your question, or describe the issue in detail..."
+              placeholder="Write your post content here..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={8}
               maxLength={5000}
-              required
             />
-            <p className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground text-right">
               {content.length}/5000 characters
-            </p>
+            </div>
           </div>
 
-          {/* Tips */}
-          <div className="rounded-lg bg-muted/50 p-4">
-            <h4 className="font-medium mb-2">💡 Tips for a great post:</h4>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Use a clear, descriptive title</li>
-              <li>• Provide enough context for others to understand and help</li>
-              <li>• For bug reports, include steps to reproduce the issue</li>
-              <li>• Be respectful and constructive in your communication</li>
-            </ul>
-          </div>
+          {/* Permission Warning */}
+          {selectedCategoryId && !canPostInSelected && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+              <p className="text-sm text-destructive">
+                You do not have permission to post in this category. Only administrators can create posts here.
+              </p>
+            </div>
+          )}
 
-          {/* Action Buttons */}
+          {/* Actions */}
           <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
             <Button 
               type="submit"
-              disabled={!title.trim() || !content.trim() || !selectedCategoryId || createPost.isPending}
+              disabled={!title.trim() || !content.trim() || !selectedCategoryId || createPost.isPending || !canPostInSelected}
             >
               {createPost.isPending ? 'Creating...' : 'Create Post'}
             </Button>

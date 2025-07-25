@@ -300,6 +300,7 @@ export type Database = {
       }
       forum_categories: {
         Row: {
+          admin_only_posting: boolean | null
           color: string | null
           created_at: string
           description: string | null
@@ -310,6 +311,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_only_posting?: boolean | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -320,6 +322,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_only_posting?: boolean | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -837,6 +840,10 @@ export type Database = {
       assign_top_10_position: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      can_post_in_category: {
+        Args: { p_user_wallet: string; p_category_id: string }
+        Returns: boolean
       }
       check_and_award_achievements: {
         Args: {

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ForumCategoryCard } from '@/components/ForumCategoryCard';
 import { ForumPostCard } from '@/components/ForumPostCard';
 import { CreatePostModal } from '@/components/CreatePostModal';
-import { useForumCategories, useForumPosts } from '@/hooks/useForums';
+import { useForumCategories, useForumPosts, useCanPostInCategory } from '@/hooks/useForums';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
 import { MessageSquare, Plus, Search, Filter, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ export const Forums = () => {
   const { walletAddress } = useWalletAuth();
   const { data: categories = [] } = useForumCategories();
   const { data: posts = [] } = useForumPosts(categoryId);
+  const { data: canPost = true } = useCanPostInCategory(categoryId);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
@@ -34,6 +35,10 @@ export const Forums = () => {
   const handleCreatePost = () => {
     if (!walletAddress) {
       toast.error('Please connect your wallet to create a post');
+      return;
+    }
+    if (!canPost) {
+      toast.error('You do not have permission to post in this category');
       return;
     }
     setIsCreatePostOpen(true);
@@ -69,9 +74,13 @@ export const Forums = () => {
               }
             </p>
           </div>
-          <Button onClick={handleCreatePost} className="gap-2">
+          <Button 
+            onClick={handleCreatePost} 
+            className="gap-2"
+            disabled={!walletAddress || !canPost}
+          >
             <Plus className="h-4 w-4" />
-            New Post
+            {selectedCategory?.admin_only_posting && !canPost ? 'Admin Only' : 'New Post'}
           </Button>
         </div>
 
