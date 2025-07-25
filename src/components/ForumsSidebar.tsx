@@ -55,22 +55,19 @@ export const ForumsSidebar = () => {
                 <Button
                   key={category.id}
                   variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start"
+                  className="w-full justify-between text-left p-3"
                   onClick={() => navigate(`/forums/${category.id}`)}
                 >
-                  <span className="mr-2">{category.icon}</span>
-                  <span className="flex-1 text-left truncate">{category.name}</span>
+                  <div className="flex items-center min-w-0 flex-1">
+                    <span className="mr-2 flex-shrink-0">{category.icon}</span>
+                    <span className="truncate">{category.name}</span>
+                  </div>
                   <Badge 
                     variant={isActive ? "default" : "outline"} 
-                    className="text-xs"
+                    className="text-xs flex-shrink-0"
                   >
                     {postCount}
                   </Badge>
-                  {category.admin_only_posting && (
-                    <Badge variant="secondary" className="text-xs ml-1">
-                      Admin
-                    </Badge>
-                  )}
                 </Button>
               );
             })}
