@@ -410,6 +410,7 @@ export type Database = {
           market_cap: number | null
           mint_address: string | null
           name: string
+          platform_identifier: string | null
           platform_signature: string | null
           price: number | null
           signature_expires_at: string | null
@@ -435,6 +436,7 @@ export type Database = {
           market_cap?: number | null
           mint_address?: string | null
           name: string
+          platform_identifier?: string | null
           platform_signature?: string | null
           price?: number | null
           signature_expires_at?: string | null
@@ -460,6 +462,7 @@ export type Database = {
           market_cap?: number | null
           mint_address?: string | null
           name?: string
+          platform_identifier?: string | null
           platform_signature?: string | null
           price?: number | null
           signature_expires_at?: string | null

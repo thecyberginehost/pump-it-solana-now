@@ -62,6 +62,29 @@ function getPlatformKeypair(): Keypair {
   return Keypair.fromSecretKey(secret);
 }
 
+// Generate vanity address with "moon" suffix
+function generateVanityKeypair(suffix: string, maxAttempts: number = 50000): { keypair: Keypair; attempts: number } | null {
+  const targetSuffix = suffix.toLowerCase();
+  
+  for (let attempts = 1; attempts <= maxAttempts; attempts++) {
+    const keypair = Keypair.generate();
+    const address = keypair.publicKey.toBase58().toLowerCase();
+    
+    if (address.endsWith(targetSuffix)) {
+      console.log(`✨ Generated vanity address ending in "${suffix}" after ${attempts} attempts: ${keypair.publicKey.toBase58()}`);
+      return { keypair, attempts };
+    }
+    
+    // Log progress every 10k attempts
+    if (attempts % 10000 === 0) {
+      console.log(`🔄 Vanity generation progress: ${attempts}/${maxAttempts} attempts for suffix "${suffix}"`);
+    }
+  }
+  
+  console.warn(`⚠️ Could not generate vanity address with suffix "${suffix}" after ${maxAttempts} attempts`);
+  return null;
+}
+
 // ---------- Request Types ----------
 interface CreateCurveTokenRequest {
   name: string;
@@ -113,8 +136,26 @@ serve(async (req: Request) => {
     const connection = getConnection();
     const platform = getPlatformKeypair();
 
-    // 1. Mint account
-    const mintKeypair = Keypair.generate();
+    // 1. Generate vanity mint address with "moon" suffix
+    console.log(`🌙 Generating vanity address with "moon" suffix for token: ${name}`);
+    const vanityResult = generateVanityKeypair("moon", 50000);
+    
+    let mintKeypair: Keypair;
+    let platformIdentifier: string | null = null;
+    let vanityGeneration: { attempts?: number; fallback?: boolean } = {};
+    
+    if (vanityResult) {
+      mintKeypair = vanityResult.keypair;
+      platformIdentifier = "moon";
+      vanityGeneration.attempts = vanityResult.attempts;
+      console.log(`✨ Successfully generated MoonForge vanity address: ${mintKeypair.publicKey.toBase58()}`);
+    } else {
+      // Fallback to regular generation if vanity fails
+      mintKeypair = Keypair.generate();
+      vanityGeneration.fallback = true;
+      console.log(`⚠️ Fallback to regular address generation: ${mintKeypair.publicKey.toBase58()}`);
+    }
+    
     const rentLamports = await getMinimumBalanceForRentExemptMint(connection);
 
     const createMintIx = SystemProgram.createAccount({
@@ -213,7 +254,7 @@ serve(async (req: Request) => {
       commitment: "confirmed",
     });
 
-    // 5. Insert token into database
+    // 5. Insert token into database with platform identifier
     const { data: tokenData, error: upsertErr } = await supa.from("tokens").upsert({
       creator_wallet: creatorWallet,
       name,
@@ -226,7 +267,8 @@ serve(async (req: Request) => {
       total_supply: totalSupply,
       bonding_curve_address: poolPda.toBase58(),
       platform_signature: sig,
-      signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+      signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      platform_identifier: platformIdentifier
     }, { onConflict: "mint_address" }).select().single();
     
     if (upsertErr) {
@@ -284,7 +326,9 @@ serve(async (req: Request) => {
       authoritiesRevoked: true,
       initialBuyIn,
       initialTradeResult,
-      requiresSignature: false // Token is created, no additional signature needed
+      requiresSignature: false, // Token is created, no additional signature needed
+      platformIdentifier,
+      vanityGeneration
     });
   } catch (err: any) {
     console.error("ERR:create-bonding-curve-token", err?.message, err?.stack, err?.logs);
