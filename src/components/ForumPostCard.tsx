@@ -6,6 +6,7 @@ import { ForumPost } from '@/hooks/useForums';
 import { MessageSquare, Eye, Pin, Lock, Clock, Shield } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import { UserRankBadge } from './UserRankBadge';
 
 interface ForumPostCardProps {
   post: ForumPost;
@@ -106,9 +107,12 @@ export const ForumPostCard: React.FC<ForumPostCardProps> = ({
               </AvatarFallback>
             </Avatar>
             <div className="text-sm">
-              <p className="font-medium">
-                {post.user_profile?.username || formatWalletAddress(post.user_wallet)}
-              </p>
+              <div className="flex items-center gap-2 mb-1">
+                <UserRankBadge walletAddress={post.user_wallet} size="sm" />
+                <p className="font-medium">
+                  {post.user_profile?.username || formatWalletAddress(post.user_wallet)}
+                </p>
+              </div>
               <p className="text-muted-foreground">
                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
               </p>

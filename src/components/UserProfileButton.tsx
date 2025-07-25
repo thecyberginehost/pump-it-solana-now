@@ -5,6 +5,7 @@ import { UserProfileModal } from './UserProfileModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
 import { User } from 'lucide-react';
+import { UserRankBadge } from './UserRankBadge';
 
 export const UserProfileButton: React.FC = () => {
   const { walletAddress } = useWalletAuth();
@@ -34,9 +35,12 @@ export const UserProfileButton: React.FC = () => {
             }
           </AvatarFallback>
         </Avatar>
-        <span className="hidden sm:inline">
-          {profile?.username || formatWalletAddress(walletAddress)}
-        </span>
+        <div className="hidden sm:flex items-center gap-2">
+          <UserRankBadge walletAddress={walletAddress} size="sm" />
+          <span>
+            {profile?.username || formatWalletAddress(walletAddress)}
+          </span>
+        </div>
       </Button>
       
       <UserProfileModal

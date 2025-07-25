@@ -805,6 +805,51 @@ export type Database = {
           },
         ]
       }
+      user_ranks: {
+        Row: {
+          achieved_at: string
+          created_at: string
+          current_rank: Database["public"]["Enums"]["user_rank"]
+          id: string
+          rank_level: number
+          show_title: boolean | null
+          tokens_created: number | null
+          tokens_graduated: number | null
+          total_trades: number | null
+          total_volume_traded: number | null
+          updated_at: string
+          user_wallet: string
+        }
+        Insert: {
+          achieved_at?: string
+          created_at?: string
+          current_rank?: Database["public"]["Enums"]["user_rank"]
+          id?: string
+          rank_level?: number
+          show_title?: boolean | null
+          tokens_created?: number | null
+          tokens_graduated?: number | null
+          total_trades?: number | null
+          total_volume_traded?: number | null
+          updated_at?: string
+          user_wallet: string
+        }
+        Update: {
+          achieved_at?: string
+          created_at?: string
+          current_rank?: Database["public"]["Enums"]["user_rank"]
+          id?: string
+          rank_level?: number
+          show_title?: boolean | null
+          tokens_created?: number | null
+          tokens_graduated?: number | null
+          total_trades?: number | null
+          total_volume_traded?: number | null
+          updated_at?: string
+          user_wallet?: string
+        }
+        Relationships: []
+      }
       wallet_config: {
         Row: {
           created_at: string | null
@@ -840,6 +885,10 @@ export type Database = {
       assign_top_10_position: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      calculate_user_rank: {
+        Args: { p_user_wallet: string }
+        Returns: Database["public"]["Enums"]["user_rank"]
       }
       can_post_in_category: {
         Args: { p_user_wallet: string; p_category_id: string }
@@ -892,6 +941,15 @@ export type Database = {
           reserves_fee_bps: number
         }[]
       }
+      get_rank_info: {
+        Args: { p_rank: Database["public"]["Enums"]["user_rank"] }
+        Returns: {
+          rank_name: string
+          rank_level: number
+          theme_line: string
+          rank_color: string
+        }[]
+      }
       get_user_credits: {
         Args: { user_wallet: string }
         Returns: number
@@ -926,7 +984,16 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      user_rank:
+        | "acolyte"
+        | "apprentice"
+        | "journeyman"
+        | "adept"
+        | "artificer"
+        | "magister"
+        | "arch_forgemaster"
+        | "forgemaster"
+        | "forgelord"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1053,6 +1120,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_rank: [
+        "acolyte",
+        "apprentice",
+        "journeyman",
+        "adept",
+        "artificer",
+        "magister",
+        "arch_forgemaster",
+        "forgemaster",
+        "forgelord",
+      ],
+    },
   },
 } as const
