@@ -3,8 +3,10 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { WalletButton } from "@/components/WalletButton";
+import { UserProfileButton } from "@/components/UserProfileButton";
 import { MoreDropdown } from "@/components/MoreDropdown";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useHybridAuth } from "@/hooks/useHybridAuth";
 import { useChatContext } from "@/contexts/ChatContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { 
@@ -23,6 +25,7 @@ const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { publicKey } = useWallet();
+  const { isAuthenticated } = useHybridAuth();
   const { isChatOpen, toggleChat } = useChatContext();
   const isMobile = useIsMobile();
 
@@ -225,6 +228,13 @@ const Navigation = () => {
                 </Link>
               );
             })}
+            
+            {/* Profile button for authenticated users */}
+            {isAuthenticated && (
+              <div className="flex flex-col items-center justify-center p-2 rounded-lg text-xs font-medium transition-colors min-w-16">
+                <UserProfileButton />
+              </div>
+            )}
             
             {/* More button for mobile */}
             <div className="flex flex-col items-center justify-center min-w-16">
