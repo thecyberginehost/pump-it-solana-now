@@ -845,6 +845,10 @@ export type Database = {
         Args: { p_user_wallet: string; p_category_id: string }
         Returns: boolean
       }
+      can_reply_to_post: {
+        Args: { p_user_wallet: string; p_post_id: string }
+        Returns: boolean
+      }
       check_and_award_achievements: {
         Args: {
           p_user_wallet: string

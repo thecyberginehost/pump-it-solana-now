@@ -253,3 +253,26 @@ export const useCanPostInCategory = (categoryId?: string) => {
     enabled: !!categoryId && !!walletAddress,
   });
 };
+
+// Hook to check if user can reply to a specific post
+export const useCanReplyToPost = (postId?: string) => {
+  const { walletAddress } = useWalletAuth();
+  
+  return useQuery({
+    queryKey: ['can-reply-to-post', postId, walletAddress],
+    queryFn: async () => {
+      if (!postId || !walletAddress) {
+        return false;
+      }
+
+      const { data, error } = await supabase.rpc('can_reply_to_post', {
+        p_user_wallet: walletAddress,
+        p_post_id: postId
+      });
+
+      if (error) throw error;
+      return data as boolean;
+    },
+    enabled: !!postId && !!walletAddress,
+  });
+};
