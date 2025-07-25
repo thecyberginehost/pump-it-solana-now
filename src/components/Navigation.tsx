@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CleanWalletButton } from "@/components/CleanWalletButton";
+import { WalletButton } from "@/components/WalletButton";
 import { MoreDropdown } from "@/components/MoreDropdown";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useChatContext } from "@/contexts/ChatContext";
@@ -92,7 +92,7 @@ const Navigation = () => {
                   <span>Degen Copilot</span>
                 </Button>
               )}
-              <CleanWalletButton />
+              <WalletButton />
             </div>
 
             {/* Mobile menu button */}
@@ -195,7 +195,7 @@ const Navigation = () => {
                     </Button>
                   )}
                   <div className="w-full">
-                    <CleanWalletButton />
+                    <WalletButton />
                   </div>
                 </div>
               </div>
