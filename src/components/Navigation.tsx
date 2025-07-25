@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CleanWalletButton } from "@/components/CleanWalletButton";
+import { UserProfileButton } from "@/components/UserProfileButton";
 import { MoreDropdown } from "@/components/MoreDropdown";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useChatContext } from "@/contexts/ChatContext";
@@ -14,6 +15,8 @@ import {
   Bot,
   Coins,
   BarChart3,
+  MessageSquare,
+  User,
   MoreHorizontal
 } from "lucide-react";
 
@@ -24,10 +27,10 @@ const Navigation = () => {
   const { isChatOpen, toggleChat } = useChatContext();
   const isMobile = useIsMobile();
 
-  // Main navigation items (reduced to 4)
   const mainNavItems = [
     { path: "/", label: "Launch", icon: Home },
     { path: "/tokens", label: "Tokens", icon: Coins },
+    { path: "/forums", label: "Forums", icon: MessageSquare },
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
   ];
 
@@ -91,6 +94,7 @@ const Navigation = () => {
                   <span>Degen Copilot</span>
                 </Button>
               )}
+              <UserProfileButton />
               <CleanWalletButton />
             </div>
 
