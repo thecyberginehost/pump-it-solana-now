@@ -50,6 +50,7 @@ export const useTokenCreation = () => {
           telegram: tokenData.telegram_url,
           twitter: tokenData.x_url,
           creatorWallet: walletAddress,
+          initialBuyIn,
           signedTransaction: null, // Will be updated when we have payment integration
         },
       });
@@ -121,11 +122,22 @@ export const useTokenCreation = () => {
       consumeCredit.mutate();
 
       if (data.confirmed || data.partialSuccess) {
-        toast.success(
-          data.confirmed 
-            ? "Token created successfully! 🎉" 
-            : "Token created! Transaction may still be processing..."
-        );
+        let message = data.confirmed 
+          ? "Token created successfully! 🎉" 
+          : "Token created! Transaction may still be processing...";
+          
+        // Add initial investment info if applicable
+        if (data.initialBuyIn > 0) {
+          if (data.initialTradeResult?.error) {
+            message += ` Initial investment of ${data.initialBuyIn} SOL failed: ${data.initialTradeResult.error}`;
+            toast.warning(message);
+          } else {
+            message += ` Initial investment of ${data.initialBuyIn} SOL completed!`;
+            toast.success(message);
+          }
+        } else {
+          toast.success(message);
+        }
         
         // Invalidate related queries
         queryClient.invalidateQueries({ queryKey: ['tokens'] });

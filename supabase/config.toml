@@ -84,3 +84,9 @@ verify_jwt = false
 
 [functions.wrapper-trade]
 verify_jwt = false
+
+[functions.platform-trade]
+verify_jwt = false
+
+[functions.create-bonding-curve-token]
+verify_jwt = false

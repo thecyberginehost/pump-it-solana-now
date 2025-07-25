@@ -66,6 +66,13 @@ function getPlatformKeypair(): Keypair {
 interface CreateCurveTokenRequest {
   name: string;
   symbol: string;
+  description?: string;
+  imageUrl?: string;
+  telegram?: string;
+  twitter?: string;
+  creatorWallet: string;
+  signedTransaction?: any;
+  initialBuyIn?: number;
   decimals?: number;
   totalSupply?: number;
   curveConfig?: {
@@ -85,8 +92,23 @@ serve(async (req: Request) => {
     const body = (await req.json().catch(() => null)) as CreateCurveTokenRequest | null;
     if (!body) return jsonResponse({ error: "Invalid JSON body" }, 400);
 
-    const { name, symbol, decimals = 9, totalSupply = 0, curveConfig = {} } = body;
-    if (!name || !symbol) return jsonResponse({ error: "name and symbol required" }, 400);
+    const { 
+      name, 
+      symbol, 
+      description,
+      imageUrl,
+      telegram,
+      twitter,
+      creatorWallet,
+      initialBuyIn = 0,
+      decimals = 9, 
+      totalSupply = 1000000000, 
+      curveConfig = {} 
+    } = body;
+    
+    if (!name || !symbol || !creatorWallet) {
+      return jsonResponse({ error: "name, symbol, and creatorWallet required" }, 400);
+    }
 
     const connection = getConnection();
     const platform = getPlatformKeypair();
@@ -192,24 +214,64 @@ serve(async (req: Request) => {
     });
 
     // 5. Insert token into database
-    const { error: upsertErr } = await supa.from("tokens").upsert({
-      creator_wallet: platform.publicKey.toBase58(),
+    const { data: tokenData, error: upsertErr } = await supa.from("tokens").upsert({
+      creator_wallet: creatorWallet,
       name,
       symbol,
+      description: description || `A new token created with Moonforge`,
+      image_url: imageUrl,
+      telegram_url: telegram,
+      x_url: twitter,
       mint_address: mintKeypair.publicKey.toBase58(),
       total_supply: totalSupply,
       bonding_curve_address: poolPda.toBase58(),
       platform_signature: sig,
       signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
-    }, { onConflict: "mint_address" });
-    if (upsertErr) console.error("DB upsert tokens failed", upsertErr.message);
+    }, { onConflict: "mint_address" }).select().single();
+    
+    if (upsertErr) {
+      console.error("DB upsert tokens failed", upsertErr.message);
+      throw new Error(`Database error: ${upsertErr.message}`);
+    }
 
     // 6. Revoke authorities
     await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.MintTokens, null);
     await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.FreezeAccount, null);
 
+    let initialTradeResult = null;
+    
+    // 7. Execute initial buy if specified
+    if (initialBuyIn > 0 && tokenData?.id) {
+      console.log(`Executing initial buy of ${initialBuyIn} SOL for creator`);
+      
+      try {
+        // Call the platform trade function for the initial buy
+        const tradeResponse = await supa.functions.invoke('platform-trade', {
+          body: {
+            tokenId: tokenData.id,
+            tradeType: 'buy',
+            amount: initialBuyIn,
+            creatorWallet: creatorWallet
+          }
+        });
+
+        if (tradeResponse.error) {
+          console.error("Initial buy failed:", tradeResponse.error);
+          // Don't fail the token creation, just log the error
+          initialTradeResult = { error: tradeResponse.error.message };
+        } else {
+          console.log("Initial buy successful");
+          initialTradeResult = tradeResponse.data;
+        }
+      } catch (tradeError: any) {
+        console.error("Initial buy execution failed:", tradeError);
+        initialTradeResult = { error: tradeError.message };
+      }
+    }
+
     return jsonResponse({
       success: true,
+      token: tokenData,
       mint: mintKeypair.publicKey.toBase58(),
       poolPda: poolPda.toBase58(),
       poolAta: poolAta.toBase58(),
@@ -220,6 +282,9 @@ serve(async (req: Request) => {
       curveConfig,
       txSig: sig,
       authoritiesRevoked: true,
+      initialBuyIn,
+      initialTradeResult,
+      requiresSignature: false // Token is created, no additional signature needed
     });
   } catch (err: any) {
     console.error("ERR:create-bonding-curve-token", err?.message, err?.stack, err?.logs);
