@@ -112,19 +112,20 @@ export const useTradeProtection = (
     let mevRisk: 'low' | 'medium' | 'high' = 'low';
     const tradeValueUSD = tradeAmount * 230; // Approximate SOL price
     
-    // Consider multiple factors for MEV risk
+    // Consider multiple factors for MEV risk (tuned to avoid blocking legitimate trades)
     const riskFactors = {
-      tradeSize: tradeValueUSD > 10000 ? 40 : tradeValueUSD > 1000 ? 20 : 0,
-      priceImpact: slippage.priceImpact > 10 ? 30 : slippage.priceImpact > 5 ? 15 : 0,
-      liquidityRatio: tradeAmount > (currentSolRaised + 30) * 0.15 ? 25 : 0,
-      timeOfDay: new Date().getHours() >= 13 && new Date().getHours() <= 21 ? 10 : 0, // UTC trading hours
+      tradeSize: tradeValueUSD > 50000 ? 35 : tradeValueUSD > 10000 ? 25 : tradeValueUSD > 1000 ? 15 : 0, // Higher thresholds
+      priceImpact: slippage.priceImpact > 15 ? 30 : slippage.priceImpact > 8 ? 20 : 0, // More lenient on price impact
+      liquidityRatio: tradeAmount > (currentSolRaised + 30) * 0.25 ? 25 : tradeAmount > (currentSolRaised + 30) * 0.15 ? 15 : 0, // Allow larger trades relative to liquidity
+      timeOfDay: new Date().getHours() >= 13 && new Date().getHours() <= 21 ? 5 : 0, // Reduced time penalty
     };
     
     const totalRiskScore = Object.values(riskFactors).reduce((sum, score) => sum + score, 0);
     
-    if (totalRiskScore > 60) {
+    // Higher thresholds to avoid blocking legitimate large trades
+    if (totalRiskScore > 80) {
       mevRisk = 'high';
-    } else if (totalRiskScore > 30) {
+    } else if (totalRiskScore > 45) {
       mevRisk = 'medium';
     }
 
@@ -211,6 +212,6 @@ export const useSmartTradeRecommendations = (
   return {
     protection,
     recommendations,
-    shouldProceed: protection.slippage.canProceed && protection.mevRisk !== 'high'
+    shouldProceed: protection.slippage.canProceed // Never block trades, only warn and recommend protection
   };
 };
