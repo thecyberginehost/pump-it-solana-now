@@ -15,16 +15,8 @@ pub mod bonding_curve {
         virtual_sol_reserves: u64,
         virtual_token_reserves: u64,
         bonding_curve_supply: u64,
-        platform_fee_bps: u16,     // 1% = 100 bps
-        creator_fee_bps: u16,      // 0.07% = 7 bps
-        prize_pool_fee_bps: u16,   // 0.02% = 2 bps
-        reserves_fee_bps: u16,     // 0.01% = 1 bps
     ) -> Result<()> {
         let curve = &mut ctx.accounts.bonding_curve;
-        
-        // Validate fee rates (total max 5%)
-        let total_fees = platform_fee_bps + creator_fee_bps + prize_pool_fee_bps + reserves_fee_bps;
-        require!(total_fees <= 500, BondingCurveError::FeeTooHigh);
         
         curve.mint = ctx.accounts.mint.key();
         curve.creator = ctx.accounts.creator.key();
@@ -35,10 +27,6 @@ pub mod bonding_curve {
         curve.tokens_sold = 0;
         curve.is_graduated = false;
         curve.graduation_threshold = 326 * LAMPORTS_PER_SOL; // 326 SOL (~$75k market cap)
-        curve.platform_fee_bps = platform_fee_bps;
-        curve.creator_fee_bps = creator_fee_bps;
-        curve.prize_pool_fee_bps = prize_pool_fee_bps;
-        curve.reserves_fee_bps = reserves_fee_bps;
         curve.total_fees_collected = 0;
         curve.creator_fees_pending = 0;
         curve.bump = ctx.bumps.bonding_curve;
@@ -81,11 +69,18 @@ pub mod bonding_curve {
         require!(tokens_out >= min_tokens_out, BondingCurveError::SlippageExceeded);
         require!(tokens_out <= curve.real_token_reserves, BondingCurveError::InsufficientTokens);
 
-        // Calculate fees (new structure)
-        let platform_fee = (sol_amount as u128 * curve.platform_fee_bps as u128 / 10000) as u64;
-        let creator_fee = (sol_amount as u128 * curve.creator_fee_bps as u128 / 10000) as u64;
-        let prize_pool_fee = (sol_amount as u128 * curve.prize_pool_fee_bps as u128 / 10000) as u64;
-        let reserves_fee = (sol_amount as u128 * curve.reserves_fee_bps as u128 / 10000) as u64;
+        // Calculate fees based on graduation status
+        let (platform_fee_bps, creator_fee_bps, prize_pool_fee_bps, reserves_fee_bps) = 
+            if curve.is_graduated {
+                (50u16, 100u16, 30u16, 20u16)   // Post-graduation: 0.5% platform, 1% creator, 0.3% prize, 0.2% reserves
+            } else {
+                (100u16, 50u16, 30u16, 20u16)   // Pre-graduation: 1% platform, 0.5% creator, 0.3% prize, 0.2% reserves
+            };
+            
+        let platform_fee = (sol_amount as u128 * platform_fee_bps as u128 / 10000) as u64;
+        let creator_fee = (sol_amount as u128 * creator_fee_bps as u128 / 10000) as u64;
+        let prize_pool_fee = (sol_amount as u128 * prize_pool_fee_bps as u128 / 10000) as u64;
+        let reserves_fee = (sol_amount as u128 * reserves_fee_bps as u128 / 10000) as u64;
         let total_fees = platform_fee + creator_fee + prize_pool_fee + reserves_fee;
         let sol_to_curve = sol_amount - total_fees;
 
@@ -213,9 +208,16 @@ pub mod bonding_curve {
         require!(sol_out >= min_sol_out, BondingCurveError::SlippageExceeded);
         require!(sol_out <= curve.real_sol_reserves, BondingCurveError::InsufficientSol);
 
-        // Calculate fees
-        let creator_fee = (sol_out as u128 * curve.creator_fee_bps as u128 / 10000) as u64;
-        let platform_fee = (sol_out as u128 * curve.platform_fee_bps as u128 / 10000) as u64;
+        // Calculate fees based on graduation status
+        let (platform_fee_bps, creator_fee_bps) = 
+            if curve.is_graduated {
+                (50u16, 100u16)   // Post-graduation: 0.5% platform, 1% creator
+            } else {
+                (100u16, 50u16)   // Pre-graduation: 1% platform, 0.5% creator
+            };
+            
+        let creator_fee = (sol_out as u128 * creator_fee_bps as u128 / 10000) as u64;
+        let platform_fee = (sol_out as u128 * platform_fee_bps as u128 / 10000) as u64;
         let sol_to_seller = sol_out - creator_fee - platform_fee;
 
         // Transfer tokens from seller to curve
@@ -498,17 +500,13 @@ pub struct BondingCurve {
     pub tokens_sold: u64,               // Total tokens sold
     pub is_graduated: bool,             // Whether token has graduated
     pub graduation_threshold: u64,      // SOL threshold for graduation
-    pub platform_fee_bps: u16,         // Platform fee in basis points (1%)
-    pub creator_fee_bps: u16,           // Creator fee in basis points (0.07%)
-    pub prize_pool_fee_bps: u16,        // Prize pool fee in basis points (0.02%)
-    pub reserves_fee_bps: u16,          // Reserves fee in basis points (0.01%)
     pub total_fees_collected: u64,     // Total fees collected
     pub creator_fees_pending: u64,     // Creator fees available to claim
     pub bump: u8,                       // PDA bump
 }
 
 impl BondingCurve {
-    pub const LEN: usize = 32 + 32 + 8 + 8 + 8 + 8 + 8 + 1 + 8 + 2 + 2 + 2 + 2 + 8 + 8 + 1;
+    pub const LEN: usize = 32 + 32 + 8 + 8 + 8 + 8 + 8 + 1 + 8 + 8 + 8 + 1;
 }
 
 // Events
