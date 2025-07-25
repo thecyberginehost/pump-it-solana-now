@@ -195,54 +195,55 @@ serve(async (req: Request) => {
     }
     const BONDING_PROGRAM_ID = new PublicKey(progRow.program_id);
     
-    const [poolPda] = await PublicKey.findProgramAddress(
-      [new TextEncoder().encode("pool"), mintKeypair.publicKey.toBuffer()],
+    // Use correct PDA seeds matching the contract
+    const [bondingCurvePda] = await PublicKey.findProgramAddress(
+      [new TextEncoder().encode("bonding_curve"), mintKeypair.publicKey.toBuffer()],
       BONDING_PROGRAM_ID
     );
 
-    // 2a. Pool ATA owned by PDA (off-curve => allowOwnerOffCurve = true)
-    const poolAta = await getAssociatedTokenAddress(
+    // 2a. Curve ATA owned by bonding curve PDA
+    const curveAta = await getAssociatedTokenAddress(
       mintKeypair.publicKey,
-      poolPda,
+      bondingCurvePda,
       true,
       TOKEN_PROGRAM_ID,
       ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
-    const createPoolAtaIx = createAssociatedTokenAccountInstruction(
+    const createCurveAtaIx = createAssociatedTokenAccountInstruction(
       platform.publicKey, // payer
-      poolAta,
-      poolPda,
+      curveAta,
+      bondingCurvePda,
       mintKeypair.publicKey,
       TOKEN_PROGRAM_ID,
       ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
-    // 3. Mint initial supply to pool
-    const mintAmount = BigInt(totalSupply) * (BigInt(10) ** BigInt(decimals));
-    const mintToPoolIx = totalSupply > 0
-      ? createMintToInstruction(
-          mintKeypair.publicKey,
-          poolAta,
-          platform.publicKey,
-          mintAmount
-        )
-      : null;
+    // 3. Create initialize curve instruction
+    // Note: This will need to be implemented once the contract is deployed
+    const virtualSolReserves = 30 * 1_000_000_000; // 30 SOL in lamports
+    const virtualTokenReserves = BigInt(800_000_000) * (BigInt(10) ** BigInt(decimals)); // 800M tokens
+    const bondingCurveSupply = BigInt(totalSupply) * (BigInt(10) ** BigInt(decimals));
+    
+    // TODO: Create actual initialize_curve instruction when contract is deployed
+    // const initCurveIx = await createInitializeCurveInstruction({
+    //   bondingCurve: bondingCurvePda,
+    //   mint: mintKeypair.publicKey,
+    //   curveTokenAccount: curveAta,
+    //   creator: new PublicKey(creatorWallet),
+    //   virtualSolReserves,
+    //   virtualTokenReserves: Number(virtualTokenReserves),
+    //   bondingCurveSupply: Number(bondingCurveSupply)
+    // });
 
-    // 4. Initialize bonding curve state (TODO: real instruction(s))
-    // const initCurveIx = yourProgram.createInitCurveIx({ ...curveConfig, mint: mintKeypair.publicKey, poolPda });
-    // For now, skip to avoid invalid IX
-    // -----
-
-    // 5. Build & send tx
+    // 4. Build & send tx (without curve initialization for now)
     const instructions = [
       ComputeBudgetProgram.setComputeUnitLimit({ units: 600000 }),
       ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000 }),
       createMintIx,
       initMintIx,
-      createPoolAtaIx,
-      ...(mintToPoolIx ? [mintToPoolIx] : []),
-      // initCurveIx  // TODO
+      createCurveAtaIx,
+      // TODO: Add initCurveIx when contract is deployed
     ];
 
     const tx = new Transaction().add(...instructions);
@@ -265,7 +266,7 @@ serve(async (req: Request) => {
       x_url: twitter,
       mint_address: mintKeypair.publicKey.toBase58(),
       total_supply: totalSupply,
-      bonding_curve_address: poolPda.toBase58(),
+      bonding_curve_address: bondingCurvePda.toBase58(),
       platform_signature: sig,
       signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       platform_identifier: platformIdentifier
@@ -315,8 +316,8 @@ serve(async (req: Request) => {
       success: true,
       token: tokenData,
       mint: mintKeypair.publicKey.toBase58(),
-      poolPda: poolPda.toBase58(),
-      poolAta: poolAta.toBase58(),
+      bondingCurvePda: bondingCurvePda.toBase58(),
+      curveAta: curveAta.toBase58(),
       name,
       symbol,
       decimals,
