@@ -122,70 +122,33 @@ export const Forums = () => {
                 />
               </div>
 
-              {/* Post Type Tabs */}
-              <Tabs value={selectedPostType} onValueChange={setSelectedPostType}>
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="all" className="gap-1">
-                    All
-                    <Badge variant="secondary" className="text-xs">
-                      {postTypeCounts.all}
-                    </Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="discussion" className="gap-1">
-                    Discussion
-                    <Badge variant="secondary" className="text-xs">
-                      {postTypeCounts.discussion}
-                    </Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="question" className="gap-1">
-                    Questions
-                    <Badge variant="secondary" className="text-xs">
-                      {postTypeCounts.question}
-                    </Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="bug_report" className="gap-1">
-                    Bugs
-                    <Badge variant="secondary" className="text-xs">
-                      {postTypeCounts.bug_report}
-                    </Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="feature_request" className="gap-1">
-                    Features
-                    <Badge variant="secondary" className="text-xs">
-                      {postTypeCounts.feature_request}
-                    </Badge>
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value={selectedPostType} className="mt-6">
-                  {filteredPosts.length > 0 ? (
-                    <div className="space-y-4">
-                      {filteredPosts.map((post) => (
-                        <ForumPostCard
-                          key={post.id}
-                          post={post}
-                          showCategory={false}
-                          onClick={() => navigate(`/forums/${categoryId}/post/${post.id}`)}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No posts found</h3>
-                      <p className="text-muted-foreground mb-4">
-                        {searchTerm 
-                          ? 'Try adjusting your search terms'
-                          : 'Be the first to start a discussion in this category!'
-                        }
-                      </p>
-                      <Button onClick={handleCreatePost}>
-                        Create First Post
-                      </Button>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+              {/* Posts List */}
+              {filteredPosts.length > 0 ? (
+                <div className="space-y-4">
+                  {filteredPosts.map((post) => (
+                    <ForumPostCard
+                      key={post.id}
+                      post={post}
+                      showCategory={false}
+                      onClick={() => navigate(`/forums/${categoryId}/post/${post.id}`)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No posts found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {searchTerm 
+                      ? 'Try adjusting your search terms'
+                      : 'Be the first to start a discussion in this category!'
+                    }
+                  </p>
+                  <Button onClick={handleCreatePost}>
+                    Create First Post
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
