@@ -6,13 +6,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Wallet, LogOut, ChevronDown } from 'lucide-react';
+import { Wallet, LogOut, ChevronDown, User } from 'lucide-react';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
+import { useNavigate } from 'react-router-dom';
 
 export const CleanWalletButton = () => {
   const { connected, publicKey, connecting, select, wallets } = useWallet();
   const { logout } = useWalletAuth();
+  const navigate = useNavigate();
 
   const handleConnect = async () => {
     try {
@@ -39,6 +42,14 @@ export const CleanWalletButton = () => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-background border border-border">
+          <DropdownMenuItem 
+            onClick={() => navigate('/profile')} 
+            className="cursor-pointer"
+          >
+            <User className="h-4 w-4 mr-2" />
+            View Profile
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout} className="cursor-pointer">
             <LogOut className="h-4 w-4 mr-2" />
             Disconnect

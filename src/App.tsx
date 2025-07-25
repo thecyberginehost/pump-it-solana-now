@@ -21,6 +21,7 @@ import Leaderboard from "@/components/Leaderboard";
 import Achievements from "./pages/Achievements";
 import Roadmap from "./pages/Roadmap";
 import { Forums } from "./pages/Forums";
+import { Profile } from "./pages/Profile";
 import ChatbotSidebar from "@/components/ChatbotSidebar";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,8 @@ const AppContent = () => {
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/forums" element={<Forums />} />
           <Route path="/forums/:categoryId" element={<Forums />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:walletAddress" element={<Profile />} />
           <Route path="/roadmap" element={<Roadmap />} />
           <Route path="/boosts" element={<Boosts />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
