@@ -14,7 +14,8 @@ import {
   MapPin,
   Zap,
   Trophy,
-  Wallet
+  Wallet,
+  MessageSquare
 } from "lucide-react";
 import { MobileWalletButton } from "@/components/MobileWalletButton";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -24,6 +25,7 @@ export const MoreDropdown = () => {
   const isMobile = useIsMobile();
   
   const secondaryItems = [
+    { path: "/forums", label: "Forums", icon: MessageSquare },
     { path: "/achievements", label: "Achievements", icon: Award },
     { path: "/roadmap", label: "Roadmap", icon: MapPin },
     { path: "/boosts", label: "Boosts", icon: Zap },

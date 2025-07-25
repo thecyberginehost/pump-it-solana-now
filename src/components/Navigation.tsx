@@ -30,7 +30,6 @@ const Navigation = () => {
   const mainNavItems = [
     { path: "/", label: "Launch", icon: Home },
     { path: "/tokens", label: "Tokens", icon: Coins },
-    { path: "/forums", label: "Forums", icon: MessageSquare },
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
   ];
 
