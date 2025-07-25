@@ -284,6 +284,18 @@ serve(async (req) => {
     const { data: programId } = await supabase.rpc('get_active_program_id');
     const realProgramId = programId || '11111111111111111111111111111111';
 
+    // Get fee configuration based on graduation status
+    const { data: feeConfigData } = await supabase.rpc('get_fee_config_by_graduation', {
+      is_graduated: token.is_graduated || false
+    });
+    
+    const feeConfig = feeConfigData?.[0] || {
+      platform_fee_bps: token.is_graduated ? 50 : 100,  // 0.5% or 1%
+      creator_fee_bps: token.is_graduated ? 100 : 50,   // 1% or 0.5%
+      prize_pool_fee_bps: 30,  // 0.3%
+      reserves_fee_bps: 20     // 0.2%
+    };
+
     // Get wallet addresses
     const { data: walletConfigs } = await supabase
       .from('wallet_config')

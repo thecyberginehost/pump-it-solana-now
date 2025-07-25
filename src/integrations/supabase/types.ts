@@ -745,6 +745,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      get_fee_config_by_graduation: {
+        Args: { is_graduated?: boolean }
+        Returns: {
+          platform_fee_bps: number
+          creator_fee_bps: number
+          prize_pool_fee_bps: number
+          reserves_fee_bps: number
+        }[]
+      }
       get_user_credits: {
         Args: { user_wallet: string }
         Returns: number
