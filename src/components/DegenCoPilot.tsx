@@ -9,6 +9,7 @@ import { useWalletAuth } from '@/hooks/useWalletAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 import { 
   Bot, 
   Send, 
@@ -306,10 +307,22 @@ export const DegenCoPilot: React.FC<DegenCoPilotProps> = ({
                     <div 
                       className={`whitespace-pre-wrap ${isMobile ? 'text-xs' : 'text-sm'}`}
                       dangerouslySetInnerHTML={{
-                        __html: message.content
-                          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary underline hover:text-primary/80 transition-colors">$1</a>')
-                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                        __html: DOMPurify.sanitize(
+                          message.content
+                            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+                              // Validate URLs to prevent javascript: and other unsafe protocols
+                              if (url.match(/^(https?:\/\/|\/)/)) {
+                                return `<a href="${url}" class="text-primary underline hover:text-primary/80 transition-colors" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                              }
+                              return text; // Just return the text if URL is invalid
+                            })
+                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                            .replace(/\*(.*?)\*/g, '<em>$1</em>'),
+                          { 
+                            ALLOWED_TAGS: ['strong', 'em', 'b', 'i', 'a'],
+                            ALLOWED_ATTR: ['href', 'class', 'target', 'rel']
+                          }
+                        )
                       }}
                     />
                     <div className="text-xs opacity-70 mt-1">
