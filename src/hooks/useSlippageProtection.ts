@@ -108,33 +108,47 @@ export const useTradeProtection = (
   const protection = useMemo((): TradeProtectionResult => {
     const slippage = calculateSlippage(tradeAmount, tradeType);
     
-    // MEV Risk Assessment
+    // Enhanced MEV Risk Assessment
     let mevRisk: 'low' | 'medium' | 'high' = 'low';
     const tradeValueUSD = tradeAmount * 230; // Approximate SOL price
     
-    if (tradeValueUSD > 10000) {
+    // Consider multiple factors for MEV risk
+    const riskFactors = {
+      tradeSize: tradeValueUSD > 10000 ? 40 : tradeValueUSD > 1000 ? 20 : 0,
+      priceImpact: slippage.priceImpact > 10 ? 30 : slippage.priceImpact > 5 ? 15 : 0,
+      liquidityRatio: tradeAmount > (currentSolRaised + 30) * 0.15 ? 25 : 0,
+      timeOfDay: new Date().getHours() >= 13 && new Date().getHours() <= 21 ? 10 : 0, // UTC trading hours
+    };
+    
+    const totalRiskScore = Object.values(riskFactors).reduce((sum, score) => sum + score, 0);
+    
+    if (totalRiskScore > 60) {
       mevRisk = 'high';
-    } else if (tradeValueUSD > 1000) {
+    } else if (totalRiskScore > 30) {
       mevRisk = 'medium';
     }
 
-    // Liquidity warnings
+    // Enhanced liquidity warnings with sandwich protection
     const totalLiquidity = currentSolRaised + 30; // Virtual reserves
     let liquidityWarning;
     
     if (tradeAmount > totalLiquidity * 0.2) {
-      liquidityWarning = 'Trade size is >20% of available liquidity. High price impact expected.';
+      liquidityWarning = 'Trade size is >20% of available liquidity. High sandwich attack risk detected.';
     } else if (tradeAmount > totalLiquidity * 0.1) {
-      liquidityWarning = 'Large trade detected. Consider splitting for better execution.';
+      liquidityWarning = 'Large trade detected. Consider using MEV protection to prevent sandwich attacks.';
+    } else if (mevRisk === 'high') {
+      liquidityWarning = 'High MEV risk detected. Recommend using priority bundling.';
     }
 
-    // Optimal timing recommendation
+    // Enhanced timing recommendation with anti-sandwich logic
     let optimalTiming: 'immediate' | 'wait' | 'bundle' = 'immediate';
     
     if (mevRisk === 'high' || slippage.priceImpact > 15) {
-      optimalTiming = 'bundle'; // Bundle with other transactions for MEV protection
-    } else if (slippage.priceImpact > 10) {
-      optimalTiming = 'wait'; // Suggest waiting for better conditions
+      optimalTiming = 'bundle'; // Use MEV protection bundling
+    } else if (slippage.priceImpact > 10 || mevRisk === 'medium') {
+      optimalTiming = 'bundle'; // Recommend bundling for medium risk too
+    } else if (totalRiskScore > 20) {
+      optimalTiming = 'wait'; // Wait for better conditions
     }
 
     return {
@@ -164,21 +178,31 @@ export const useSmartTradeRecommendations = (
       recs.push(`Consider splitting trade into ${Math.ceil(protection.slippage.priceImpact / 5)} smaller trades`);
     }
 
-    // MEV protection recommendations
+    // Enhanced MEV protection recommendations
     if (protection.mevRisk === 'high') {
-      recs.push('Use MEV protection bundling for this large trade');
-      recs.push('Consider using a higher priority fee to avoid frontrunning');
+      recs.push('🛡️ High sandwich attack risk - Use FLASH MEV protection');
+      recs.push('⚡ Set high priority fees to avoid being frontrun');
+      recs.push('🔄 Consider splitting into multiple smaller trades');
+    } else if (protection.mevRisk === 'medium') {
+      recs.push('🔒 Medium MEV risk - Use PRIORITY protection bundle');
+      recs.push('⏱️ Add random delay to avoid bot detection');
     }
 
-    // Timing recommendations
-    if (protection.optimalTiming === 'wait') {
-      recs.push('Wait for more favorable market conditions');
-      recs.push('Monitor for increased liquidity before trading');
+    // Anti-sandwich timing recommendations
+    if (protection.optimalTiming === 'bundle') {
+      recs.push('📦 Bundle transaction with MEV protection for safety');
+      recs.push('🎯 Use atomic execution to prevent sandwich attacks');
+    } else if (protection.optimalTiming === 'wait') {
+      recs.push('⏳ Wait for lower MEV bot activity');
+      recs.push('📊 Monitor for increased liquidity before trading');
     }
 
-    // Liquidity recommendations
+    // Enhanced liquidity recommendations
     if (protection.liquidityWarning) {
-      recs.push('Trade during higher activity periods for better liquidity');
+      recs.push('💧 Trade during higher activity periods for better liquidity');
+      if (protection.liquidityWarning.includes('sandwich')) {
+        recs.push('🥪 High sandwich risk - Enable anti-MEV protection');
+      }
     }
 
     return recs;

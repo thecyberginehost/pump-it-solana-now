@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useAchievements } from './useAchievements';
 import { useWrapperTrade } from './useWrapperTrade';
 import { useWalletAuth } from './useWalletAuth';
+import { useMevProtection } from './useMevProtection';
 import { Transaction } from '@solana/web3.js';
 
 export interface TradeRequest {
@@ -32,6 +33,7 @@ export const useTrading = () => {
   const [isTrading, setIsTrading] = useState(false);
   const { checkAchievements } = useAchievements();
   const { executeWrapperTrade, isExecutingWrapper } = useWrapperTrade();
+  const { protectTransaction, calculateProtectionLevel } = useMevProtection();
 
   const executeTrade = useMutation({
     mutationFn: async (tradeRequest: TradeRequest): Promise<any> => {
