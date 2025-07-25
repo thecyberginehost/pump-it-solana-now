@@ -15,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Edit2, Trophy, Coins, Activity, Calendar, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserRankBadge } from '@/components/UserRankBadge';
-import { useUserRank, useToggleTitleDisplay, useUpdateUserRank } from '@/hooks/useUserRanks';
+import { useUserRank, useToggleTitleDisplay } from '@/hooks/useUserRanks';
 import { Switch } from '@/components/ui/switch';
 
 export const Profile = () => {
@@ -32,7 +32,6 @@ export const Profile = () => {
   const { data: profile, refetch } = useUserProfile(profileWallet);
   const { data: userRank } = useUserRank(profileWallet);
   const toggleTitleDisplay = useToggleTitleDisplay();
-  const updateUserRank = useUpdateUserRank();
   
   const isOwnProfile = currentUserWallet === profileWallet;
 
@@ -84,16 +83,6 @@ export const Profile = () => {
     }
   };
 
-  const handleUpdateRank = async () => {
-    if (!profileWallet) return;
-    
-    try {
-      await updateUserRank.mutateAsync(profileWallet);
-      toast.success('Rank updated!');
-    } catch (error) {
-      console.error('Error updating rank:', error);
-    }
-  };
 
   const formatWalletAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-6)}`;
@@ -194,25 +183,15 @@ export const Profile = () => {
                         Edit Profile
                       </Button>
                       
-                      {/* Rank Controls */}
-                      <div className="flex flex-col gap-2 p-3 border rounded-lg bg-muted/20">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="show-title" className="text-sm">Show Rank Title</Label>
-                          <Switch
-                            id="show-title"
-                            checked={userRank?.show_title ?? true}
-                            onCheckedChange={handleToggleTitle}
-                            disabled={toggleTitleDisplay.isPending}
-                          />
-                        </div>
-                        <Button 
-                          onClick={handleUpdateRank} 
-                          variant="outline" 
-                          size="sm"
-                          disabled={updateUserRank.isPending}
-                        >
-                          Update Rank
-                        </Button>
+                      {/* Rank Controls - Only show title toggle */}
+                      <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/20">
+                        <Label htmlFor="show-title" className="text-sm">Show Rank Title</Label>
+                        <Switch
+                          id="show-title"
+                          checked={userRank?.show_title ?? true}
+                          onCheckedChange={handleToggleTitle}
+                          disabled={toggleTitleDisplay.isPending}
+                        />
                       </div>
                     </>
                   )}

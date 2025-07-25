@@ -23,7 +23,6 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId || '');
-  const [postType, setPostType] = useState('discussion');
 
   const { data: categories = [] } = useForumCategories();
   const createPost = useCreateForumPost();
@@ -41,14 +40,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
         category_id: selectedCategoryId,
         title: title.trim(),
         content: content.trim(),
-        post_type: postType,
+        post_type: 'discussion', // Default to discussion since we removed the selector
       });
 
       // Reset form
       setTitle('');
       setContent('');
       setSelectedCategoryId('');
-      setPostType('discussion');
       onClose();
     } catch (error) {
       console.error('Failed to create post:', error);
@@ -59,7 +57,6 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
     setTitle('');
     setContent('');
     setSelectedCategoryId(categoryId || '');
-    setPostType('discussion');
   };
 
   const handleClose = () => {
@@ -67,12 +64,6 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
     onClose();
   };
 
-  const postTypeOptions = [
-    { value: 'discussion', label: 'General Discussion', description: 'General conversation or topic' },
-    { value: 'question', label: 'Question', description: 'Ask for help or advice' },
-    { value: 'bug_report', label: 'Bug Report', description: 'Report a technical issue' },
-    { value: 'feature_request', label: 'Feature Request', description: 'Suggest a new feature' },
-  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -108,25 +99,6 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
             </Select>
           </div>
 
-          {/* Post Type Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="postType">Post Type</Label>
-            <Select value={postType} onValueChange={setPostType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select post type" />
-              </SelectTrigger>
-              <SelectContent>
-                {postTypeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div>
-                      <div className="font-medium">{option.label}</div>
-                      <div className="text-xs text-muted-foreground">{option.description}</div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
           {/* Title */}
           <div className="space-y-2">
