@@ -3,16 +3,15 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserProfileModal } from './UserProfileModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useWalletAuth } from '@/hooks/useWalletAuth';
-import { User } from 'lucide-react';
+import { useHybridAuth } from '@/hooks/useHybridAuth';
+import { User, Shield } from 'lucide-react';
 import { UserRankBadge } from './UserRankBadge';
 
 export const UserProfileButton: React.FC = () => {
-  const { walletAddress } = useWalletAuth();
-  const { data: profile } = useUserProfile(walletAddress);
+  const { userIdentifier, profile, authType } = useHybridAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  if (!walletAddress) return null;
+  if (!userIdentifier) return null;
 
   const formatWalletAddress = (address: string) => {
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
@@ -31,14 +30,17 @@ export const UserProfileButton: React.FC = () => {
           <AvatarFallback className="text-xs">
             {profile?.username 
               ? profile.username.charAt(0).toUpperCase()
-              : <User className="h-3 w-3" />
+              : authType === 'email' ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />
             }
           </AvatarFallback>
         </Avatar>
         <div className="hidden sm:flex items-center gap-2">
-          <UserRankBadge walletAddress={walletAddress} size="sm" />
+          {/* Only show rank badge for non-admin users */}
+          {!profile?.is_admin && (
+            <UserRankBadge walletAddress={userIdentifier} size="sm" />
+          )}
           <span>
-            {profile?.username || formatWalletAddress(walletAddress)}
+            {profile?.username || formatWalletAddress(userIdentifier)}
           </span>
         </div>
       </Button>

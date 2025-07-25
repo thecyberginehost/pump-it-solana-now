@@ -468,8 +468,11 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auth_type: string | null
           avatar_url: string | null
           created_at: string
+          email: string | null
+          is_admin: boolean | null
           last_active: string
           total_tokens_created: number | null
           total_volume_traded: number | null
@@ -477,8 +480,11 @@ export type Database = {
           wallet_address: string
         }
         Insert: {
+          auth_type?: string | null
           avatar_url?: string | null
           created_at?: string
+          email?: string | null
+          is_admin?: boolean | null
           last_active?: string
           total_tokens_created?: number | null
           total_volume_traded?: number | null
@@ -486,8 +492,11 @@ export type Database = {
           wallet_address: string
         }
         Update: {
+          auth_type?: string | null
           avatar_url?: string | null
           created_at?: string
+          email?: string | null
+          is_admin?: boolean | null
           last_active?: string
           total_tokens_created?: number | null
           total_volume_traded?: number | null
@@ -914,6 +923,14 @@ export type Database = {
           tokens_created_today: number
           daily_limit: number
         }[]
+      }
+      create_admin_profile: {
+        Args: { p_user_id: string; p_email: string; p_rank_type?: string }
+        Returns: string
+      }
+      generate_admin_username: {
+        Args: { rank_type: string }
+        Returns: string
       }
       get_active_fee_config: {
         Args: Record<PropertyKey, never>
