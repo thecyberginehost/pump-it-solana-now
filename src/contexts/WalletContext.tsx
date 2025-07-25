@@ -17,18 +17,13 @@ interface WalletContextProviderProps {
 export const WalletContextProvider = ({ children }: WalletContextProviderProps) => {
   // Use public devnet endpoint for wallet connection
   // Backend edge functions use authenticated Helius RPC for actual transactions
-  const endpoint = useMemo(() => {
-    return clusterApiUrl(WalletAdapterNetwork.Devnet);
-  }, []);
+  const endpoint = clusterApiUrl(WalletAdapterNetwork.Devnet);
   
   // Configure supported wallets
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
-    ],
-    []
-  );
+  const wallets = [
+    new PhantomWalletAdapter(),
+    new SolflareWalletAdapter(),
+  ];
 
   return (
     <ConnectionProvider endpoint={endpoint}>
