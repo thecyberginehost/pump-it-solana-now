@@ -110,7 +110,7 @@ const CreatorDashboard = () => {
         {isAdminMode ? (
           <AdminDashboard />
         ) : (
-
+          <>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Creator Section */}
           <Card className="h-fit">
@@ -294,6 +294,7 @@ const CreatorDashboard = () => {
             </CardContent>
           </Card>
         )}
+        </>
         )}
       </div>
     </div>
