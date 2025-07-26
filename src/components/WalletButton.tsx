@@ -54,15 +54,6 @@ export const WalletButton = () => {
   return (
     <div className="flex items-center gap-2">
       <WalletMultiButton className="!bg-primary !text-primary-foreground hover:!bg-primary/90 !rounded-md !h-10 !px-4 !py-2 !text-sm !font-medium !transition-colors" />
-      <Button 
-        variant="outline" 
-        size="sm"
-        onClick={() => setShowAdminModal(true)}
-        className="flex items-center gap-2"
-      >
-        <Shield className="h-4 w-4" />
-        Admin
-      </Button>
       
       <AdminAuthModal 
         isOpen={showAdminModal} 
