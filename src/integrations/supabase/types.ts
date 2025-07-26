@@ -56,6 +56,42 @@ export type Database = {
         }
         Relationships: []
       }
+      banned_wallets: {
+        Row: {
+          ban_reason: string | null
+          banned_at: string
+          banned_by: string
+          created_at: string
+          id: string
+          is_permanent: boolean | null
+          unban_at: string | null
+          updated_at: string
+          wallet_address: string
+        }
+        Insert: {
+          ban_reason?: string | null
+          banned_at?: string
+          banned_by: string
+          created_at?: string
+          id?: string
+          is_permanent?: boolean | null
+          unban_at?: string | null
+          updated_at?: string
+          wallet_address: string
+        }
+        Update: {
+          ban_reason?: string | null
+          banned_at?: string
+          banned_by?: string
+          created_at?: string
+          id?: string
+          is_permanent?: boolean | null
+          unban_at?: string | null
+          updated_at?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       community_rewards: {
         Row: {
           created_at: string
@@ -982,6 +1018,10 @@ export type Database = {
       initialize_creator_credits: {
         Args: { p_user_wallet: string }
         Returns: undefined
+      }
+      is_wallet_banned: {
+        Args: { p_wallet_address: string }
+        Returns: boolean
       }
       reset_daily_credits: {
         Args: Record<PropertyKey, never>

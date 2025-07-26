@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import Navigation from "@/components/Navigation";
-import { useWalletAuth } from "@/hooks/useWalletAuth";
+import { useHybridAuth } from "@/hooks/useHybridAuth";
+import { AdminDashboard } from "@/components/AdminDashboard";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { 
@@ -16,24 +19,26 @@ import {
   ChevronRight,
   TrendingUp,
   Calendar,
-  Share2
+  Share2,
+  Shield
 } from "lucide-react";
 import AchievementDisplay from "@/components/AchievementDisplay";
 
 const CreatorDashboard = () => {
-  const { isAuthenticated, walletAddress } = useWalletAuth();
+  const { isAuthenticated, userIdentifier, profile } = useHybridAuth();
   const [userTokens, setUserTokens] = useState<any[]>([]);
   const [boughtTokens, setBoughtTokens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdminMode, setIsAdminMode] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && walletAddress) {
+    if (isAuthenticated && userIdentifier) {
       fetchUserData();
     }
-  }, [isAuthenticated, walletAddress]);
+  }, [isAuthenticated, userIdentifier]);
 
   const fetchUserData = async () => {
-    if (!walletAddress) return;
+    if (!userIdentifier) return;
     
     setLoading(true);
     try {
@@ -41,7 +46,7 @@ const CreatorDashboard = () => {
       const { data: createdTokens, error: createdError } = await supabase
         .from('tokens')
         .select('*')
-        .eq('creator_wallet', walletAddress)
+        .eq('creator_wallet', userIdentifier)
         .order('created_at', { ascending: false });
 
       if (createdError) throw createdError;
@@ -77,14 +82,34 @@ const CreatorDashboard = () => {
       <Navigation />
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Creator Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your tokens and track your MoonForge journey
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              {isAdminMode ? 'Admin Dashboard' : 'Creator Dashboard'}
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {isAdminMode ? 'Forgelord Administrative Controls' : 'Manage your tokens and track your MoonForge journey'}
+            </p>
+          </div>
+          
+          {/* Admin Mode Toggle */}
+          {profile?.is_admin && (
+            <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/20">
+              <Shield className="h-4 w-4 text-destructive" />
+              <Label htmlFor="admin-mode" className="text-sm font-medium">Admin Mode</Label>
+              <Switch
+                id="admin-mode"
+                checked={isAdminMode}
+                onCheckedChange={setIsAdminMode}
+              />
+            </div>
+          )}
         </div>
+
+        {/* Render Admin Dashboard or Regular Dashboard */}
+        {isAdminMode ? (
+          <AdminDashboard />
+        ) : (
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Creator Section */}
@@ -227,7 +252,7 @@ const CreatorDashboard = () => {
 
         {/* Achievements Section */}
         <div className="mt-8">
-          <AchievementDisplay walletAddress={walletAddress} compact />
+          <AchievementDisplay walletAddress={userIdentifier} compact />
         </div>
 
         {/* Quick Stats */}
@@ -268,6 +293,7 @@ const CreatorDashboard = () => {
               </div>
             </CardContent>
           </Card>
+        )}
         )}
       </div>
     </div>
