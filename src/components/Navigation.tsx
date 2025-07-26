@@ -82,7 +82,7 @@ const Navigation = () => {
               <MoreDropdown />
             </div>
 
-            {/* Desktop Wallet & Chat */}
+            {/* Desktop Wallet & Profile & Chat */}
             <div className="hidden md:flex items-center space-x-4">
               {publicKey && (
                 <Button
@@ -95,7 +95,12 @@ const Navigation = () => {
                   <span>Degen Copilot</span>
                 </Button>
               )}
-              <WalletButton />
+              
+              {/* Show profile dropdown for authenticated users */}
+              {isAuthenticated && <UserProfileButton />}
+              
+              {/* Show wallet button for non-authenticated users */}
+              {!isAuthenticated && <WalletButton />}
             </div>
 
             {/* Mobile menu button */}
