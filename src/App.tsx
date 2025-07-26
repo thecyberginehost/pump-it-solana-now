@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { WalletContextProvider } from "@/contexts/WalletContext";
-import { ChatProvider, useChatContext } from "@/contexts/ChatContext";
+import { BanCheck } from "@/components/BanCheck";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ProductionMonitor } from "@/components/ProductionMonitor";
 import Index from "./pages/Index";
@@ -23,6 +23,7 @@ import Roadmap from "./pages/Roadmap";
 import { Forums } from "./pages/Forums";
 import { Profile } from "./pages/Profile";
 import ChatbotSidebar from "@/components/ChatbotSidebar";
+import { ChatProvider, useChatContext } from "@/contexts/ChatContext";
 
 const queryClient = new QueryClient();
 
@@ -31,38 +32,40 @@ const AppContent = () => {
 
   return (
     <div className="relative">
-      {/* Main content with dynamic margin when chat is open */}
-      <div 
-        className={`transition-all duration-300 ${
-          isChatOpen ? "mr-80" : "mr-0"
-        }`}
-      >
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<CreatorDashboard />} />
-          <Route path="/tokens" element={<TokenList />} />
-          <Route path="/token/:identifier" element={<TokenDetail />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/achievements" element={<Achievements />} />
-          <Route path="/forums" element={<Forums />} />
-          <Route path="/forums/:categoryId" element={<Forums />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/profile/:walletAddress" element={<Profile />} />
-          <Route path="/roadmap" element={<Roadmap />} />
-          <Route path="/boosts" element={<Boosts />} />
-          <Route path="/disclaimer" element={<Disclaimer />} />
-          <Route path="/monitor" element={<ProductionMonitor />} />
-          <Route path="/token-success/:tokenId" element={<TokenSuccess />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </div>
+      <BanCheck>
+        {/* Main content with dynamic margin when chat is open */}
+        <div 
+          className={`transition-all duration-300 ${
+            isChatOpen ? "mr-80" : "mr-0"
+          }`}
+        >
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<CreatorDashboard />} />
+            <Route path="/tokens" element={<TokenList />} />
+            <Route path="/token/:identifier" element={<TokenDetail />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/achievements" element={<Achievements />} />
+            <Route path="/forums" element={<Forums />} />
+            <Route path="/forums/:categoryId" element={<Forums />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:walletAddress" element={<Profile />} />
+            <Route path="/roadmap" element={<Roadmap />} />
+            <Route path="/boosts" element={<Boosts />} />
+            <Route path="/disclaimer" element={<Disclaimer />} />
+            <Route path="/monitor" element={<ProductionMonitor />} />
+            <Route path="/token-success/:tokenId" element={<TokenSuccess />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </div>
 
-      {/* Global Chatbot Sidebar */}
-      <ChatbotSidebar 
-        isOpen={isChatOpen} 
-        onClose={() => setIsChatOpen(false)} 
-      />
+        {/* Global Chatbot Sidebar */}
+        <ChatbotSidebar 
+          isOpen={isChatOpen} 
+          onClose={() => setIsChatOpen(false)} 
+        />
+      </BanCheck>
     </div>
   );
 };

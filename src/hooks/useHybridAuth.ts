@@ -2,6 +2,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { User, Session } from '@supabase/supabase-js';
 
 export const useHybridAuth = () => {
@@ -9,6 +10,7 @@ export const useHybridAuth = () => {
   const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [isBanned, setIsBanned] = useState<boolean>(false);
   
   const walletAddress = publicKey?.toString();
 
@@ -30,11 +32,47 @@ export const useHybridAuth = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Query to check if wallet is banned
+  const { data: banStatus } = useQuery({
+    queryKey: ['wallet-ban-status', walletAddress],
+    queryFn: async () => {
+      if (!walletAddress) return false;
+      
+      const { data, error } = await supabase.rpc('is_wallet_banned', {
+        p_wallet_address: walletAddress
+      });
+      
+      if (error) {
+        console.error('Error checking ban status:', error);
+        return false;
+      }
+      
+      return data;
+    },
+    enabled: !!walletAddress,
+  });
+
+  // Update ban status and disconnect if banned
+  useEffect(() => {
+    if (banStatus) {
+      setIsBanned(true);
+      if (connected) {
+        disconnect();
+        toast.error('Access Denied', {
+          description: 'This wallet has been banned from the platform.',
+        });
+      }
+    } else {
+      setIsBanned(false);
+    }
+  }, [banStatus, connected, disconnect]);
+
   // Query to get user profile (works for both wallet and email users)
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile', user?.id || walletAddress],
     queryFn: async () => {
       if (!user?.id && !walletAddress) return null;
+      if (banStatus) return null; // Don't load profile for banned wallets
       
       // For email auth users, use their user ID
       // For wallet users, use their wallet address
@@ -52,12 +90,21 @@ export const useHybridAuth = () => {
       
       return data;
     },
-    enabled: !!(user?.id || (connected && walletAddress)),
+    enabled: !!(user?.id || (connected && walletAddress)) && !banStatus,
   });
 
   // Mutation to create or update wallet profile
   const createOrUpdateWalletProfile = useMutation({
     mutationFn: async (walletAddress: string) => {
+      // Check if wallet is banned before creating profile
+      const { data: isBanned } = await supabase.rpc('is_wallet_banned', {
+        p_wallet_address: walletAddress
+      });
+      
+      if (isBanned) {
+        throw new Error('This wallet has been banned from the platform.');
+      }
+      
       const { data, error } = await supabase
         .from('profiles')
         .upsert({
@@ -73,6 +120,14 @@ export const useHybridAuth = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+    onError: (error: any) => {
+      if (error.message.includes('banned')) {
+        disconnect();
+        toast.error('Access Denied', {
+          description: 'This wallet has been banned from the platform.',
+        });
+      }
     },
   });
 
@@ -110,10 +165,10 @@ export const useHybridAuth = () => {
 
   // Auto-create wallet profile when wallet connects (for non-email users)
   useEffect(() => {
-    if (connected && walletAddress && !profile && !isLoading && !user) {
+    if (connected && walletAddress && !profile && !isLoading && !user && !isBanned) {
       createOrUpdateWalletProfile.mutate(walletAddress);
     }
-  }, [connected, walletAddress, profile, isLoading, user]);
+  }, [connected, walletAddress, profile, isLoading, user, isBanned]);
 
   // Update last active for both auth types
   useEffect(() => {
@@ -133,7 +188,7 @@ export const useHybridAuth = () => {
 
   const isConnected = connected || !!user;
   const userIdentifier = user?.id?.toString() || walletAddress;
-  const isAuthenticated = (connected && !!walletAddress) || !!user;
+  const isAuthenticated = ((connected && !!walletAddress) || !!user) && !isBanned;
   const isAdmin = profile?.is_admin || false;
   const authType = profile?.auth_type || (user ? 'email' : 'wallet');
 
@@ -157,5 +212,6 @@ export const useHybridAuth = () => {
     isAuthenticated,
     isAdmin,
     authType,
+    isBanned,
   };
 };
