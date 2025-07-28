@@ -22,6 +22,8 @@ function log(level: string, message: string, data?: any) {
 // Solana devnet helpers
 async function createSolanaConnection(rpcUrl: string) {
   try {
+    log('INFO', 'Testing RPC connection', { rpcUrl: rpcUrl.replace(/api-key=[^&]*/, 'api-key=***') });
+    
     // Test connection using getLatestBlockhash (newer method)
     const response = await fetch(rpcUrl, {
       method: 'POST',
@@ -34,8 +36,20 @@ async function createSolanaConnection(rpcUrl: string) {
       })
     });
     
+    log('INFO', 'RPC Response received', { 
+      status: response.status, 
+      statusText: response.statusText,
+      ok: response.ok 
+    });
+    
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorText = await response.text();
+      log('ERROR', 'HTTP Error from RPC', { 
+        status: response.status, 
+        statusText: response.statusText,
+        errorBody: errorText
+      });
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
     }
     
     const result = await response.json();
@@ -43,7 +57,10 @@ async function createSolanaConnection(rpcUrl: string) {
     log('INFO', 'Solana RPC connection test', { 
       success: !result.error,
       blockhash: result.result?.value?.blockhash?.slice(0, 8) + '...',
-      rpcStatus: response.status
+      rpcStatus: response.status,
+      hasError: !!result.error,
+      errorCode: result.error?.code,
+      errorMessage: result.error?.message
     });
     
     if (result.error) {
@@ -55,7 +72,8 @@ async function createSolanaConnection(rpcUrl: string) {
   } catch (error) {
     log('ERROR', 'Failed to connect to Solana RPC', { 
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
+      name: error.name
     });
     return false;
   }
