@@ -83,7 +83,7 @@ export const UserProfileButton: React.FC = () => {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link to="/dashboard" className="flex items-center w-full">
+            <Link to="/profile" className="flex items-center w-full">
               <User className="h-4 w-4 mr-2" />
               My Profile
             </Link>
