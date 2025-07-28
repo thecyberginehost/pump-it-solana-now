@@ -129,6 +129,20 @@ serve(async (req: Request) => {
     
     if (req.method !== "POST") return jsonResponse({ error: "Use POST" }, 405);
 
+    // Simple test - just return success with environment check
+    console.log("Testing environment variables...");
+    
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");  
+    const heliusKey = Deno.env.get("HELIUS_RPC_API_KEY");
+    const platformKey = Deno.env.get("PLATFORM_WALLET_PRIVATE_KEY");
+    
+    console.log("Environment variables:");
+    console.log("- SUPABASE_URL:", supabaseUrl ? "✅ Present" : "❌ Missing");
+    console.log("- SUPABASE_SERVICE_ROLE_KEY:", supabaseKey ? "✅ Present" : "❌ Missing");
+    console.log("- HELIUS_RPC_API_KEY:", heliusKey ? "✅ Present" : "❌ Missing");
+    console.log("- PLATFORM_WALLET_PRIVATE_KEY:", platformKey ? "✅ Present" : "❌ Missing");
+
     const body = (await req.json().catch(() => null)) as CreateCurveTokenRequest | null;
     if (!body) return jsonResponse({ error: "Invalid JSON body" }, 400);
 
@@ -138,243 +152,28 @@ serve(async (req: Request) => {
       creatorWallet: body.creatorWallet 
     });
 
-    const { 
-      name, 
-      symbol, 
-      description,
-      imageUrl,
-      telegram,
-      twitter,
-      creatorWallet,
-      initialBuyIn = 0,
-      decimals = 9, 
-      totalSupply = 1000000000, 
-      curveConfig = {} 
-    } = body;
+    const { name, symbol, creatorWallet } = body;
     
     if (!name || !symbol || !creatorWallet) {
       return jsonResponse({ error: "name, symbol, and creatorWallet required" }, 400);
     }
 
-    // Check environment variables early
-    console.log("Checking environment variables...");
-    try {
-      getEnv("HELIUS_RPC_API_KEY");
-      getEnv("PLATFORM_WALLET_PRIVATE_KEY");
-      getEnv("SUPABASE_URL");
-      getEnv("SUPABASE_SERVICE_ROLE_KEY");
-      console.log("✅ All environment variables present");
-    } catch (envErr: any) {
-      console.error("❌ Environment variable error:", envErr.message);
-      throw new Error(`Environment configuration error: ${envErr.message}`);
-    }
-
-    const connection = getConnection();
-    const platform = await getPlatformKeypair();
-
-    // Check platform wallet balance
-    console.log("Checking platform wallet balance...");
-    const balance = await connection.getBalance(platform.publicKey);
-    console.log(`Platform wallet balance: ${balance / 1e9} SOL`);
-    
-    if (balance < 0.01 * 1e9) { // Less than 0.01 SOL
-      throw new Error(`Platform wallet has insufficient funds: ${balance / 1e9} SOL. Need at least 0.01 SOL for token creation.`);
-    }
-
-    // 1. Generate vanity mint address with "moon" suffix
-    console.log(`🌙 Generating vanity address with "moon" suffix for token: ${name}`);
-    const vanityResult = generateVanityKeypair("moon");
-    
-    let mintKeypair: Keypair;
-    let platformIdentifier: string | null = null;
-    let vanityGeneration: { attempts?: number; fallback?: boolean } = {};
-    
-    if (vanityResult) {
-      mintKeypair = vanityResult.keypair;
-      platformIdentifier = "moon";
-      vanityGeneration.attempts = vanityResult.attempts;
-      console.log(`✨ Successfully generated MoonForge vanity address: ${mintKeypair.publicKey.toBase58()}`);
-    } else {
-      // Fallback to regular generation if vanity fails
-      mintKeypair = Keypair.generate();
-      vanityGeneration.fallback = true;
-      console.log(`⚠️ Fallback to regular address generation: ${mintKeypair.publicKey.toBase58()}`);
-    }
-    
-    const rentLamports = await getMinimumBalanceForRentExemptMint(connection);
-
-    const createMintIx = SystemProgram.createAccount({
-      fromPubkey: platform.publicKey,
-      newAccountPubkey: mintKeypair.publicKey,
-      space: MINT_SIZE,
-      lamports: rentLamports,
-      programId: TOKEN_PROGRAM_ID,
-    });
-
-    const initMintIx = createInitializeMintInstruction(
-      mintKeypair.publicKey,
-      decimals,
-      platform.publicKey,
-      platform.publicKey, // freeze authority initially
-      TOKEN_PROGRAM_ID
-    );
-
-    // 2. Get dynamic program ID from database
-    const supa = getSupa();
-    const { data: progRow, error: progErr } = await supa
-      .from("program_config")
-      .select("program_id")
-      .eq("program_name", "bonding_curve")
-      .eq("is_active", true)
-      .limit(1)
-      .maybeSingle();
-      
-    if (progErr) {
-      console.error("program_config fetch failed:", progErr);
-      throw new Error(`program_config fetch failed: ${progErr.message}`);
-    }
-
-    if (!progRow) {
-      console.error("No active bonding_curve program_config found");
-      throw new Error("No active bonding_curve program configuration found");
-    }
-    const BONDING_PROGRAM_ID = new PublicKey(progRow.program_id);
-    
-    // Use correct PDA seeds matching the contract
-    const [bondingCurvePda] = await PublicKey.findProgramAddress(
-      [new TextEncoder().encode("bonding_curve"), mintKeypair.publicKey.toBuffer()],
-      BONDING_PROGRAM_ID
-    );
-
-    // 2a. Curve ATA owned by bonding curve PDA
-    const curveAta = await getAssociatedTokenAddress(
-      mintKeypair.publicKey,
-      bondingCurvePda,
-      true,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-
-    const createCurveAtaIx = createAssociatedTokenAccountInstruction(
-      platform.publicKey, // payer
-      curveAta,
-      bondingCurvePda,
-      mintKeypair.publicKey,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-
-    // 3. Create initialize curve instruction
-    // Note: This will need to be implemented once the contract is deployed
-    const virtualSolReserves = 30 * 1_000_000_000; // 30 SOL in lamports
-    const virtualTokenReserves = BigInt(800_000_000) * (BigInt(10) ** BigInt(decimals)); // 800M tokens
-    const bondingCurveSupply = BigInt(totalSupply) * (BigInt(10) ** BigInt(decimals));
-    
-    // TODO: Create actual initialize_curve instruction when contract is deployed
-    // const initCurveIx = await createInitializeCurveInstruction({
-    //   bondingCurve: bondingCurvePda,
-    //   mint: mintKeypair.publicKey,
-    //   curveTokenAccount: curveAta,
-    //   creator: new PublicKey(creatorWallet),
-    //   virtualSolReserves,
-    //   virtualTokenReserves: Number(virtualTokenReserves),
-    //   bondingCurveSupply: Number(bondingCurveSupply)
-    // });
-
-    // 4. Build & send tx (without curve initialization for now)
-    const instructions = [
-      ComputeBudgetProgram.setComputeUnitLimit({ units: 600000 }),
-      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000 }),
-      createMintIx,
-      initMintIx,
-      createCurveAtaIx,
-      // TODO: Add initCurveIx when contract is deployed
-    ];
-
-    const tx = new Transaction().add(...instructions);
-    tx.feePayer = platform.publicKey;
-    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    tx.partialSign(mintKeypair, platform);
-
-    const sig = await sendAndConfirmTransaction(connection, tx, [mintKeypair, platform], {
-      commitment: "confirmed",
-    });
-
-    // 5. Insert token into database with platform identifier
-    const { data: tokenData, error: upsertErr } = await supa.from("tokens").upsert({
-      creator_wallet: creatorWallet,
-      name,
-      symbol,
-      description: description || `A new token created with Moonforge`,
-      image_url: imageUrl,
-      telegram_url: telegram,
-      x_url: twitter,
-      mint_address: mintKeypair.publicKey.toBase58(),
-      total_supply: totalSupply,
-      bonding_curve_address: bondingCurvePda.toBase58(),
-      platform_signature: sig,
-      signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
-      platform_identifier: platformIdentifier
-    }, { onConflict: "mint_address" }).select().single();
-    
-    if (upsertErr) {
-      console.error("DB upsert tokens failed", upsertErr.message);
-      throw new Error(`Database error: ${upsertErr.message}`);
-    }
-
-    // 6. Revoke authorities
-    await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.MintTokens, null);
-    await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.FreezeAccount, null);
-
-    let initialTradeResult = null;
-    
-    // 7. Execute initial buy if specified
-    if (initialBuyIn > 0 && tokenData?.id) {
-      console.log(`Executing initial buy of ${initialBuyIn} SOL for creator`);
-      
-      try {
-        // Call the platform trade function for the initial buy
-        const tradeResponse = await supa.functions.invoke('platform-trade', {
-          body: {
-            tokenId: tokenData.id,
-            tradeType: 'buy',
-            amount: initialBuyIn,
-            creatorWallet: creatorWallet
-          }
-        });
-
-        if (tradeResponse.error) {
-          console.error("Initial buy failed:", tradeResponse.error);
-          // Don't fail the token creation, just log the error
-          initialTradeResult = { error: tradeResponse.error.message };
-        } else {
-          console.log("Initial buy successful");
-          initialTradeResult = tradeResponse.data;
-        }
-      } catch (tradeError: any) {
-        console.error("Initial buy execution failed:", tradeError);
-        initialTradeResult = { error: tradeError.message };
-      }
-    }
-
+    // Return a test response instead of doing actual token creation
     return jsonResponse({
       success: true,
-      token: tokenData,
-      mint: mintKeypair.publicKey.toBase58(),
-      bondingCurvePda: bondingCurvePda.toBase58(),
-      curveAta: curveAta.toBase58(),
-      name,
-      symbol,
-      decimals,
-      totalSupply,
-      curveConfig,
-      txSig: sig,
-      authoritiesRevoked: true,
-      initialBuyIn,
-      initialTradeResult,
-      requiresSignature: false, // Token is created, no additional signature needed
-      platformIdentifier,
-      vanityGeneration
+      message: "Function is working - environment variables checked",
+      environmentStatus: {
+        supabaseUrl: !!supabaseUrl,
+        supabaseKey: !!supabaseKey,
+        heliusKey: !!heliusKey,
+        platformKey: !!platformKey
+      },
+      tokenData: {
+        name,
+        symbol,
+        creatorWallet,
+        testMode: true
+      }
     });
   } catch (err: any) {
     console.error("=== FULL ERROR DETAILS ===");
