@@ -82,13 +82,13 @@ const BondingCurvePanel = ({
 
     setIsTrading(true);
     try {
-      console.log('🚀 Initiating Helius Sender buy:', {
+      console.log('🚀 Initiating devnet buy simulation:', {
         tokenId,
         walletAddress,
         solAmount: amount
       });
 
-      // Call the bonding curve buy function (uses Helius Sender)
+      // Call the bonding curve buy function
       const { data, error } = await supabase.functions.invoke('bonding-curve-buy', {
         body: {
           tokenId,
@@ -98,15 +98,15 @@ const BondingCurvePanel = ({
       });
 
       if (error) {
-        console.error('Helius Sender buy error:', error);
+        console.error('Buy simulation error:', error);
         toast.error(`Buy failed: ${error.message}`);
         return;
       }
 
-      // Check if transaction was already sent via Helius Sender
-      if (data?.signature && !data?.requiresSignature) {
-        console.log('✅ Transaction sent via Helius Sender:', data.signature);
-        toast.success(`✅ Successfully bought ${data.trade.tokensOut.toFixed(2)} ${tokenSymbol} for ${amount} SOL! ${data.tipAmount ? `(Tip: ${data.tipAmount} SOL)` : ''}`);
+      // For devnet, we'll just simulate the purchase successfully
+      if (data?.success && data?.trade) {
+        console.log('✅ Buy simulation completed:', data.trade);
+        toast.success(`✅ Successfully bought ${data.trade.tokensOut.toFixed(2)} ${tokenSymbol} for ${amount} SOL! (Devnet simulation)`);
         
         // Call onTrade callback to refresh data
         onTrade?.(data.trade);
@@ -123,73 +123,10 @@ const BondingCurvePanel = ({
         return;
       }
 
-      // Fallback: If Sender failed, transaction needs to be signed
-      if (data?.requiresSignature && data?.transaction) {
-        console.log('🎯 Sender fallback - Buy transaction prepared, signing with wallet...');
-        
-        if (!signTransaction || !sendTransaction) {
-          throw new Error('Wallet not connected for signing');
-        }
-
-        try {
-          // Deserialize and sign the transaction
-          const transactionBuffer = new Uint8Array(data.transaction);
-          const transaction = Transaction.from(transactionBuffer);
-          
-          console.log('Signing buy transaction...');
-          const signedTransaction = await signTransaction(transaction);
-          
-          console.log('Sending buy transaction...');
-          const signature = await sendTransaction(signedTransaction, connection);
-          
-          console.log('Buy transaction sent:', signature);
-          
-          // Wait for confirmation
-          const confirmation = await connection.confirmTransaction(signature, 'confirmed');
-          
-          if (confirmation.value.err) {
-            throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
-          }
-
-          // Execute the actual buy with the platform
-          const { data: executeData, error: executeError } = await supabase.functions.invoke('execute-bonding-curve-buy', {
-            body: {
-              tokenId,
-              walletAddress,
-              solAmount: amount,
-              signedTransaction: Array.from(signedTransaction.serialize()),
-              platformSignature: data.platformSignature
-            }
-          });
-
-          if (executeError) {
-            throw new Error(`Execution failed: ${executeError.message}`);
-          }
-
-          toast.success(`✅ Successfully bought ${executeData.trade.tokensOut.toFixed(2)} ${tokenSymbol} for ${amount} SOL!`);
-          
-          // Call onTrade callback to refresh data
-          onTrade?.(executeData.trade);
-          setBuyAmount("");
-          
-          // Check for achievements after successful trade
-          if (walletAddress) {
-            checkAchievements({
-              userWallet: walletAddress,
-              tokenId,
-              checkType: 'trading'
-            });
-          }
-        } catch (txError) {
-          console.error('Transaction signing/sending error:', txError);
-          throw new Error(`Transaction failed: ${txError.message}`);
-        }
-      } else {
-        toast.error('Failed to prepare buy transaction');
-      }
+      toast.error('Failed to process buy simulation');
     } catch (error: any) {
       console.error('Buy error:', error);
-      toast.error(error?.message || 'Failed to prepare buy transaction');
+      toast.error(error?.message || 'Failed to process buy transaction');
     } finally {
       setIsTrading(false);
     }

@@ -240,8 +240,6 @@ serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: true,
-          requiresSignature: true,
-          transaction: Array.from(serializedTransaction),
           trade: {
             type: 'buy',
             solIn: solAmount,
@@ -249,7 +247,7 @@ serve(async (req: Request) => {
             priceAfter: trade.priceAfter,
             marketCapAfter: trade.marketCapAfter,
           },
-          message: 'Devnet simulation - transaction prepared for signing'
+          message: 'Devnet simulation - purchase completed successfully'
         }),
         { headers: corsHeaders }
       );
