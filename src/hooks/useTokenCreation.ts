@@ -65,44 +65,59 @@ export const useTokenCreation = () => {
         throw new Error(txError.message || 'Failed to prepare token creation');
       }
 
-      if (!txData?.success || !txData?.transaction) {
+      if (!txData?.success || !txData?.transactions) {
         console.error('❌ Transaction preparation failed:', txData);
         throw new Error(txData?.error || 'Transaction preparation failed');
       }
 
-      // Step 2: Sign and send transaction with user's wallet
+      // Step 2: Sign and send transactions with user's wallet
       if (!signTransaction || !sendTransaction) {
         throw new Error('Wallet not connected for signing');
       }
 
       try {
         console.log('💰 Estimated cost:', txData.estimatedCost, 'SOL');
-        console.log('📝 Deserializing transaction...');
+        console.log('📝 Processing', txData.transactions.length, 'transactions...');
         
-        // Deserialize the prepared transaction
-        const transactionBuffer = new Uint8Array(txData.transaction);
-        const transaction = Transaction.from(transactionBuffer);
+        let lastSignature = '';
         
-        console.log('✍️ Signing transaction...');
-        // Sign transaction with user's wallet (user pays fees)
-        const signedTransaction = await signTransaction(transaction);
-        
-        console.log('📤 Sending transaction...');
-        // Send transaction to blockchain
-        const signature = await sendTransaction(signedTransaction, connection);
-        
-        console.log('✅ Transaction sent successfully:', signature);
-        
-        // Wait for confirmation
-        console.log('⏳ Waiting for transaction confirmation...');
-        const confirmation = await connection.confirmTransaction(signature, 'confirmed');
-        
-        if (confirmation.value.err) {
-          console.error('❌ Transaction failed on blockchain:', confirmation.value.err);
-          throw new Error(`Blockchain transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+        // Process each transaction sequentially
+        for (let i = 0; i < txData.transactions.length; i++) {
+          console.log(`🔄 Processing transaction ${i + 1}/${txData.transactions.length}...`);
+          
+          // Deserialize the transaction
+          const transactionBuffer = new Uint8Array(txData.transactions[i]);
+          const transaction = Transaction.from(transactionBuffer);
+          
+          console.log('✍️ Signing transaction...');
+          // Sign transaction with user's wallet
+          const signedTransaction = await signTransaction(transaction);
+          
+          console.log('📤 Sending transaction...');
+          // Send transaction to blockchain
+          const signature = await sendTransaction(signedTransaction, connection);
+          lastSignature = signature;
+          
+          console.log('✅ Transaction sent successfully:', signature);
+          
+          // Wait for confirmation before proceeding to next transaction
+          console.log('⏳ Waiting for transaction confirmation...');
+          const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+          
+          if (confirmation.value.err) {
+            console.error('❌ Transaction failed on blockchain:', confirmation.value.err);
+            throw new Error(`Transaction ${i + 1} failed: ${JSON.stringify(confirmation.value.err)}`);
+          }
+
+          console.log(`🎉 Transaction ${i + 1} confirmed successfully`);
+          
+          // Small delay between transactions
+          if (i < txData.transactions.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
 
-        console.log('🎉 Transaction confirmed successfully');
+        console.log('🎉 All transactions completed successfully');
 
         // Step 3: Store token in database after successful blockchain transaction
         console.log('💾 Storing token in database...');
@@ -127,7 +142,7 @@ export const useTokenCreation = () => {
             tokens_sold: 0,
             is_graduated: false,
             dev_mode: true,
-            platform_signature: signature,
+            platform_signature: lastSignature,
             signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
           })
           .select()
@@ -143,7 +158,7 @@ export const useTokenCreation = () => {
         return {
           success: true,
           token: tokenRecord,
-          signature,
+          signature: lastSignature,
           mintAddress: txData.mintAddress,
           userTokenAccount: txData.userTokenAccount,
           estimatedCost: txData.estimatedCost,

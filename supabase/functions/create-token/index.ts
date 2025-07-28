@@ -156,20 +156,75 @@ serve(async (req: Request) => {
       )
     ];
 
-    // Serialize transaction for frontend
-    const transaction = new Transaction();
-    transaction.add(...instructions);
+    // Create multiple smaller transactions to avoid size limits
+    const transaction1 = new Transaction();
+    const transaction2 = new Transaction();
     
+    // Transaction 1: Create mint account and initialize
+    transaction1.add(
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 }),
+      SystemProgram.createAccount({
+        fromPubkey: userPublicKey,
+        newAccountPubkey: mintAddress,
+        space: MINT_SIZE,
+        lamports: rentLamports,
+        programId: TOKEN_PROGRAM_ID,
+      }),
+      createInitializeMintInstruction(
+        mintAddress,
+        decimals,
+        userPublicKey,
+        null,
+        TOKEN_PROGRAM_ID
+      )
+    );
+
+    // Transaction 2: Create token account, mint tokens, and revoke authority
+    transaction2.add(
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 }),
+      createAssociatedTokenAccountInstruction(
+        userPublicKey,
+        userTokenAccount,
+        userPublicKey,
+        mintAddress,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      ),
+      createMintToInstruction(
+        mintAddress,
+        userTokenAccount,
+        userPublicKey,
+        BigInt(initialSupply) * (BigInt(10) ** BigInt(decimals))
+      ),
+      createSetAuthorityInstruction(
+        mintAddress,
+        userPublicKey,
+        AuthorityType.MintTokens,
+        null
+      )
+    );
+
     // Get recent blockhash
     const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = userPublicKey;
+    
+    // Setup transaction 1
+    transaction1.recentBlockhash = blockhash;
+    transaction1.feePayer = userPublicKey;
+    transaction1.partialSign(mintKeypair);
 
-    // Partially sign with mint keypair
-    transaction.partialSign(mintKeypair);
+    // Setup transaction 2  
+    transaction2.recentBlockhash = blockhash;
+    transaction2.feePayer = userPublicKey;
 
-    // Serialize the transaction
-    const serializedTransaction = transaction.serialize({
+    // Serialize transactions
+    const serializedTransaction1 = transaction1.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
+    });
+
+    const serializedTransaction2 = transaction2.serialize({
       requireAllSignatures: false,
       verifySignatures: false,
     });
@@ -179,17 +234,17 @@ serve(async (req: Request) => {
       requiresUserSigning: true,
       mintAddress: mintAddress.toBase58(),
       userTokenAccount: userTokenAccount.toBase58(),
-      transaction: Array.from(serializedTransaction),
+      transactions: [
+        Array.from(serializedTransaction1),
+        Array.from(serializedTransaction2)
+      ],
       estimatedCost: totalCost / 1e9, // Convert to SOL
       instructions: {
         steps: [
-          "Create mint account",
-          "Initialize mint",
-          "Create token account",
-          "Mint initial supply",
-          "Revoke mint authority"
+          "Create and initialize mint",
+          "Create token account and mint tokens"
         ],
-        totalSteps: 5
+        totalSteps: 2
       }
     });
 
