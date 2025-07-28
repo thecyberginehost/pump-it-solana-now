@@ -124,10 +124,19 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    console.log("=== TOKEN CREATION START ===");
+    console.log("Request method:", req.method);
+    
     if (req.method !== "POST") return jsonResponse({ error: "Use POST" }, 405);
 
     const body = (await req.json().catch(() => null)) as CreateCurveTokenRequest | null;
     if (!body) return jsonResponse({ error: "Invalid JSON body" }, 400);
+
+    console.log("Request body received:", { 
+      name: body.name, 
+      symbol: body.symbol, 
+      creatorWallet: body.creatorWallet 
+    });
 
     const { 
       name, 
@@ -145,6 +154,19 @@ serve(async (req: Request) => {
     
     if (!name || !symbol || !creatorWallet) {
       return jsonResponse({ error: "name, symbol, and creatorWallet required" }, 400);
+    }
+
+    // Check environment variables early
+    console.log("Checking environment variables...");
+    try {
+      getEnv("HELIUS_RPC_API_KEY");
+      getEnv("PLATFORM_WALLET_PRIVATE_KEY");
+      getEnv("SUPABASE_URL");
+      getEnv("SUPABASE_SERVICE_ROLE_KEY");
+      console.log("✅ All environment variables present");
+    } catch (envErr: any) {
+      console.error("❌ Environment variable error:", envErr.message);
+      throw new Error(`Environment configuration error: ${envErr.message}`);
     }
 
     const connection = getConnection();
@@ -355,8 +377,18 @@ serve(async (req: Request) => {
       vanityGeneration
     });
   } catch (err: any) {
-    console.error("ERR:create-bonding-curve-token", err?.message, err?.stack, err?.logs);
-    return new Response(JSON.stringify({ error: err?.message ?? "Unknown error" }), {
+    console.error("=== FULL ERROR DETAILS ===");
+    console.error("Error message:", err?.message);
+    console.error("Error stack:", err?.stack);
+    console.error("Error name:", err?.name);
+    console.error("Full error object:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+    console.error("==========================");
+    
+    return new Response(JSON.stringify({ 
+      error: err?.message ?? "Unknown error",
+      errorName: err?.name,
+      errorStack: err?.stack
+    }), {
       status: 500,
       headers: corsHeaders,
     });
