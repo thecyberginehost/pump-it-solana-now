@@ -121,7 +121,7 @@ export const useTokenCreation = () => {
       // Consume creator credit after successful creation
       consumeCredit.mutate();
 
-      if (data.confirmed || data.partialSuccess) {
+      if (data.confirmed || data.partialSuccess || data.testMode) {
         let message = data.confirmed 
           ? "Token created successfully! 🎉" 
           : "Token created! Transaction may still be processing...";
