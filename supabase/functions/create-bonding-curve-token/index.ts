@@ -158,22 +158,26 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "name, symbol, and creatorWallet required" }, 400);
     }
 
-    // Return a test response instead of doing actual token creation
+    // Return a test response that matches frontend expectations
     return jsonResponse({
       success: true,
-      message: "Function is working - environment variables checked",
+      message: "Test mode - environment variables checked successfully",
+      token: {
+        id: "test-token-id-" + Date.now(),
+        name,
+        symbol,
+        creator_wallet: creatorWallet,
+        mint_address: "test-mint-address",
+        created_at: new Date().toISOString()
+      },
       environmentStatus: {
         supabaseUrl: !!supabaseUrl,
         supabaseKey: !!supabaseKey,
         heliusKey: !!heliusKey,
         platformKey: !!platformKey
       },
-      tokenData: {
-        name,
-        symbol,
-        creatorWallet,
-        testMode: true
-      }
+      testMode: true,
+      requiresSignature: false
     });
   } catch (err: any) {
     console.error("=== FULL ERROR DETAILS ===");
