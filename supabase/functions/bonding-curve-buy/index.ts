@@ -149,8 +149,14 @@ serve(async (req: Request) => {
     const trade = calculateBuy(solAmount, token.sol_raised || 0, token.tokens_sold || 0);
     console.log('Trade calculation:', trade);
 
-    // For devnet testing, simulate the buy by directly minting tokens to user
+    // For devnet testing, create a simple transaction that user can sign
     try {
+      // Get platform private key for minting
+      const platformPrivateKey = getEnv("PLATFORM_WALLET_PRIVATE_KEY");
+      const platformKeypair = Keypair.fromSecretKey(
+        Uint8Array.from(JSON.parse(platformPrivateKey))
+      );
+
       // Get user's token account
       const userTokenAccount = await getAssociatedTokenAddress(
         mintAddress,
@@ -160,15 +166,6 @@ serve(async (req: Request) => {
       );
 
       console.log('User token account:', userTokenAccount.toBase58());
-
-      // Create transaction
-      const transaction = new Transaction();
-      
-      // Add compute budget
-      transaction.add(
-        ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 }),
-        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 })
-      );
 
       // Check if user token account exists
       let needsTokenAccount = false;
@@ -180,9 +177,18 @@ serve(async (req: Request) => {
         console.log('Need to create token account');
       }
 
+      // Create user transaction (they pay for account creation)
+      const userTransaction = new Transaction();
+      
+      // Add compute budget
+      userTransaction.add(
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 }),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 })
+      );
+
       // Create associated token account if needed
       if (needsTokenAccount) {
-        transaction.add(
+        userTransaction.add(
           createAssociatedTokenAccountInstruction(
             userPublicKey, // payer
             userTokenAccount,
@@ -193,19 +199,42 @@ serve(async (req: Request) => {
         );
       }
 
-      // For devnet testing, simulate by transferring SOL and recording the trade
-      // In production, this would be the actual bonding curve smart contract transaction
-      
       // Get recent blockhash
       const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = userPublicKey;
+      userTransaction.recentBlockhash = blockhash;
+      userTransaction.feePayer = userPublicKey;
 
       // Serialize transaction for user to sign
-      const serializedTransaction = transaction.serialize({
+      const serializedTransaction = userTransaction.serialize({
         requireAllSignatures: false,
         verifySignatures: false,
       });
+
+      // Simulate the mint operation (in production this would be bonding curve contract)
+      // For devnet, we'll mint tokens directly to the user after they sign
+      const mintTransaction = new Transaction();
+      mintTransaction.add(
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 }),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 }),
+        createMintToInstruction(
+          mintAddress,
+          userTokenAccount,
+          platformKeypair.publicKey, // mint authority
+          BigInt(Math.floor(trade.tokensOut * Math.pow(10, 6))) // 6 decimals
+        )
+      );
+
+      mintTransaction.recentBlockhash = blockhash;
+      mintTransaction.feePayer = platformKeypair.publicKey;
+
+      // Execute the mint transaction with platform wallet
+      console.log('Executing mint transaction...');
+      const mintSignature = await sendAndConfirmTransaction(
+        connection,
+        mintTransaction,
+        [platformKeypair]
+      );
+      console.log('✅ Tokens minted:', mintSignature);
 
       // Update token state in database
       const { error: updateError } = await supabase
@@ -235,11 +264,13 @@ serve(async (req: Request) => {
         market_cap_at_time: trade.marketCapAfter,
       });
 
-      console.log('✅ Buy simulation completed');
+      console.log('✅ Devnet buy completed successfully');
 
       return new Response(
         JSON.stringify({
           success: true,
+          requiresSignature: needsTokenAccount,
+          transaction: needsTokenAccount ? Array.from(serializedTransaction) : null,
           trade: {
             type: 'buy',
             solIn: solAmount,
@@ -247,7 +278,10 @@ serve(async (req: Request) => {
             priceAfter: trade.priceAfter,
             marketCapAfter: trade.marketCapAfter,
           },
-          message: 'Devnet simulation - purchase completed successfully'
+          mintSignature,
+          message: needsTokenAccount 
+            ? 'Token account creation required - please sign transaction' 
+            : 'Purchase completed - tokens minted to your wallet'
         }),
         { headers: corsHeaders }
       );

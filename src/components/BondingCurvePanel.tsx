@@ -82,7 +82,7 @@ const BondingCurvePanel = ({
 
     setIsTrading(true);
     try {
-      console.log('🚀 Initiating devnet buy simulation:', {
+      console.log('🚀 Initiating devnet buy:', {
         tokenId,
         walletAddress,
         solAmount: amount
@@ -98,15 +98,41 @@ const BondingCurvePanel = ({
       });
 
       if (error) {
-        console.error('Buy simulation error:', error);
+        console.error('Buy error:', error);
         toast.error(`Buy failed: ${error.message}`);
         return;
       }
 
-      // For devnet, we'll just simulate the purchase successfully
-      if (data?.success && data?.trade) {
-        console.log('✅ Buy simulation completed:', data.trade);
-        toast.success(`✅ Successfully bought ${data.trade.tokensOut.toFixed(2)} ${tokenSymbol} for ${amount} SOL! (Devnet simulation)`);
+      if (data?.success) {
+        // If transaction signing is required (first time buying this token)
+        if (data.requiresSignature && data.transaction && signTransaction && sendTransaction) {
+          console.log('🔐 Token account creation required - signing transaction...');
+          
+          try {
+            // Deserialize and sign the transaction for token account creation
+            const transactionBuffer = new Uint8Array(data.transaction);
+            const transaction = Transaction.from(transactionBuffer);
+            
+            const signedTransaction = await signTransaction(transaction);
+            const signature = await sendTransaction(signedTransaction, connection);
+            
+            // Wait for confirmation
+            await connection.confirmTransaction(signature, 'confirmed');
+            console.log('✅ Token account created:', signature);
+          } catch (txError: any) {
+            console.error('Transaction signing error:', txError);
+            toast.error(`Transaction failed: ${txError.message}`);
+            return;
+          }
+        }
+
+        // Show success message
+        console.log('✅ Purchase completed:', data.trade);
+        const message = data.requiresSignature 
+          ? `✅ Successfully bought ${data.trade.tokensOut.toFixed(2)} ${tokenSymbol} for ${amount} SOL! Token account created.`
+          : `✅ Successfully bought ${data.trade.tokensOut.toFixed(2)} ${tokenSymbol} for ${amount} SOL! Check your wallet.`;
+        
+        toast.success(message);
         
         // Call onTrade callback to refresh data
         onTrade?.(data.trade);
@@ -123,7 +149,7 @@ const BondingCurvePanel = ({
         return;
       }
 
-      toast.error('Failed to process buy simulation');
+      toast.error('Failed to process buy transaction');
     } catch (error: any) {
       console.error('Buy error:', error);
       toast.error(error?.message || 'Failed to process buy transaction');
