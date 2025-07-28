@@ -163,6 +163,38 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "Use POST method" }, 405);
     }
 
+    // Check environment variables first - before parsing body
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const heliusRpcKey = Deno.env.get("HELIUS_RPC_API_KEY");
+    const heliusDataKey = Deno.env.get("HELIUS_DATA_API_KEY");
+    const platformKey = Deno.env.get("PLATFORM_WALLET_PRIVATE_KEY");
+
+    log('INFO', `[${requestId}] Environment check`, {
+      supabaseUrl: !!supabaseUrl,
+      supabaseKey: !!supabaseKey,
+      heliusRpcKey: !!heliusRpcKey,
+      heliusDataKey: !!heliusDataKey,
+      platformKey: !!platformKey,
+      heliusRpcKeyLength: heliusRpcKey?.length || 0,
+      platformKeyLength: platformKey?.length || 0
+    });
+
+    if (!supabaseUrl || !supabaseKey || !heliusRpcKey || !platformKey) {
+      log('ERROR', `[${requestId}] Missing critical environment variables`);
+      return jsonResponse({ 
+        error: "Server configuration error - missing API keys",
+        details: "Check edge function secrets configuration",
+        environmentStatus: {
+          supabaseUrl: !!supabaseUrl,
+          supabaseKey: !!supabaseKey,
+          heliusRpcKey: !!heliusRpcKey,
+          heliusDataKey: !!heliusDataKey,
+          platformKey: !!platformKey,
+        }
+      }, 500);
+    }
+
     // Parse request body
     let body;
     try {
@@ -188,35 +220,6 @@ serve(async (req: Request) => {
         hasCreatorWallet: !!creatorWallet 
       });
       return jsonResponse({ error: "name, symbol, and creatorWallet required" }, 400);
-    }
-
-    // Check environment variables
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const heliusRpcKey = Deno.env.get("HELIUS_RPC_API_KEY");
-    const heliusDataKey = Deno.env.get("HELIUS_DATA_API_KEY");
-    const platformKey = Deno.env.get("PLATFORM_WALLET_PRIVATE_KEY");
-
-    log('INFO', `[${requestId}] Environment check`, {
-      supabaseUrl: !!supabaseUrl,
-      supabaseKey: !!supabaseKey,
-      heliusRpcKey: !!heliusRpcKey,
-      heliusDataKey: !!heliusDataKey,
-      platformKey: !!platformKey,
-    });
-
-    if (!supabaseUrl || !supabaseKey || !heliusRpcKey || !platformKey) {
-      log('ERROR', `[${requestId}] Missing critical environment variables`);
-      return jsonResponse({ 
-        error: "Server configuration error - missing API keys",
-        environmentStatus: {
-          supabaseUrl: !!supabaseUrl,
-          supabaseKey: !!supabaseKey,
-          heliusRpcKey: !!heliusRpcKey,
-          heliusDataKey: !!heliusDataKey,
-          platformKey: !!platformKey,
-        }
-      }, 500);
     }
 
     // Initialize Supabase client
