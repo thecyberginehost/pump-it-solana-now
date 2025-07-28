@@ -153,9 +153,24 @@ serve(async (req: Request) => {
     try {
       // Get platform private key for minting
       const platformPrivateKey = getEnv("PLATFORM_WALLET_PRIVATE_KEY");
-      const platformKeypair = Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(platformPrivateKey))
-      );
+      let platformKeypair: Keypair;
+      
+      try {
+        // Try parsing as JSON array first
+        const privateKeyArray = JSON.parse(platformPrivateKey);
+        platformKeypair = Keypair.fromSecretKey(Uint8Array.from(privateKeyArray));
+      } catch (jsonError) {
+        // If JSON parsing fails, try as base58 string
+        console.log('Trying base58 format for private key...');
+        try {
+          // Assuming it might be a base58 encoded string, decode it
+          const decoded = Uint8Array.from(Buffer.from(platformPrivateKey, 'base64'));
+          platformKeypair = Keypair.fromSecretKey(decoded);
+        } catch (base64Error) {
+          console.error('Private key format error:', { jsonError, base64Error });
+          throw new Error('Invalid private key format. Must be JSON array or base64 string.');
+        }
+      }
 
       // Get user's token account
       const userTokenAccount = await getAssociatedTokenAddress(
