@@ -138,7 +138,7 @@ export const useTokenCreation = () => {
       if (data.confirmed || data.partialSuccess || data.testMode || data.devMode) {
         let message = data.confirmed 
           ? "Token created successfully! 🎉" 
-          : data.devMode 
+          : data.devMode || data.testMode
           ? "Token created in devnet mode! 🧪"
           : "Token created! Transaction may still be processing...";
           

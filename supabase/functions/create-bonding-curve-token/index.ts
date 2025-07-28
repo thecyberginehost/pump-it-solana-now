@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
+// DevNet Token Creation - Comprehensive Logging v2
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -151,7 +153,7 @@ serve(async (req: Request) => {
       // For devnet testing, we'll return a success but note that blockchain integration is pending
       const response = {
         success: true,
-        message: "Token created successfully in database (devnet mode)",
+        message: "Token created successfully in devnet database",
         token: {
           id: tokenId,
           name,

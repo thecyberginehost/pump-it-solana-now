@@ -13,20 +13,30 @@ const TokenSuccess = () => {
   const [copied, setCopied] = useState(false);
   
   // Fetch token data from database
-  const { data: token, isLoading } = useQuery({
+  const { data: token, isLoading, error: tokenError } = useQuery({
     queryKey: ['token', tokenId],
     queryFn: async () => {
       if (!tokenId) return null;
+      
+      console.log('🔍 Fetching token from database:', tokenId);
+      
       const { data, error } = await supabase
         .from('tokens')
         .select('*')
         .eq('id', tokenId)
         .single();
       
-      if (error) throw error;
+      console.log('🔍 Database query result:', { data, error });
+      
+      if (error) {
+        console.error('❌ Database error when fetching token:', error);
+        throw error;
+      }
       return data;
     },
     enabled: !!tokenId,
+    retry: 3, // Retry 3 times in case of temporary issues
+    retryDelay: 1000, // Wait 1 second between retries
   });
 
   useEffect(() => {
