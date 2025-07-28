@@ -52,14 +52,20 @@ function getEnv(name: string): string {
 
 function getConnection(): Connection {
   const heliusKey = getEnv("HELIUS_RPC_API_KEY");
-  return new Connection(`https://mainnet.helius-rpc.com/?api-key=${heliusKey}`, { commitment: "confirmed" });
+  // Use devnet for testing to avoid mainnet SOL costs
+  return new Connection(`https://devnet.helius-rpc.com/?api-key=${heliusKey}`, { commitment: "confirmed" });
 }
 
-function getPlatformKeypair(): Keypair {
+async function getPlatformKeypair(): Promise<Keypair> {
   const raw = getEnv("PLATFORM_WALLET_PRIVATE_KEY").trim();
   const secret = bs58.decode(raw);
   if (secret.length !== 64) throw new Error("PLATFORM_WALLET_PRIVATE_KEY length invalid");
-  return Keypair.fromSecretKey(secret);
+  const keypair = Keypair.fromSecretKey(secret);
+  
+  // Log the public key for debugging
+  console.log(`Platform wallet public key: ${keypair.publicKey.toBase58()}`);
+  
+  return keypair;
 }
 
 // Generate vanity address with "moon" suffix - optimized for edge function limits
@@ -142,7 +148,16 @@ serve(async (req: Request) => {
     }
 
     const connection = getConnection();
-    const platform = getPlatformKeypair();
+    const platform = await getPlatformKeypair();
+
+    // Check platform wallet balance
+    console.log("Checking platform wallet balance...");
+    const balance = await connection.getBalance(platform.publicKey);
+    console.log(`Platform wallet balance: ${balance / 1e9} SOL`);
+    
+    if (balance < 0.01 * 1e9) { // Less than 0.01 SOL
+      throw new Error(`Platform wallet has insufficient funds: ${balance / 1e9} SOL. Need at least 0.01 SOL for token creation.`);
+    }
 
     // 1. Generate vanity mint address with "moon" suffix
     console.log(`🌙 Generating vanity address with "moon" suffix for token: ${name}`);
