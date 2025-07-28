@@ -38,9 +38,16 @@ export const useTokenCreation = () => {
         throw new Error(`Creator limit: ${creatorLimits.reason}`);
       }
 
-      console.log('Starting token creation with creator controls validated');
+      console.log('🚀 Starting token creation with creator controls validated');
+      console.log('📝 Token data:', { 
+        name: tokenData.name, 
+        symbol: tokenData.symbol, 
+        hasImage: !!tokenData.image,
+        initialBuyIn 
+      });
 
       // Step 1: Get transaction from backend
+      console.log('📡 Calling create-bonding-curve-token edge function...');
       const { data, error } = await supabase.functions.invoke('create-bonding-curve-token', {
         body: {
           name: tokenData.name,
@@ -55,7 +62,12 @@ export const useTokenCreation = () => {
         },
       });
 
-      if (error) throw error;
+      console.log('📡 Edge function response:', { data, error });
+
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        throw error;
+      }
 
       // Step 2: If backend returns a transaction, sign and send it
       if (data.requiresSignature && data.transaction) {
@@ -118,14 +130,20 @@ export const useTokenCreation = () => {
       return data;
     },
     onSuccess: (data) => {
+      console.log('🎉 Token creation success response:', data);
+      
       // Consume creator credit after successful creation
       consumeCredit.mutate();
 
-      if (data.confirmed || data.partialSuccess || data.testMode) {
+      if (data.confirmed || data.partialSuccess || data.testMode || data.devMode) {
         let message = data.confirmed 
           ? "Token created successfully! 🎉" 
+          : data.devMode 
+          ? "Token created in devnet mode! 🧪"
           : "Token created! Transaction may still be processing...";
           
+        console.log('✅ Success message:', message);
+        
         // Add initial investment info if applicable
         if (data.initialBuyIn > 0) {
           if (data.initialTradeResult?.error) {
@@ -155,14 +173,22 @@ export const useTokenCreation = () => {
         
         // Navigate to token success page
         if (data.token?.id) {
+          console.log('🧭 Navigating to token success page:', data.token.id);
           navigate(`/token-success/${data.token.id}`);
+        } else {
+          console.error('❌ No token ID found in response:', data);
         }
       } else {
         toast.info("Token creation initiated. Please check back in a moment.");
       }
     },
     onError: (error) => {
-      console.error('Token creation error:', error);
+      console.error('❌ Token creation error:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      });
       toast.error(`Failed to create token: ${error.message}`);
       setIsCreating(false);
     },
