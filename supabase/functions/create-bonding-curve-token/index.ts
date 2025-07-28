@@ -55,9 +55,7 @@ serve(async (req: Request) => {
     const testTokenId = crypto.randomUUID();
     const testMintAddress = `test-mint-${Date.now()}`;
     
-    // Insert test token into database
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // Insert test token into database using already declared environment variables
     
     if (supabaseUrl && supabaseKey) {
       try {
