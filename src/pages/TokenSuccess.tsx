@@ -36,13 +36,20 @@ const TokenSuccess = () => {
     }
   }, [tokenId, navigate]);
 
+  useEffect(() => {
+    // If query completed and no token found, redirect to home
+    if (!isLoading && !token && tokenId) {
+      console.log('Token not found in database, redirecting to home');
+      navigate('/');
+    }
+  }, [isLoading, token, tokenId, navigate]);
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
   if (!token) {
-    navigate('/');
-    return null;
+    return <div>Loading...</div>; // Show loading instead of null to prevent render issues
   }
 
   const handleCopyAddress = async () => {

@@ -88,11 +88,18 @@ serve(async (req: Request) => {
         });
         
         if (!supabaseResponse.ok) {
-          console.error('Failed to insert test token:', await supabaseResponse.text());
+          const errorText = await supabaseResponse.text();
+          console.error('Failed to insert test token:', errorText);
+          console.error('Response status:', supabaseResponse.status);
+        } else {
+          const insertedToken = await supabaseResponse.json();
+          console.log('Successfully inserted test token:', insertedToken);
         }
       } catch (error) {
         console.error('Error inserting test token:', error);
       }
+    } else {
+      console.error('Missing Supabase environment variables for database insert');
     }
 
     // Return successful test response
