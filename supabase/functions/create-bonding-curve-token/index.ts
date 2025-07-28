@@ -153,35 +153,31 @@ serve(async (req: Request) => {
   }
 
   const requestId = crypto.randomUUID().slice(0, 8);
-  log('INFO', `[${requestId}] ========== NEW TOKEN CREATION REQUEST ==========`);
-
+  
   try {
-    log('INFO', `[${requestId}] Request method: ${req.method}`);
+    console.log(`[${requestId}] Function starting...`);
     
     if (req.method !== "POST") {
-      log('ERROR', `[${requestId}] Invalid method: ${req.method}`);
+      console.log(`[${requestId}] Invalid method: ${req.method}`);
       return jsonResponse({ error: "Use POST method" }, 405);
     }
 
-    // Check environment variables first - before parsing body
+    // Test environment variables immediately
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const heliusRpcKey = Deno.env.get("HELIUS_RPC_API_KEY");
     const heliusDataKey = Deno.env.get("HELIUS_DATA_API_KEY");
     const platformKey = Deno.env.get("PLATFORM_WALLET_PRIVATE_KEY");
 
-    log('INFO', `[${requestId}] Environment check`, {
+    console.log(`[${requestId}] Environment status:`, {
       supabaseUrl: !!supabaseUrl,
       supabaseKey: !!supabaseKey,
       heliusRpcKey: !!heliusRpcKey,
-      heliusDataKey: !!heliusDataKey,
-      platformKey: !!platformKey,
-      heliusRpcKeyLength: heliusRpcKey?.length || 0,
-      platformKeyLength: platformKey?.length || 0
+      platformKey: !!platformKey
     });
 
     if (!supabaseUrl || !supabaseKey || !heliusRpcKey || !platformKey) {
-      log('ERROR', `[${requestId}] Missing critical environment variables`);
+      console.log(`[${requestId}] Missing critical environment variables`);
       return jsonResponse({ 
         error: "Server configuration error - missing API keys",
         details: "Check edge function secrets configuration",
@@ -189,7 +185,6 @@ serve(async (req: Request) => {
           supabaseUrl: !!supabaseUrl,
           supabaseKey: !!supabaseKey,
           heliusRpcKey: !!heliusRpcKey,
-          heliusDataKey: !!heliusDataKey,
           platformKey: !!platformKey,
         }
       }, 500);
@@ -322,7 +317,6 @@ serve(async (req: Request) => {
           supabaseUrl: true,
           supabaseKey: true,
           heliusRpcKey: true,
-          heliusDataKey: !!heliusDataKey,
           platformKey: true,
         },
         devMode: true,
