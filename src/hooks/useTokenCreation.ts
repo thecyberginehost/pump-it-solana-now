@@ -46,88 +46,115 @@ export const useTokenCreation = () => {
         initialBuyIn 
       });
 
-      // Step 1: Get transaction from backend
-      console.log('📡 Calling create-bonding-curve-token edge function...');
-      const { data, error } = await supabase.functions.invoke('create-bonding-curve-token', {
+      // Step 1: Get transaction instructions from backend
+      console.log('📡 Calling create-token edge function...');
+      const { data: txData, error: txError } = await supabase.functions.invoke('create-token', {
         body: {
           name: tokenData.name,
           symbol: tokenData.symbol,
-          description: tokenData.description || 'A new token created with Moonforge',
-          imageUrl: tokenData.image,
-          telegram: tokenData.telegram_url,
-          twitter: tokenData.x_url,
-          creatorWallet: walletAddress,
-          initialBuyIn,
-          signedTransaction: null, // Will be updated when we have payment integration
+          decimals: 6,
+          initialSupply: 1000000000,
+          userWallet: walletAddress,
         },
       });
 
-      console.log('📡 Edge function response:', { data, error });
+      console.log('📡 Edge function response:', { txData, txError });
 
-      if (error) {
-        console.error('❌ Edge function error:', error);
-        throw error;
+      if (txError) {
+        console.error('❌ Transaction preparation error:', txError);
+        throw new Error(txError.message || 'Failed to prepare token creation');
       }
 
-      // Step 2: If backend returns a transaction, sign and send it
-      if (data.requiresSignature && data.transaction) {
-        if (!signTransaction || !sendTransaction) {
-          throw new Error('Wallet not connected for signing');
-        }
-
-        try {
-          console.log('Deserializing transaction...');
-          // Deserialize transaction
-          const transactionBuffer = new Uint8Array(data.transaction);
-          const transaction = Transaction.from(transactionBuffer);
-          
-          console.log('Signing transaction...');
-          // Sign transaction with user's wallet
-          const signedTransaction = await signTransaction(transaction);
-          
-          console.log('Sending transaction...');
-          // Send transaction
-          const signature = await sendTransaction(signedTransaction, connection);
-          
-          console.log('Transaction sent successfully:', signature);
-          
-          // Wait for confirmation before declaring success
-          console.log('Waiting for transaction confirmation...');
-          const confirmation = await connection.confirmTransaction(signature, 'confirmed');
-          
-          if (confirmation.value.err) {
-            console.error('Transaction failed on blockchain:', confirmation.value.err);
-            throw new Error(`Blockchain transaction failed: ${JSON.stringify(confirmation.value.err)}`);
-          }
-
-          console.log('Transaction confirmed successfully');
-          
-          // Return the confirmation result along with token data
-          return {
-            ...data,
-            signature,
-            confirmed: true
-          };
-          
-        } catch (txError) {
-          console.error('Transaction error:', txError);
-          // Check if it's a partial success (token created but transaction pending)
-          if (data.token) {
-            console.log('Token was created but transaction may be pending');
-            return {
-              ...data,
-              signature: null,
-              confirmed: false,
-              partialSuccess: true,
-              error: txError.message
-            };
-          }
-          throw txError;
-        }
+      if (!txData?.success || !txData?.transaction) {
+        console.error('❌ Transaction preparation failed:', txData);
+        throw new Error(txData?.error || 'Transaction preparation failed');
       }
 
-      // If no transaction required, return the data directly
-      return data;
+      // Step 2: Sign and send transaction with user's wallet
+      if (!signTransaction || !sendTransaction) {
+        throw new Error('Wallet not connected for signing');
+      }
+
+      try {
+        console.log('💰 Estimated cost:', txData.estimatedCost, 'SOL');
+        console.log('📝 Deserializing transaction...');
+        
+        // Deserialize the prepared transaction
+        const transactionBuffer = new Uint8Array(txData.transaction);
+        const transaction = Transaction.from(transactionBuffer);
+        
+        console.log('✍️ Signing transaction...');
+        // Sign transaction with user's wallet (user pays fees)
+        const signedTransaction = await signTransaction(transaction);
+        
+        console.log('📤 Sending transaction...');
+        // Send transaction to blockchain
+        const signature = await sendTransaction(signedTransaction, connection);
+        
+        console.log('✅ Transaction sent successfully:', signature);
+        
+        // Wait for confirmation
+        console.log('⏳ Waiting for transaction confirmation...');
+        const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+        
+        if (confirmation.value.err) {
+          console.error('❌ Transaction failed on blockchain:', confirmation.value.err);
+          throw new Error(`Blockchain transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+        }
+
+        console.log('🎉 Transaction confirmed successfully');
+
+        // Step 3: Store token in database after successful blockchain transaction
+        console.log('💾 Storing token in database...');
+        const { data: tokenRecord, error: dbError } = await supabase
+          .from('tokens')
+          .insert({
+            name: tokenData.name,
+            symbol: tokenData.symbol,
+            description: tokenData.description || `${tokenData.name} - A new token created with Moonforge`,
+            image_url: tokenData.image,
+            telegram_url: tokenData.telegram_url,
+            x_url: tokenData.x_url,
+            creator_wallet: walletAddress,
+            mint_address: txData.mintAddress,
+            bonding_curve_address: `${txData.mintAddress}_curve`,
+            total_supply: 1000000000,
+            market_cap: 0,
+            price: 0,
+            holder_count: 1,
+            volume_24h: 0,
+            sol_raised: 0,
+            tokens_sold: 0,
+            is_graduated: false,
+            dev_mode: true,
+            platform_signature: signature,
+            signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+          })
+          .select()
+          .single();
+
+        if (dbError) {
+          console.error('❌ Database error:', dbError);
+          throw new Error(`Database error: ${dbError.message}`);
+        }
+
+        console.log('✅ Token stored in database successfully');
+
+        return {
+          success: true,
+          token: tokenRecord,
+          signature,
+          mintAddress: txData.mintAddress,
+          userTokenAccount: txData.userTokenAccount,
+          estimatedCost: txData.estimatedCost,
+          confirmed: true,
+          devMode: true
+        };
+        
+      } catch (txError) {
+        console.error('❌ Transaction error:', txError);
+        throw new Error(`Transaction failed: ${txError.message}`);
+      }
     },
     onSuccess: (data) => {
       console.log('🎉 Token creation success response:', data);
@@ -135,27 +162,15 @@ export const useTokenCreation = () => {
       // Consume creator credit after successful creation
       consumeCredit.mutate();
 
-      if (data.confirmed || data.partialSuccess || data.testMode || data.devMode) {
+      if (data.confirmed || data.devMode) {
         let message = data.confirmed 
           ? "Token created successfully! 🎉" 
-          : data.devMode || data.testMode
+          : data.devMode
           ? "Token created in devnet mode! 🧪"
           : "Token created! Transaction may still be processing...";
           
         console.log('✅ Success message:', message);
-        
-        // Add initial investment info if applicable
-        if (data.initialBuyIn > 0) {
-          if (data.initialTradeResult?.error) {
-            message += ` Initial investment of ${data.initialBuyIn} SOL failed: ${data.initialTradeResult.error}`;
-            toast.warning(message);
-          } else {
-            message += ` Initial investment of ${data.initialBuyIn} SOL completed!`;
-            toast.success(message);
-          }
-        } else {
-          toast.success(message);
-        }
+        toast.success(message);
         
         // Invalidate related queries
         queryClient.invalidateQueries({ queryKey: ['tokens'] });

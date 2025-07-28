@@ -21,6 +21,7 @@ import {
   createMintToInstruction,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
+  createSetAuthorityInstruction,
 } from "https://esm.sh/@solana/spl-token@0.4.6";
 import bs58 from "https://esm.sh/bs58@5.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
@@ -51,14 +52,7 @@ function getEnv(name: string): string {
 
 function getConnection(): Connection {
   const heliusKey = getEnv("HELIUS_RPC_API_KEY");
-  return new Connection(`https://mainnet.helius-rpc.com/?api-key=${heliusKey}`, { commitment: "confirmed" });
-}
-
-function getPlatformKeypair(): Keypair {
-  const raw = getEnv("PLATFORM_WALLET_PRIVATE_KEY").trim();
-  const secret = bs58.decode(raw);
-  if (secret.length !== 64) throw new Error("PLATFORM_WALLET_PRIVATE_KEY length invalid");
-  return Keypair.fromSecretKey(secret);
+  return new Connection(`https://devnet.helius-rpc.com/?api-key=${heliusKey}`, { commitment: "confirmed" });
 }
 
 interface CreateTokenRequest {
@@ -66,7 +60,16 @@ interface CreateTokenRequest {
   symbol: string;
   decimals?: number;
   initialSupply?: number;
-  receiver?: string;
+  userWallet: string;
+}
+
+interface TokenCreationInstructions {
+  mintKeypair: number[];
+  instructions: Array<{
+    type: string;
+    data: any;
+  }>;
+  totalEstimatedCost: number;
 }
 
 serve(async (req: Request) => {
@@ -78,118 +81,118 @@ serve(async (req: Request) => {
     const body = (await req.json().catch(() => null)) as CreateTokenRequest | null;
     if (!body) return jsonResponse({ error: "Invalid JSON body" }, 400);
 
-    const { name, symbol, decimals = 9, initialSupply = 0, receiver } = body;
-    if (!name || !symbol) return jsonResponse({ error: "name and symbol required" }, 400);
+    const { name, symbol, decimals = 9, initialSupply = 1000000000, userWallet } = body;
+    if (!name || !symbol || !userWallet) return jsonResponse({ error: "name, symbol, and userWallet required" }, 400);
 
     const connection = getConnection();
-    const platform = getPlatformKeypair();
+    const userPublicKey = new PublicKey(userWallet);
 
-    // 1. Create mint account
+    // Generate mint keypair
     const mintKeypair = Keypair.generate();
+    const mintAddress = mintKeypair.publicKey;
+
+    // Calculate costs
     const rentLamports = await getMinimumBalanceForRentExemptMint(connection);
+    const estimatedGas = 15000; // Estimated lamports for transaction fees
+    const totalCost = rentLamports + estimatedGas;
 
-    const createMintIx = SystemProgram.createAccount({
-      fromPubkey: platform.publicKey,
-      newAccountPubkey: mintKeypair.publicKey,
-      space: MINT_SIZE,
-      lamports: rentLamports,
-      programId: TOKEN_PROGRAM_ID,
-    });
-
-    const initMintIx = createInitializeMintInstruction(
-      mintKeypair.publicKey,
-      decimals,
-      platform.publicKey,
-      platform.publicKey, // revoke later
-      TOKEN_PROGRAM_ID
+    // Get user's token account address
+    const userTokenAccount = await getAssociatedTokenAddress(
+      mintAddress,
+      userPublicKey,
+      false,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
-    const tx1 = new Transaction().add(
+    // Prepare transaction instructions
+    const instructions = [
+      // 1. Set compute budget
       ComputeBudgetProgram.setComputeUnitLimit({ units: 400000 }),
-      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000 }),
-      createMintIx,
-      initMintIx
-    );
-    tx1.feePayer = platform.publicKey;
-    tx1.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    tx1.partialSign(mintKeypair, platform);
-
-    const sigCreateMint = await sendAndConfirmTransaction(connection, tx1, [mintKeypair, platform], {
-      commitment: "confirmed",
-    });
-
-    // 2. Optional initial mint
-    let mintedTo: PublicKey | undefined;
-    if (initialSupply > 0) {
-      const dest = receiver ? new PublicKey(receiver) : platform.publicKey;
-
-      const ata = await getAssociatedTokenAddress(
-        mintKeypair.publicKey,
-        dest,
-        false,
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 }),
+      
+      // 2. Create mint account
+      SystemProgram.createAccount({
+        fromPubkey: userPublicKey,
+        newAccountPubkey: mintAddress,
+        space: MINT_SIZE,
+        lamports: rentLamports,
+        programId: TOKEN_PROGRAM_ID,
+      }),
+      
+      // 3. Initialize mint
+      createInitializeMintInstruction(
+        mintAddress,
+        decimals,
+        userPublicKey, // mint authority
+        null, // no freeze authority
+        TOKEN_PROGRAM_ID
+      ),
+      
+      // 4. Create associated token account
+      createAssociatedTokenAccountInstruction(
+        userPublicKey, // payer
+        userTokenAccount,
+        userPublicKey, // owner
+        mintAddress,
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
-      );
+      ),
+      
+      // 5. Mint tokens
+      createMintToInstruction(
+        mintAddress,
+        userTokenAccount,
+        userPublicKey, // mint authority
+        BigInt(initialSupply) * (BigInt(10) ** BigInt(decimals))
+      ),
+      
+      // 6. Revoke mint authority
+      createSetAuthorityInstruction(
+        mintAddress,
+        userPublicKey, // current authority
+        AuthorityType.MintTokens,
+        null // new authority (null = revoke)
+      )
+    ];
 
-      const createAtaIx = createAssociatedTokenAccountInstruction(
-        platform.publicKey,
-        ata,
-        dest,
-        mintKeypair.publicKey,
-        TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      );
+    // Serialize transaction for frontend
+    const transaction = new Transaction();
+    transaction.add(...instructions);
+    
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = userPublicKey;
 
-      const amount = BigInt(initialSupply) * (BigInt(10) ** BigInt(decimals));
-      const mintToIx = createMintToInstruction(
-        mintKeypair.publicKey,
-        ata,
-        platform.publicKey,
-        amount
-      );
+    // Partially sign with mint keypair
+    transaction.partialSign(mintKeypair);
 
-      const tx2 = new Transaction().add(
-        ComputeBudgetProgram.setComputeUnitLimit({ units: 400000 }),
-        createAtaIx,
-        mintToIx
-      );
-      tx2.feePayer = platform.publicKey;
-      tx2.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-      tx2.partialSign(platform);
-
-      await sendAndConfirmTransaction(connection, tx2, [platform], { commitment: "confirmed" });
-      mintedTo = ata;
-    }
-
-    // 3. Revoke mint & freeze authorities
-    await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.MintTokens, null);
-    await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.FreezeAccount, null);
-
-    // 4. Insert token into database
-    const supa = getSupa();
-    const { error: insertErr } = await supa.from("tokens").insert({
-      creator_wallet: (receiver ?? platform.publicKey).toBase58(),
-      name,
-      symbol,
-      mint_address: mintKeypair.publicKey.toBase58(),
-      total_supply: initialSupply,
-      bonding_curve_address: null,
-      platform_signature: sigCreateMint,
-      signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+    // Serialize the transaction
+    const serializedTransaction = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false,
     });
-    if (insertErr) console.error("DB insert tokens failed", insertErr.message);
 
     return jsonResponse({
       success: true,
-      mint: mintKeypair.publicKey.toBase58(),
-      name,
-      symbol,
-      decimals,
-      initialSupply,
-      mintedTo: mintedTo?.toBase58() ?? null,
-      tx: { createMint: sigCreateMint },
-      authoritiesRevoked: true,
+      requiresUserSigning: true,
+      mintAddress: mintAddress.toBase58(),
+      userTokenAccount: userTokenAccount.toBase58(),
+      transaction: Array.from(serializedTransaction),
+      estimatedCost: totalCost / 1e9, // Convert to SOL
+      instructions: {
+        steps: [
+          "Create mint account",
+          "Initialize mint",
+          "Create token account",
+          "Mint initial supply",
+          "Revoke mint authority"
+        ],
+        totalSteps: 5
+      }
     });
+
   } catch (err: any) {
     console.error("ERR:create-token", err?.message, err?.stack, err?.logs);
     return new Response(JSON.stringify({ error: err?.message ?? "Unknown error" }), {
