@@ -578,6 +578,7 @@ export type Database = {
           creation_fee: number | null
           creator_wallet: string
           description: string | null
+          dev_mode: boolean | null
           holder_count: number | null
           id: string
           image_url: string | null
@@ -604,6 +605,7 @@ export type Database = {
           creation_fee?: number | null
           creator_wallet: string
           description?: string | null
+          dev_mode?: boolean | null
           holder_count?: number | null
           id?: string
           image_url?: string | null
@@ -630,6 +632,7 @@ export type Database = {
           creation_fee?: number | null
           creator_wallet?: string
           description?: string | null
+          dev_mode?: boolean | null
           holder_count?: number | null
           id?: string
           image_url?: string | null
