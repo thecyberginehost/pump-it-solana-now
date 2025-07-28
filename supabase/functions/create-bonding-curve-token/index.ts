@@ -1,7 +1,22 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { 
+  Connection, 
+  Keypair, 
+  PublicKey, 
+  Transaction,
+  SystemProgram,
+  LAMPORTS_PER_SOL
+} from 'https://esm.sh/@solana/web3.js@1.98.2';
+import {
+  createMint,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID
+} from 'https://esm.sh/@solana/spl-token@0.4.8';
 
-// DevNet Token Creation - Real Solana Integration v3
+// Real Solana DevNet Token Creation
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -79,7 +94,7 @@ async function createSolanaConnection(rpcUrl: string) {
   }
 }
 
-async function createDevnetToken(params: {
+async function createRealDevnetToken(params: {
   requestId: string;
   name: string;
   symbol: string;
@@ -90,36 +105,112 @@ async function createDevnetToken(params: {
 }) {
   const { requestId, name, symbol, description, imageUrl, rpcUrl, platformKey } = params;
   
-  log('INFO', `[${requestId}] Starting devnet token creation`, { name, symbol });
+  log('INFO', `[${requestId}] Starting REAL devnet token creation`, { name, symbol });
   
   try {
-    // Step 1: Test RPC connection
-    const connectionOk = await createSolanaConnection(rpcUrl);
-    if (!connectionOk) {
-      throw new Error('Failed to connect to Solana devnet RPC');
+    // Step 1: Create Solana connection
+    const connection = new Connection(rpcUrl, 'confirmed');
+    log('INFO', `[${requestId}] Connected to Solana devnet`);
+    
+    // Step 2: Create platform keypair from private key
+    let platformKeypair;
+    try {
+      // Try parsing as base58 string first (standard Solana format)
+      const bs58 = await import('https://esm.sh/bs58@5.0.0');
+      const secretKey = bs58.default.decode(platformKey);
+      platformKeypair = Keypair.fromSecretKey(secretKey);
+    } catch (bs58Error) {
+      // Fallback: try as JSON array format
+      try {
+        const secretKeyArray = JSON.parse(platformKey);
+        platformKeypair = Keypair.fromSecretKey(new Uint8Array(secretKeyArray));
+      } catch (jsonError) {
+        throw new Error(`Invalid private key format. Expected base58 string or JSON array. bs58Error: ${bs58Error.message}, jsonError: ${jsonError.message}`);
+      }
     }
     
-    // Step 2: Generate mint address (for now, simulate this)
-    const mintAddress = `devnet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    log('INFO', `[${requestId}] Generated mint address`, { mintAddress });
+    log('INFO', `[${requestId}] Platform wallet loaded`, { 
+      publicKey: platformKeypair.publicKey.toBase58() 
+    });
     
-    // Step 3: Create token metadata (simulate for now)
+    // Step 3: Check platform wallet balance
+    const balance = await connection.getBalance(platformKeypair.publicKey);
+    const solBalance = balance / LAMPORTS_PER_SOL;
+    log('INFO', `[${requestId}] Platform wallet balance`, { 
+      balance: solBalance, 
+      lamports: balance 
+    });
+    
+    if (balance < 0.01 * LAMPORTS_PER_SOL) {
+      throw new Error(`Insufficient SOL balance: ${solBalance}. Need at least 0.01 SOL for token creation.`);
+    }
+    
+    // Step 4: Create SPL token mint
+    log('INFO', `[${requestId}] Creating SPL token mint...`);
+    const mintKeypair = Keypair.generate();
+    
+    const mint = await createMint(
+      connection,
+      platformKeypair, // payer
+      platformKeypair.publicKey, // mint authority
+      platformKeypair.publicKey, // freeze authority
+      6, // decimals
+      mintKeypair // mint keypair
+    );
+    
+    log('SUCCESS', `[${requestId}] SPL Token mint created`, { 
+      mintAddress: mint.toBase58() 
+    });
+    
+    // Step 5: Create associated token account for platform
+    const platformTokenAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      platformKeypair,
+      mint,
+      platformKeypair.publicKey
+    );
+    
+    log('INFO', `[${requestId}] Platform token account created`, { 
+      tokenAccount: platformTokenAccount.address.toBase58() 
+    });
+    
+    // Step 6: Mint initial supply (1B tokens = 1,000,000,000 * 10^6)
+    const totalSupply = 1000000000;
+    const mintAmount = BigInt(totalSupply * Math.pow(10, 6)); // Convert to smallest unit
+    
+    await mintTo(
+      connection,
+      platformKeypair,
+      mint,
+      platformTokenAccount.address,
+      platformKeypair.publicKey,
+      mintAmount
+    );
+    
+    log('SUCCESS', `[${requestId}] Minted ${totalSupply} tokens`, { 
+      mintAmount: mintAmount.toString(),
+      tokenAccount: platformTokenAccount.address.toBase58()
+    });
+    
+    // Step 7: Create token metadata (simplified for devnet)
     const tokenMetadata = {
       name,
       symbol,
       description,
       image: imageUrl || '',
       decimals: 6,
-      totalSupply: 1000000000 // 1B tokens
+      totalSupply,
+      mintAddress: mint.toBase58(),
+      platformTokenAccount: platformTokenAccount.address.toBase58()
     };
     
     log('INFO', `[${requestId}] Token metadata prepared`, tokenMetadata);
     
-    // Step 4: Simulate bonding curve setup
-    const bondingCurveAddress = `curve_${mintAddress}`;
-    log('INFO', `[${requestId}] Bonding curve address generated`, { bondingCurveAddress });
+    // Step 8: Generate bonding curve address (for future implementation)
+    const bondingCurveAddress = `${mint.toBase58()}_curve`;
+    log('INFO', `[${requestId}] Bonding curve placeholder generated`, { bondingCurveAddress });
     
-    // Step 5: Calculate initial market metrics
+    // Step 9: Calculate initial market metrics
     const initialMetrics = {
       marketCap: 1000, // $1000 starting market cap
       price: 0.000001, // Starting price in SOL
@@ -127,18 +218,21 @@ async function createDevnetToken(params: {
       solRaised: 0
     };
     
-    log('INFO', `[${requestId}] Initial metrics calculated`, initialMetrics);
+    log('SUCCESS', `[${requestId}] Real devnet token creation completed`);
     
     return {
-      mintAddress,
+      mintAddress: mint.toBase58(),
       bondingCurveAddress,
       metadata: tokenMetadata,
       metrics: initialMetrics,
-      devnetReady: true
+      devnetReady: true,
+      realSolanaToken: true,
+      platformWallet: platformKeypair.publicKey.toBase58(),
+      platformTokenAccount: platformTokenAccount.address.toBase58()
     };
     
   } catch (error) {
-    log('ERROR', `[${requestId}] Devnet token creation failed`, { 
+    log('ERROR', `[${requestId}] Real devnet token creation failed`, { 
       error: error.message,
       stack: error.stack 
     });
@@ -228,7 +322,7 @@ serve(async (req: Request) => {
     // Step 1: Create Solana devnet token
     log('INFO', `[${requestId}] Creating devnet token with real Solana integration`);
     
-    const solanaResult = await createDevnetToken({
+    const solanaResult = await createRealDevnetToken({
       requestId,
       name,
       symbol,
