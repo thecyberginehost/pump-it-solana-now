@@ -62,9 +62,11 @@ function getPlatformKeypair(): Keypair {
   return Keypair.fromSecretKey(secret);
 }
 
-// Generate vanity address with "moon" suffix
-function generateVanityKeypair(suffix: string, maxAttempts: number = 50000): { keypair: Keypair; attempts: number } | null {
+// Generate vanity address with "moon" suffix - optimized for edge function limits
+function generateVanityKeypair(suffix: string, maxAttempts: number = 5000): { keypair: Keypair; attempts: number } | null {
   const targetSuffix = suffix.toLowerCase();
+  const startTime = Date.now();
+  const maxTime = 8000; // 8 seconds max to avoid timeout
   
   for (let attempts = 1; attempts <= maxAttempts; attempts++) {
     const keypair = Keypair.generate();
@@ -75,13 +77,19 @@ function generateVanityKeypair(suffix: string, maxAttempts: number = 50000): { k
       return { keypair, attempts };
     }
     
-    // Log progress every 10k attempts
-    if (attempts % 10000 === 0) {
+    // Check if we're approaching time limit
+    if (Date.now() - startTime > maxTime) {
+      console.warn(`⏰ Vanity generation timeout after ${attempts} attempts (${maxTime}ms)`);
+      break;
+    }
+    
+    // Log progress every 1k attempts
+    if (attempts % 1000 === 0) {
       console.log(`🔄 Vanity generation progress: ${attempts}/${maxAttempts} attempts for suffix "${suffix}"`);
     }
   }
   
-  console.warn(`⚠️ Could not generate vanity address with suffix "${suffix}" after ${maxAttempts} attempts`);
+  console.warn(`⚠️ Could not generate vanity address with suffix "${suffix}" after ${maxAttempts} attempts or timeout`);
   return null;
 }
 
@@ -138,7 +146,7 @@ serve(async (req: Request) => {
 
     // 1. Generate vanity mint address with "moon" suffix
     console.log(`🌙 Generating vanity address with "moon" suffix for token: ${name}`);
-    const vanityResult = generateVanityKeypair("moon", 50000);
+    const vanityResult = generateVanityKeypair("moon");
     
     let mintKeypair: Keypair;
     let platformIdentifier: string | null = null;
