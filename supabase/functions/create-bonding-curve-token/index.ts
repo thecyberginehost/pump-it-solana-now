@@ -418,6 +418,34 @@ serve(async (req: Request) => {
         requestId
       };
 
+    // Step 4: Upload metadata to Solana
+    log('INFO', `[${requestId}] Uploading metadata to Solana...`);
+    try {
+      const { data: metadataResult, error: metadataError } = await supabase.functions.invoke('upload-metadata', {
+        body: {
+          mintAddress: solanaResult.mintAddress,
+          name,
+          symbol,
+          description: solanaResult.metadata.description,
+          imageUrl
+        }
+      });
+
+      if (metadataError) {
+        log('ERROR', `[${requestId}] Metadata upload failed`, { error: metadataError });
+        // Continue without failing - token is created, just missing metadata
+      } else {
+        log('SUCCESS', `[${requestId}] Metadata uploaded successfully`, { signature: metadataResult.signature });
+        response.metadata = {
+          uploaded: true,
+          signature: metadataResult.signature,
+          metadataPDA: metadataResult.metadataPDA
+        };
+      }
+    } catch (metadataError) {
+      log('ERROR', `[${requestId}] Metadata upload error`, { error: metadataError.message });
+    }
+
       log('SUCCESS', `[${requestId}] ========== TOKEN CREATION COMPLETED ==========`);
       return jsonResponse(response);
 
