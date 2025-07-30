@@ -152,7 +152,7 @@ serve(async (req: Request) => {
       mintKeypair: Array.from(mintKeypair.secretKey),
       userTokenAccount: userTokenAccount.toBase58(),
       transactions: [
-        Buffer.from(serializedTx1).toString('base64'),
+        btoa(String.fromCharCode(...serializedTx1)),
       ],
       estimatedCost,
       steps: [
