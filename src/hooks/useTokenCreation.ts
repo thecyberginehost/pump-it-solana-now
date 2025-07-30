@@ -73,49 +73,14 @@ export const useTokenCreation = () => {
 
         console.log('✅ Token created in development mode:', txData);
         
-        // For simulated tokens, skip blockchain transactions and go straight to database storage
-        if (txData.devMode && (!txData.transactions || txData.transactions.length === 0)) {
-          console.log('🧪 Development mode - skipping blockchain transactions');
+        // The edge function already handled database storage, just return the response
+        if (txData.devMode) {
+          console.log('🧪 Development mode - edge function handled everything');
           
-          // Store token in database
-          console.log('💾 Storing simulated token in database...');
-          const { data: tokenRecord, error: dbError } = await supabase
-            .from('tokens')
-            .insert({
-              name: tokenData.name,
-              symbol: tokenData.symbol,
-              description: tokenData.description || `${tokenData.name} - A new token created with Moonforge`,
-              image_url: tokenData.image,
-              telegram_url: tokenData.telegram_url,
-              x_url: tokenData.x_url,
-              creator_wallet: walletAddress,
-              mint_address: txData.mintAddress,
-              bonding_curve_address: txData.token?.bonding_curve_address || `${txData.mintAddress}_curve`,
-              total_supply: 1000000000,
-              market_cap: 1000,
-              price: 0.000001,
-              holder_count: 1,
-              volume_24h: 0,
-              sol_raised: 0,
-              tokens_sold: 200000000,
-              is_graduated: false,
-              dev_mode: true,
-              platform_identifier: `devnet_${txData.requestId}`
-            })
-            .select()
-            .single();
-
-          if (dbError) {
-            console.error('❌ Database error:', dbError);
-            throw new Error(`Database error: ${dbError.message}`);
-          }
-
-          console.log('✅ Simulated token stored in database successfully');
-
           return {
             success: true,
-            token: tokenRecord,
-            signature: `simulated_${Date.now()}`,
+            token: txData.token,
+            signature: `devnet_${Date.now()}`,
             mintAddress: txData.mintAddress,
             userTokenAccount: txData.userTokenAccount,
             estimatedCost: txData.estimatedCost,
