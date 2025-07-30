@@ -10,7 +10,7 @@ import AIQuickLaunchModal from "./AIQuickLaunchModal";
 import SubtleDisclaimer from "./SubtleDisclaimer";
 import BoostUpsell from "./BoostUpsell";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
-import { useTokenCreation } from "@/hooks/useTokenCreation";
+import { useClientTokenCreation } from "@/hooks/useClientTokenCreation";
 import { QuickLaunchResult } from "@/hooks/useAIQuickLaunch";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,7 +34,7 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
   const [showQuickLaunchModal, setShowQuickLaunchModal] = useState(false);
   const [memePrompt, setMemePrompt] = useState('');
   const { isAuthenticated, walletAddress } = useWalletAuth();
-  const { createToken, isCreating } = useTokenCreation();
+  const { createToken, isCreating } = useClientTokenCreation();
 
   const handleAINameSelect = (name: string) => {
     setTokenData(prev => ({ ...prev, name }));
@@ -78,9 +78,9 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
       return;
     }
     
-    // Auto-launch the token immediately with the new data (always community safe)
+    // Auto-launch the token immediately with the new data
     setTimeout(async () => {
-      await createToken(newTokenData, parseFloat(aiTokenData.initialBuyIn || "0"), false);
+      await createToken(newTokenData);
     }, 1000);
   };
 
@@ -352,8 +352,8 @@ const TokenCreator = ({ onChatToggle }: TokenCreatorProps = {}) => {
       return;
     }
 
-    // Always use community mode (freeze = false)
-    await createToken(tokenData, buyInAmount, false);
+    // Launch the token
+    await createToken(tokenData);
   };
 
   return (
