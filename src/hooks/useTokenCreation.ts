@@ -47,14 +47,14 @@ export const useTokenCreation = () => {
       });
 
       // Step 1: Get transaction instructions from backend
-      console.log('📡 Calling create-token edge function...');
-      const { data: txData, error: txError } = await supabase.functions.invoke('create-token', {
+      console.log('📡 Calling create-bonding-curve-token edge function...');
+      const { data: txData, error: txError } = await supabase.functions.invoke('create-bonding-curve-token', {
         body: {
           name: tokenData.name,
           symbol: tokenData.symbol,
-          decimals: 6,
-          initialSupply: 1000000000,
-          userWallet: walletAddress,
+          description: tokenData.description || `${tokenData.name} - A new token created with Moonforge`,
+          imageUrl: tokenData.image,
+          creatorWallet: walletAddress,
         },
       });
 
