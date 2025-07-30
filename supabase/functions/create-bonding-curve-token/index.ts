@@ -299,10 +299,16 @@ serve(async (req: Request) => {
 
       log('SUCCESS', `[${requestId}] Token stored successfully in database`);
 
-      // Step 3: Return comprehensive response
+      // Step 3: Return response matching frontend expectations
       const response = {
         success: true,
-        message: "Token created successfully on Solana devnet!",
+        message: "Token created successfully in development mode!",
+        mintAddress: solanaResult.mintAddress,
+        userTokenAccount: `${solanaResult.mintAddress}_user_account`,
+        transactions: [], // Empty transactions array for simulated mode
+        estimatedCost: 0.001, // Simulated cost
+        requiresUserSigning: false,
+        devMode: true,
         token: {
           id: tokenId,
           name,
@@ -313,20 +319,12 @@ serve(async (req: Request) => {
           created_at: new Date().toISOString(),
         },
         devnetInfo: {
-          rpcEndpoint: "Helius Devnet",
+          rpcEndpoint: "Simulated Devnet",
           mintAddress: solanaResult.mintAddress,
           bondingCurve: solanaResult.bondingCurveAddress,
           initialMarketCap: solanaResult.metrics.marketCap,
           totalSupply: solanaResult.metadata.totalSupply
         },
-        environmentStatus: {
-          supabaseUrl: true,
-          supabaseKey: true,
-          heliusRpcKey: true,
-          platformKey: true,
-        },
-        devMode: true,
-        requiresSignature: false, // Will be true when we implement user transactions
         requestId
       };
 

@@ -46,127 +46,88 @@ export const useTokenCreation = () => {
         initialBuyIn 
       });
 
-      // Step 1: Get transaction instructions from backend
-      console.log('📡 Calling create-bonding-curve-token edge function...');
-      const { data: txData, error: txError } = await supabase.functions.invoke('create-bonding-curve-token', {
-        body: {
-          name: tokenData.name,
-          symbol: tokenData.symbol,
-          description: tokenData.description || `${tokenData.name} - A new token created with Moonforge`,
-          imageUrl: tokenData.image,
-          creatorWallet: walletAddress,
-        },
-      });
-
-      console.log('📡 Edge function response:', { txData, txError });
-
-      if (txError) {
-        console.error('❌ Transaction preparation error:', txError);
-        throw new Error(txError.message || 'Failed to prepare token creation');
-      }
-
-      if (!txData?.success || !txData?.transactions) {
-        console.error('❌ Transaction preparation failed:', txData);
-        throw new Error(txData?.error || 'Transaction preparation failed');
-      }
-
-      // Step 2: Sign and send transactions with user's wallet
-      if (!signTransaction || !sendTransaction) {
-        throw new Error('Wallet not connected for signing');
-      }
-
       try {
-        console.log('💰 Estimated cost:', txData.estimatedCost, 'SOL');
-        console.log('📝 Processing', txData.transactions.length, 'transactions...');
-        
-        let lastSignature = '';
-        
-        // Process each transaction sequentially
-        for (let i = 0; i < txData.transactions.length; i++) {
-          console.log(`🔄 Processing transaction ${i + 1}/${txData.transactions.length}...`);
-          
-          // Deserialize the transaction
-          const transactionBuffer = new Uint8Array(txData.transactions[i]);
-          const transaction = Transaction.from(transactionBuffer);
-          
-          console.log('✍️ Signing transaction...');
-          // Sign transaction with user's wallet
-          const signedTransaction = await signTransaction(transaction);
-          
-          console.log('📤 Sending transaction...');
-          // Send transaction to blockchain
-          const signature = await sendTransaction(signedTransaction, connection);
-          lastSignature = signature;
-          
-          console.log('✅ Transaction sent successfully:', signature);
-          
-          // Wait for confirmation before proceeding to next transaction
-          console.log('⏳ Waiting for transaction confirmation...');
-          const confirmation = await connection.confirmTransaction(signature, 'confirmed');
-          
-          if (confirmation.value.err) {
-            console.error('❌ Transaction failed on blockchain:', confirmation.value.err);
-            throw new Error(`Transaction ${i + 1} failed: ${JSON.stringify(confirmation.value.err)}`);
-          }
-
-          console.log(`🎉 Transaction ${i + 1} confirmed successfully`);
-          
-          // Small delay between transactions
-          if (i < txData.transactions.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        }
-
-        console.log('🎉 All transactions completed successfully');
-
-        // Step 3: Store token in database after successful blockchain transaction
-        console.log('💾 Storing token in database...');
-        const { data: tokenRecord, error: dbError } = await supabase
-          .from('tokens')
-          .insert({
+        // Step 1: Get transaction instructions from backend
+        console.log('📡 Calling create-bonding-curve-token edge function...');
+        const { data: txData, error: txError } = await supabase.functions.invoke('create-bonding-curve-token', {
+          body: {
             name: tokenData.name,
             symbol: tokenData.symbol,
             description: tokenData.description || `${tokenData.name} - A new token created with Moonforge`,
-            image_url: tokenData.image,
-            telegram_url: tokenData.telegram_url,
-            x_url: tokenData.x_url,
-            creator_wallet: walletAddress,
-            mint_address: txData.mintAddress,
-            bonding_curve_address: `${txData.mintAddress}_curve`,
-            total_supply: 1000000000,
-            market_cap: 0,
-            price: 0,
-            holder_count: 1,
-            volume_24h: 0,
-            sol_raised: 0,
-            tokens_sold: 0,
-            is_graduated: false,
-            dev_mode: true,
-            platform_signature: lastSignature,
-            signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
-          })
-          .select()
-          .single();
+            imageUrl: tokenData.image,
+            creatorWallet: walletAddress,
+          },
+        });
 
-        if (dbError) {
-          console.error('❌ Database error:', dbError);
-          throw new Error(`Database error: ${dbError.message}`);
+        console.log('📡 Edge function response:', { txData, txError });
+
+        if (txError) {
+          console.error('❌ Transaction preparation error:', txError);
+          throw new Error(txError.message || 'Failed to prepare token creation');
         }
 
-        console.log('✅ Token stored in database successfully');
+        if (!txData?.success) {
+          console.error('❌ Transaction preparation failed:', txData);
+          throw new Error(txData?.error || 'Transaction preparation failed');
+        }
 
-        return {
-          success: true,
-          token: tokenRecord,
-          signature: lastSignature,
-          mintAddress: txData.mintAddress,
-          userTokenAccount: txData.userTokenAccount,
-          estimatedCost: txData.estimatedCost,
-          confirmed: true,
-          devMode: true
-        };
+        console.log('✅ Token created in development mode:', txData);
         
-      } catch (txError) {
+        // For simulated tokens, skip blockchain transactions and go straight to database storage
+        if (txData.devMode && (!txData.transactions || txData.transactions.length === 0)) {
+          console.log('🧪 Development mode - skipping blockchain transactions');
+          
+          // Store token in database
+          console.log('💾 Storing simulated token in database...');
+          const { data: tokenRecord, error: dbError } = await supabase
+            .from('tokens')
+            .insert({
+              name: tokenData.name,
+              symbol: tokenData.symbol,
+              description: tokenData.description || `${tokenData.name} - A new token created with Moonforge`,
+              image_url: tokenData.image,
+              telegram_url: tokenData.telegram_url,
+              x_url: tokenData.x_url,
+              creator_wallet: walletAddress,
+              mint_address: txData.mintAddress,
+              bonding_curve_address: txData.token?.bonding_curve_address || `${txData.mintAddress}_curve`,
+              total_supply: 1000000000,
+              market_cap: 1000,
+              price: 0.000001,
+              holder_count: 1,
+              volume_24h: 0,
+              sol_raised: 0,
+              tokens_sold: 200000000,
+              is_graduated: false,
+              dev_mode: true,
+              platform_identifier: `devnet_${txData.requestId}`
+            })
+            .select()
+            .single();
+
+          if (dbError) {
+            console.error('❌ Database error:', dbError);
+            throw new Error(`Database error: ${dbError.message}`);
+          }
+
+          console.log('✅ Simulated token stored in database successfully');
+
+          return {
+            success: true,
+            token: tokenRecord,
+            signature: `simulated_${Date.now()}`,
+            mintAddress: txData.mintAddress,
+            userTokenAccount: txData.userTokenAccount,
+            estimatedCost: txData.estimatedCost,
+            confirmed: true,
+            devMode: true
+          };
+        }
+
+        // If we get here, there were transactions but they failed or aren't supported yet
+        throw new Error('Transaction processing not implemented for this mode');
+        
+      } catch (txError: any) {
         console.error('❌ Transaction error:', txError);
         throw new Error(`Transaction failed: ${txError.message}`);
       }
