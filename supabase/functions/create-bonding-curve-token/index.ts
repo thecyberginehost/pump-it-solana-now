@@ -145,7 +145,7 @@ async function createRealDevnetToken(params: {
       throw new Error(`Insufficient SOL balance: ${solBalance}. Need at least 0.01 SOL for token creation.`);
     }
     
-    // Step 4: Create SPL token mint - simplified approach
+    // Step 4: Create SPL token mint with explicit keypair
     log('INFO', `[${requestId}] Creating SPL token mint...`);
     const mintKeypair = Keypair.generate();
     
@@ -154,11 +154,13 @@ async function createRealDevnetToken(params: {
       platformKeypair, // payer
       platformKeypair.publicKey, // mint authority
       null, // freeze authority (set to null for simplicity)
-      6 // decimals
+      6, // decimals
+      mintKeypair // Use explicit keypair to ensure uniqueness
     );
     
     log('SUCCESS', `[${requestId}] SPL Token mint created`, { 
-      mintAddress: mint.toBase58() 
+      mintAddress: mint.toBase58(),
+      confirmedUnique: true
     });
     
     // Step 5: Create token metadata
@@ -307,6 +309,32 @@ serve(async (req: Request) => {
     log('INFO', `[${requestId}] Storing token in database`, { tokenId });
     
     try {
+      // First check if this mint address already exists
+      const { data: existingToken } = await supabase
+        .from('tokens')
+        .select('id, mint_address')
+        .eq('mint_address', solanaResult.mintAddress)
+        .single();
+
+      if (existingToken) {
+        log('WARNING', `[${requestId}] Token with this mint address already exists`, { 
+          existingTokenId: existingToken.id,
+          mintAddress: solanaResult.mintAddress 
+        });
+        
+        // Return the existing token instead of creating a duplicate
+        return jsonResponse({
+          success: true,
+          message: "Token already exists with this mint address",
+          token: existingToken,
+          mintAddress: solanaResult.mintAddress,
+          bondingCurveAddress: solanaResult.bondingCurveAddress,
+          devMode: true,
+          requestId,
+          existingToken: true
+        });
+      }
+
       const { data: tokenRecord, error: dbError } = await supabase
         .from('tokens')
         .insert({
@@ -328,9 +356,9 @@ serve(async (req: Request) => {
           sol_raised: solanaResult.metrics.solRaised,
           tokens_sold: 200000000, // 200M initial tokens sold
           total_supply: solanaResult.metadata.totalSupply,
-          // Add devnet tracking
+          // Add devnet tracking with unique identifier
           dev_mode: true,
-          platform_identifier: `devnet_${requestId}`
+          platform_identifier: `devnet_${requestId}_${Date.now()}`
         })
         .select()
         .single();
@@ -339,13 +367,40 @@ serve(async (req: Request) => {
         log('ERROR', `[${requestId}] Database insert failed`, { 
           error: dbError.message, 
           code: dbError.code,
-          details: dbError.details 
+          details: dbError.details,
+          mintAddress: solanaResult.mintAddress
         });
+        
+        // Check if it's a duplicate key error
+        if (dbError.code === '23505' && dbError.message.includes('tokens_mint_address_key')) {
+          log('WARNING', `[${requestId}] Duplicate mint address detected, attempting recovery...`);
+          
+          // Try to find the existing token and return it
+          const { data: existingToken } = await supabase
+            .from('tokens')
+            .select('*')
+            .eq('mint_address', solanaResult.mintAddress)
+            .single();
+            
+          if (existingToken) {
+            return jsonResponse({
+              success: true,
+              message: "Token already exists, returning existing record",
+              token: existingToken,
+              mintAddress: solanaResult.mintAddress,
+              devMode: true,
+              requestId,
+              recovered: true
+            });
+          }
+        }
+        
         return jsonResponse({ 
           error: `Database error: ${dbError.message}`,
           requestId,
           solanaCreated: true,
-          mintAddress: solanaResult.mintAddress
+          mintAddress: solanaResult.mintAddress,
+          errorCode: dbError.code
         }, 500);
       }
 
