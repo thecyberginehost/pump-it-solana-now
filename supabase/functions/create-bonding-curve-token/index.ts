@@ -94,28 +94,74 @@ async function createSolanaConnection(rpcUrl: string) {
   }
 }
 
-async function createSimulatedToken(params: {
+async function createRealDevnetToken(params: {
   requestId: string;
   name: string;
   symbol: string;
   description: string;
   imageUrl?: string;
+  rpcUrl: string;
+  platformKey: string;
 }) {
-  const { requestId, name, symbol, description, imageUrl } = params;
+  const { requestId, name, symbol, description, imageUrl, rpcUrl, platformKey } = params;
   
-  log('INFO', `[${requestId}] Starting simulated token creation for devnet`, { name, symbol });
+  log('INFO', `[${requestId}] Starting REAL devnet token creation`, { name, symbol });
   
   try {
-    // Generate a mock mint address for development
-    const mockMintAddress = `devnet_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const bondingCurveAddress = `curve_${mockMintAddress}`;
+    // Step 1: Create Solana connection
+    const connection = new Connection(rpcUrl, 'confirmed');
+    log('INFO', `[${requestId}] Connected to Solana devnet`);
     
-    log('INFO', `[${requestId}] Generated mock addresses`, { 
-      mintAddress: mockMintAddress,
-      bondingCurveAddress 
+    // Step 2: Create platform keypair from private key
+    let platformKeypair;
+    try {
+      // Try parsing as base58 string first (standard Solana format)
+      const bs58 = await import('https://esm.sh/bs58@5.0.0');
+      const secretKey = bs58.default.decode(platformKey);
+      platformKeypair = Keypair.fromSecretKey(secretKey);
+    } catch (bs58Error) {
+      // Fallback: try as JSON array format
+      try {
+        const secretKeyArray = JSON.parse(platformKey);
+        platformKeypair = Keypair.fromSecretKey(new Uint8Array(secretKeyArray));
+      } catch (jsonError) {
+        throw new Error(`Invalid private key format. Expected base58 string or JSON array. bs58Error: ${bs58Error.message}, jsonError: ${jsonError.message}`);
+      }
+    }
+    
+    log('INFO', `[${requestId}] Platform wallet loaded`, { 
+      publicKey: platformKeypair.publicKey.toBase58() 
     });
     
-    // Create token metadata
+    // Step 3: Check platform wallet balance
+    const balance = await connection.getBalance(platformKeypair.publicKey);
+    const solBalance = balance / LAMPORTS_PER_SOL;
+    log('INFO', `[${requestId}] Platform wallet balance`, { 
+      balance: solBalance, 
+      lamports: balance 
+    });
+    
+    if (balance < 0.01 * LAMPORTS_PER_SOL) {
+      throw new Error(`Insufficient SOL balance: ${solBalance}. Need at least 0.01 SOL for token creation.`);
+    }
+    
+    // Step 4: Create SPL token mint - simplified approach
+    log('INFO', `[${requestId}] Creating SPL token mint...`);
+    const mintKeypair = Keypair.generate();
+    
+    const mint = await createMint(
+      connection,
+      platformKeypair, // payer
+      platformKeypair.publicKey, // mint authority
+      null, // freeze authority (set to null for simplicity)
+      6 // decimals
+    );
+    
+    log('SUCCESS', `[${requestId}] SPL Token mint created`, { 
+      mintAddress: mint.toBase58() 
+    });
+    
+    // Step 5: Create token metadata
     const tokenMetadata = {
       name,
       symbol,
@@ -123,10 +169,13 @@ async function createSimulatedToken(params: {
       image: imageUrl || '',
       decimals: 6,
       totalSupply: 1000000000,
-      mintAddress: mockMintAddress
+      mintAddress: mint.toBase58()
     };
     
-    // Calculate initial market metrics
+    // Step 6: Generate bonding curve address
+    const bondingCurveAddress = `${mint.toBase58()}_curve`;
+    
+    // Step 7: Calculate initial market metrics
     const initialMetrics = {
       marketCap: 1000, // $1000 starting market cap
       price: 0.000001, // Starting price in SOL
@@ -134,19 +183,20 @@ async function createSimulatedToken(params: {
       solRaised: 0
     };
     
-    log('SUCCESS', `[${requestId}] Simulated token creation completed`);
+    log('SUCCESS', `[${requestId}] Real devnet token creation completed`);
     
     return {
-      mintAddress: mockMintAddress,
+      mintAddress: mint.toBase58(),
       bondingCurveAddress,
       metadata: tokenMetadata,
       metrics: initialMetrics,
       devnetReady: true,
-      simulated: true
+      realSolanaToken: true,
+      platformWallet: platformKeypair.publicKey.toBase58()
     };
     
   } catch (error) {
-    log('ERROR', `[${requestId}] Simulated token creation failed`, { 
+    log('ERROR', `[${requestId}] Real devnet token creation failed`, { 
       error: error.message,
       stack: error.stack 
     });
@@ -233,15 +283,17 @@ serve(async (req: Request) => {
     const rpcUrl = `https://devnet.helius-rpc.com/?api-key=${heliusRpcKey}`;
     log('INFO', `[${requestId}] Using Helius devnet RPC`);
 
-    // Step 1: Create simulated token for devnet
-    log('INFO', `[${requestId}] Creating simulated token for development`);
+    // Step 1: Create real devnet token
+    log('INFO', `[${requestId}] Creating real devnet token with Solana integration`);
     
-    const solanaResult = await createSimulatedToken({
+    const solanaResult = await createRealDevnetToken({
       requestId,
       name,
       symbol,
       description: description || `${name} - A new token created with Moonforge`,
-      imageUrl
+      imageUrl,
+      rpcUrl,
+      platformKey
     });
 
     log('SUCCESS', `[${requestId}] Devnet token creation completed`, {
@@ -299,16 +351,16 @@ serve(async (req: Request) => {
 
       log('SUCCESS', `[${requestId}] Token stored successfully in database`);
 
-      // Step 3: Return response matching frontend expectations
+      // Step 3: Return response for real devnet token
       const response = {
         success: true,
-        message: "Token created successfully in development mode!",
+        message: "Token created successfully on Solana devnet!",
         mintAddress: solanaResult.mintAddress,
         userTokenAccount: `${solanaResult.mintAddress}_user_account`,
-        transactions: [], // Empty transactions array for simulated mode
-        estimatedCost: 0.001, // Simulated cost
+        transactions: [], // For now, no user transactions required
+        estimatedCost: 0.001,
         requiresUserSigning: false,
-        devMode: true,
+        devMode: true, // Still in development but using real Solana
         token: {
           id: tokenId,
           name,
@@ -319,11 +371,12 @@ serve(async (req: Request) => {
           created_at: new Date().toISOString(),
         },
         devnetInfo: {
-          rpcEndpoint: "Simulated Devnet",
+          rpcEndpoint: "Helius Devnet",
           mintAddress: solanaResult.mintAddress,
           bondingCurve: solanaResult.bondingCurveAddress,
           initialMarketCap: solanaResult.metrics.marketCap,
-          totalSupply: solanaResult.metadata.totalSupply
+          totalSupply: solanaResult.metadata.totalSupply,
+          realSolanaToken: solanaResult.realSolanaToken
         },
         requestId
       };
