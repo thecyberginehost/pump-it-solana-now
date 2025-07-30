@@ -125,60 +125,26 @@ serve(async (req: Request) => {
       )
     );
 
-    // Create transaction 2: Create token account and mint tokens
-    const transaction2 = new Transaction();
-    
-    // Add compute budget instruction
-    transaction2.add(
-      ComputeBudgetProgram.setComputeUnitLimit({ units: 300_000 })
-    );
+    // No second transaction needed - creator gets 0 tokens initially
+    // This follows the pump.fun model where creators get 0 tokens and must purchase them
 
-    // Create associated token account
-    transaction2.add(
-      createAssociatedTokenAccountInstruction(
-        creatorPublicKey, // payer
-        userTokenAccount, // ata
-        creatorPublicKey, // owner
-        mintKeypair.publicKey // mint
-      )
-    );
-
-    // Mint tokens to creator (200M out of 1B total supply)
-    transaction2.add(
-      createMintToInstruction(
-        mintKeypair.publicKey,
-        userTokenAccount,
-        creatorPublicKey,
-        200_000_000 * 10**6 // 200M tokens with 6 decimals
-      )
-    );
-
-    // Set recent blockhash for both transactions
+    // Set recent blockhash for transaction
     const { blockhash } = await connection.getLatestBlockhash();
     transaction1.recentBlockhash = blockhash;
     transaction1.feePayer = creatorPublicKey;
-    
-    transaction2.recentBlockhash = blockhash;
-    transaction2.feePayer = creatorPublicKey;
 
-    // Partially sign first transaction with mint keypair
+    // Partially sign transaction with mint keypair
     transaction1.partialSign(mintKeypair);
 
-    // Serialize transactions
+    // Serialize transaction
     const serializedTx1 = transaction1.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false,
-    });
-
-    const serializedTx2 = transaction2.serialize({
       requireAllSignatures: false,
       verifySignatures: false,
     });
 
     // Calculate estimated cost
     const tx1Fee = await connection.getFeeForMessage(transaction1.compileMessage());
-    const tx2Fee = await connection.getFeeForMessage(transaction2.compileMessage());
-    const totalFees = (tx1Fee.value || 5000) + (tx2Fee.value || 5000);
+    const totalFees = tx1Fee.value || 5000;
     const estimatedCost = (mintRent + totalFees) / LAMPORTS_PER_SOL;
 
     const response: TokenCreationInstructions = {
@@ -187,12 +153,10 @@ serve(async (req: Request) => {
       userTokenAccount: userTokenAccount.toBase58(),
       transactions: [
         Buffer.from(serializedTx1).toString('base64'),
-        Buffer.from(serializedTx2).toString('base64'),
       ],
       estimatedCost,
       steps: [
         'Create mint account and initialize token mint',
-        'Create associated token account and mint initial supply to creator',
         'Upload metadata to Solana (handled separately)',
         'Store token data in database (handled after transactions)',
       ],
