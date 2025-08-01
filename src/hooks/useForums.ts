@@ -10,7 +10,6 @@ export interface ForumCategory {
   icon: string;
   color: string;
   sort_order: number;
-  admin_only_posting?: boolean;
 }
 
 export interface ForumPost {
@@ -228,51 +227,5 @@ export const useCreateForumReply = () => {
     onError: (error) => {
       toast.error(`Failed to post reply: ${error.message}`);
     },
-  });
-};
-
-// Hook to check if user can post in a category
-export const useCanPostInCategory = (categoryId?: string) => {
-  const { walletAddress } = useWalletAuth();
-  
-  return useQuery({
-    queryKey: ['can-post-in-category', categoryId, walletAddress],
-    queryFn: async () => {
-      if (!categoryId || !walletAddress) {
-        return false;
-      }
-
-      const { data, error } = await supabase.rpc('can_post_in_category', {
-        p_user_wallet: walletAddress,
-        p_category_id: categoryId
-      });
-
-      if (error) throw error;
-      return data as boolean;
-    },
-    enabled: !!categoryId && !!walletAddress,
-  });
-};
-
-// Hook to check if user can reply to a specific post
-export const useCanReplyToPost = (postId?: string) => {
-  const { walletAddress } = useWalletAuth();
-  
-  return useQuery({
-    queryKey: ['can-reply-to-post', postId, walletAddress],
-    queryFn: async () => {
-      if (!postId || !walletAddress) {
-        return false;
-      }
-
-      const { data, error } = await supabase.rpc('can_reply_to_post', {
-        p_user_wallet: walletAddress,
-        p_post_id: postId
-      });
-
-      if (error) throw error;
-      return data as boolean;
-    },
-    enabled: !!postId && !!walletAddress,
   });
 };

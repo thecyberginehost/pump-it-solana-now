@@ -3,10 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ForumPost } from '@/hooks/useForums';
-import { MessageSquare, Eye, Pin, Lock, Clock, Shield } from 'lucide-react';
+import { MessageSquare, Eye, Pin, Lock, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { toast } from 'sonner';
-import { UserRankBadge } from './UserRankBadge';
 
 interface ForumPostCardProps {
   post: ForumPost;
@@ -19,12 +17,6 @@ export const ForumPostCard: React.FC<ForumPostCardProps> = ({
   onClick,
   showCategory = true,
 }) => {
-  const handlePostClick = () => {
-    if (post.category?.admin_only_posting) {
-      toast.info('This is an announcement post. You can read it but replies are restricted to administrators only.');
-    }
-    onClick();
-  };
   const getPostTypeColor = (type: string) => {
     switch (type) {
       case 'question': return 'bg-blue-100 text-blue-800';
@@ -51,16 +43,13 @@ export const ForumPostCard: React.FC<ForumPostCardProps> = ({
     <Card 
       className={`cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/20 ${
         post.is_pinned ? 'ring-2 ring-primary/20' : ''
-      } ${post.category?.admin_only_posting ? 'border-red-200 bg-red-50/30' : ''}`}
-      onClick={handlePostClick}
+      }`}
+      onClick={onClick}
     >
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-2">
-              {post.category?.admin_only_posting && (
-                <Shield className="h-4 w-4 text-red-600" />
-              )}
               {post.is_pinned && (
                 <Pin className="h-4 w-4 text-primary" />
               )}
@@ -77,10 +66,8 @@ export const ForumPostCard: React.FC<ForumPostCardProps> = ({
                 <Badge 
                   variant="outline"
                   style={{ borderColor: post.category.color }}
-                  className={post.category.admin_only_posting ? 'border-red-500 text-red-700' : ''}
                 >
                   {post.category.icon} {post.category.name}
-                  {post.category.admin_only_posting && ' • Read Only'}
                 </Badge>
               )}
             </div>
@@ -107,12 +94,9 @@ export const ForumPostCard: React.FC<ForumPostCardProps> = ({
               </AvatarFallback>
             </Avatar>
             <div className="text-sm">
-              <div className="flex items-center gap-2 mb-1">
-                <UserRankBadge walletAddress={post.user_wallet} size="sm" />
-                <p className="font-medium">
-                  {post.user_profile?.username || formatWalletAddress(post.user_wallet)}
-                </p>
-              </div>
+              <p className="font-medium">
+                {post.user_profile?.username || formatWalletAddress(post.user_wallet)}
+              </p>
               <p className="text-muted-foreground">
                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
               </p>

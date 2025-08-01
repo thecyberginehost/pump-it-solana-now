@@ -1,22 +1,36 @@
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { 
-  Connection, 
-  Keypair, 
-  PublicKey, 
-  Transaction,
-  SystemProgram,
-  LAMPORTS_PER_SOL
-} from 'https://esm.sh/@solana/web3.js@1.98.2';
-import {
-  createMint,
-  getOrCreateAssociatedTokenAccount,
-  mintTo,
-  TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID
-} from 'https://esm.sh/@solana/spl-token@0.4.8';
+// supabase/functions/create-bonding-curve-token/index.ts
 
-// Real Solana DevNet Token Creation
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
+  ComputeBudgetProgram,
+} from "https://esm.sh/@solana/web3.js@1.98.2";
+import {
+  createInitializeMintInstruction,
+  getMinimumBalanceForRentExemptMint,
+  MINT_SIZE,
+  TOKEN_PROGRAM_ID,
+  setAuthority,
+  AuthorityType,
+  createAssociatedTokenAccountInstruction,
+  createMintToInstruction,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress,
+} from "https://esm.sh/@solana/spl-token@0.4.6";
+import bs58 from "https://esm.sh/bs58@5.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.4";
+
+function getSupa() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,473 +39,303 @@ const corsHeaders = {
   "Content-Type": "application/json",
 };
 
+// ---------- Helpers ----------
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
 }
 
-function log(level: string, message: string, data?: any) {
-  const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] [${level}] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+function getEnv(name: string): string {
+  const v = Deno.env.get(name);
+  if (!v) throw new Error(`Missing env var: ${name}`);
+  return v;
 }
 
-// Solana devnet helpers
-async function createSolanaConnection(rpcUrl: string) {
-  try {
-    log('INFO', 'Testing RPC connection', { rpcUrl: rpcUrl.replace(/api-key=[^&]*/, 'api-key=***') });
+function getConnection(): Connection {
+  const heliusKey = getEnv("HELIUS_RPC_API_KEY");
+  return new Connection(`https://mainnet.helius-rpc.com/?api-key=${heliusKey}`, { commitment: "confirmed" });
+}
+
+function getPlatformKeypair(): Keypair {
+  const raw = getEnv("PLATFORM_WALLET_PRIVATE_KEY").trim();
+  const secret = bs58.decode(raw);
+  if (secret.length !== 64) throw new Error("PLATFORM_WALLET_PRIVATE_KEY length invalid");
+  return Keypair.fromSecretKey(secret);
+}
+
+// Generate vanity address with "moon" suffix
+function generateVanityKeypair(suffix: string, maxAttempts: number = 50000): { keypair: Keypair; attempts: number } | null {
+  const targetSuffix = suffix.toLowerCase();
+  
+  for (let attempts = 1; attempts <= maxAttempts; attempts++) {
+    const keypair = Keypair.generate();
+    const address = keypair.publicKey.toBase58().toLowerCase();
     
-    // Test connection using getLatestBlockhash (newer method)
-    const response = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'getLatestBlockhash',
-        params: [{ commitment: 'finalized' }]
-      })
-    });
-    
-    log('INFO', 'RPC Response received', { 
-      status: response.status, 
-      statusText: response.statusText,
-      ok: response.ok 
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      log('ERROR', 'HTTP Error from RPC', { 
-        status: response.status, 
-        statusText: response.statusText,
-        errorBody: errorText
-      });
-      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+    if (address.endsWith(targetSuffix)) {
+      console.log(`✨ Generated vanity address ending in "${suffix}" after ${attempts} attempts: ${keypair.publicKey.toBase58()}`);
+      return { keypair, attempts };
     }
     
-    const result = await response.json();
-    
-    log('INFO', 'Solana RPC connection test', { 
-      success: !result.error,
-      blockhash: result.result?.value?.blockhash?.slice(0, 8) + '...',
-      rpcStatus: response.status,
-      hasError: !!result.error,
-      errorCode: result.error?.code,
-      errorMessage: result.error?.message
-    });
-    
-    if (result.error) {
-      log('ERROR', 'RPC returned error', { rpcError: result.error });
-      return false;
+    // Log progress every 10k attempts
+    if (attempts % 10000 === 0) {
+      console.log(`🔄 Vanity generation progress: ${attempts}/${maxAttempts} attempts for suffix "${suffix}"`);
     }
-    
-    return true;
-  } catch (error) {
-    log('ERROR', 'Failed to connect to Solana RPC', { 
-      error: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    return false;
   }
+  
+  console.warn(`⚠️ Could not generate vanity address with suffix "${suffix}" after ${maxAttempts} attempts`);
+  return null;
 }
 
-async function createRealDevnetToken(params: {
-  requestId: string;
+// ---------- Request Types ----------
+interface CreateCurveTokenRequest {
   name: string;
   symbol: string;
-  description: string;
+  description?: string;
   imageUrl?: string;
-  rpcUrl: string;
-  platformKey: string;
-}) {
-  const { requestId, name, symbol, description, imageUrl, rpcUrl, platformKey } = params;
-  
-  log('INFO', `[${requestId}] Starting REAL devnet token creation`, { name, symbol });
-  
-  try {
-    // Step 1: Create Solana connection
-    const connection = new Connection(rpcUrl, 'confirmed');
-    log('INFO', `[${requestId}] Connected to Solana devnet`);
-    
-    // Step 2: Create platform keypair from private key
-    let platformKeypair;
-    try {
-      // Try parsing as base58 string first (standard Solana format)
-      const bs58 = await import('https://esm.sh/bs58@5.0.0');
-      const secretKey = bs58.default.decode(platformKey);
-      platformKeypair = Keypair.fromSecretKey(secretKey);
-    } catch (bs58Error) {
-      // Fallback: try as JSON array format
-      try {
-        const secretKeyArray = JSON.parse(platformKey);
-        platformKeypair = Keypair.fromSecretKey(new Uint8Array(secretKeyArray));
-      } catch (jsonError) {
-        throw new Error(`Invalid private key format. Expected base58 string or JSON array. bs58Error: ${bs58Error.message}, jsonError: ${jsonError.message}`);
-      }
-    }
-    
-    log('INFO', `[${requestId}] Platform wallet loaded`, { 
-      publicKey: platformKeypair.publicKey.toBase58() 
-    });
-    
-    // Step 3: Check platform wallet balance
-    const balance = await connection.getBalance(platformKeypair.publicKey);
-    const solBalance = balance / LAMPORTS_PER_SOL;
-    log('INFO', `[${requestId}] Platform wallet balance`, { 
-      balance: solBalance, 
-      lamports: balance 
-    });
-    
-    if (balance < 0.01 * LAMPORTS_PER_SOL) {
-      throw new Error(`Insufficient SOL balance: ${solBalance}. Need at least 0.01 SOL for token creation.`);
-    }
-    
-    // Step 4: Create SPL token mint with explicit keypair
-    log('INFO', `[${requestId}] Creating SPL token mint...`);
-    const mintKeypair = Keypair.generate();
-    
-    const mint = await createMint(
-      connection,
-      platformKeypair, // payer
-      platformKeypair.publicKey, // mint authority
-      null, // freeze authority (set to null for simplicity)
-      6, // decimals
-      mintKeypair // Use explicit keypair to ensure uniqueness
-    );
-    
-    log('SUCCESS', `[${requestId}] SPL Token mint created`, { 
-      mintAddress: mint.toBase58(),
-      confirmedUnique: true
-    });
-    
-    // Step 5: Create token metadata
-    const tokenMetadata = {
-      name,
-      symbol,
-      description,
-      image: imageUrl || '',
-      decimals: 6,
-      totalSupply: 1000000000,
-      mintAddress: mint.toBase58()
-    };
-    
-    // Step 6: Generate bonding curve address
-    const bondingCurveAddress = `${mint.toBase58()}_curve`;
-    
-    // Step 7: Calculate initial market metrics
-    const initialMetrics = {
-      marketCap: 1000, // $1000 starting market cap
-      price: 0.000001, // Starting price in SOL
-      tokensAvailable: 800000000, // 800M available for trading
-      solRaised: 0
-    };
-    
-    log('SUCCESS', `[${requestId}] Real devnet token creation completed`);
-    
-    return {
-      mintAddress: mint.toBase58(),
-      bondingCurveAddress,
-      metadata: tokenMetadata,
-      metrics: initialMetrics,
-      devnetReady: true,
-      realSolanaToken: true,
-      platformWallet: platformKeypair.publicKey.toBase58()
-    };
-    
-  } catch (error) {
-    log('ERROR', `[${requestId}] Real devnet token creation failed`, { 
-      error: error.message,
-      stack: error.stack 
-    });
-    throw error;
-  }
+  telegram?: string;
+  twitter?: string;
+  creatorWallet: string;
+  signedTransaction?: any;
+  initialBuyIn?: number;
+  decimals?: number;
+  totalSupply?: number;
+  curveConfig?: {
+    startingPriceLamports?: number;
+    slopeBps?: number;
+    feeBps?: number;
+  };
 }
 
+// ---------- Main ----------
 serve(async (req: Request) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const requestId = crypto.randomUUID().slice(0, 8);
-  
   try {
-    console.log(`[${requestId}] Function starting...`);
-    
-    if (req.method !== "POST") {
-      console.log(`[${requestId}] Invalid method: ${req.method}`);
-      return jsonResponse({ error: "Use POST method" }, 405);
-    }
+    if (req.method !== "POST") return jsonResponse({ error: "Use POST" }, 405);
 
-    // Test environment variables immediately
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const heliusRpcKey = Deno.env.get("HELIUS_RPC_API_KEY");
-    const heliusDataKey = Deno.env.get("HELIUS_DATA_API_KEY");
-    const platformKey = Deno.env.get("PLATFORM_WALLET_PRIVATE_KEY");
+    const body = (await req.json().catch(() => null)) as CreateCurveTokenRequest | null;
+    if (!body) return jsonResponse({ error: "Invalid JSON body" }, 400);
 
-    console.log(`[${requestId}] Environment status:`, {
-      supabaseUrl: !!supabaseUrl,
-      supabaseKey: !!supabaseKey,
-      heliusRpcKey: !!heliusRpcKey,
-      platformKey: !!platformKey
-    });
-
-    if (!supabaseUrl || !supabaseKey || !heliusRpcKey || !platformKey) {
-      console.log(`[${requestId}] Missing critical environment variables`);
-      return jsonResponse({ 
-        error: "Server configuration error - missing API keys",
-        details: "Check edge function secrets configuration",
-        environmentStatus: {
-          supabaseUrl: !!supabaseUrl,
-          supabaseKey: !!supabaseKey,
-          heliusRpcKey: !!heliusRpcKey,
-          platformKey: !!platformKey,
-        }
-      }, 500);
-    }
-
-    // Parse request body
-    let body;
-    try {
-      body = await req.json();
-      log('INFO', `[${requestId}] Request body parsed successfully`);
-      log('DEBUG', `[${requestId}] Request body`, { 
-        name: body.name, 
-        symbol: body.symbol, 
-        hasImage: !!body.imageUrl,
-        creatorWallet: body.creatorWallet?.slice(0, 8) + '...'
-      });
-    } catch (parseError) {
-      log('ERROR', `[${requestId}] Failed to parse JSON body`, { error: parseError.message });
-      return jsonResponse({ error: "Invalid JSON body" }, 400);
-    }
-
-    const { name, symbol, creatorWallet, description, imageUrl, telegram, twitter, initialBuyIn } = body;
+    const { 
+      name, 
+      symbol, 
+      description,
+      imageUrl,
+      telegram,
+      twitter,
+      creatorWallet,
+      initialBuyIn = 0,
+      decimals = 9, 
+      totalSupply = 1000000000, 
+      curveConfig = {} 
+    } = body;
     
     if (!name || !symbol || !creatorWallet) {
-      log('ERROR', `[${requestId}] Missing required fields`, { 
-        hasName: !!name, 
-        hasSymbol: !!symbol, 
-        hasCreatorWallet: !!creatorWallet 
-      });
       return jsonResponse({ error: "name, symbol, and creatorWallet required" }, 400);
     }
 
-    // Initialize Supabase client
-    log('INFO', `[${requestId}] Initializing Supabase client`);
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const connection = getConnection();
+    const platform = getPlatformKeypair();
 
-    // Construct Helius devnet RPC URL
-    const rpcUrl = `https://devnet.helius-rpc.com/?api-key=${heliusRpcKey}`;
-    log('INFO', `[${requestId}] Using Helius devnet RPC`);
-
-    // Step 1: Create real devnet token
-    log('INFO', `[${requestId}] Creating real devnet token with Solana integration`);
+    // 1. Generate vanity mint address with "moon" suffix
+    console.log(`🌙 Generating vanity address with "moon" suffix for token: ${name}`);
+    const vanityResult = generateVanityKeypair("moon", 50000);
     
-    const solanaResult = await createRealDevnetToken({
-      requestId,
+    let mintKeypair: Keypair;
+    let platformIdentifier: string | null = null;
+    let vanityGeneration: { attempts?: number; fallback?: boolean } = {};
+    
+    if (vanityResult) {
+      mintKeypair = vanityResult.keypair;
+      platformIdentifier = "moon";
+      vanityGeneration.attempts = vanityResult.attempts;
+      console.log(`✨ Successfully generated MoonForge vanity address: ${mintKeypair.publicKey.toBase58()}`);
+    } else {
+      // Fallback to regular generation if vanity fails
+      mintKeypair = Keypair.generate();
+      vanityGeneration.fallback = true;
+      console.log(`⚠️ Fallback to regular address generation: ${mintKeypair.publicKey.toBase58()}`);
+    }
+    
+    const rentLamports = await getMinimumBalanceForRentExemptMint(connection);
+
+    const createMintIx = SystemProgram.createAccount({
+      fromPubkey: platform.publicKey,
+      newAccountPubkey: mintKeypair.publicKey,
+      space: MINT_SIZE,
+      lamports: rentLamports,
+      programId: TOKEN_PROGRAM_ID,
+    });
+
+    const initMintIx = createInitializeMintInstruction(
+      mintKeypair.publicKey,
+      decimals,
+      platform.publicKey,
+      platform.publicKey, // freeze authority initially
+      TOKEN_PROGRAM_ID
+    );
+
+    // 2. Get dynamic program ID from database
+    const supa = getSupa();
+    const { data: progRow, error: progErr } = await supa
+      .from("program_config")
+      .select("program_id")
+      .eq("program_name", "bonding_curve")
+      .eq("is_active", true)
+      .limit(1)
+      .maybeSingle();
+      
+    if (progErr) {
+      console.error("program_config fetch failed:", progErr);
+      throw new Error(`program_config fetch failed: ${progErr.message}`);
+    }
+
+    if (!progRow) {
+      console.error("No active bonding_curve program_config found");
+      throw new Error("No active bonding_curve program configuration found");
+    }
+    const BONDING_PROGRAM_ID = new PublicKey(progRow.program_id);
+    
+    // Use correct PDA seeds matching the contract
+    const [bondingCurvePda] = await PublicKey.findProgramAddress(
+      [new TextEncoder().encode("bonding_curve"), mintKeypair.publicKey.toBuffer()],
+      BONDING_PROGRAM_ID
+    );
+
+    // 2a. Curve ATA owned by bonding curve PDA
+    const curveAta = await getAssociatedTokenAddress(
+      mintKeypair.publicKey,
+      bondingCurvePda,
+      true,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const createCurveAtaIx = createAssociatedTokenAccountInstruction(
+      platform.publicKey, // payer
+      curveAta,
+      bondingCurvePda,
+      mintKeypair.publicKey,
+      TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    // 3. Create initialize curve instruction
+    // Note: This will need to be implemented once the contract is deployed
+    const virtualSolReserves = 30 * 1_000_000_000; // 30 SOL in lamports
+    const virtualTokenReserves = BigInt(800_000_000) * (BigInt(10) ** BigInt(decimals)); // 800M tokens
+    const bondingCurveSupply = BigInt(totalSupply) * (BigInt(10) ** BigInt(decimals));
+    
+    // TODO: Create actual initialize_curve instruction when contract is deployed
+    // const initCurveIx = await createInitializeCurveInstruction({
+    //   bondingCurve: bondingCurvePda,
+    //   mint: mintKeypair.publicKey,
+    //   curveTokenAccount: curveAta,
+    //   creator: new PublicKey(creatorWallet),
+    //   virtualSolReserves,
+    //   virtualTokenReserves: Number(virtualTokenReserves),
+    //   bondingCurveSupply: Number(bondingCurveSupply)
+    // });
+
+    // 4. Build & send tx (without curve initialization for now)
+    const instructions = [
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 600000 }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000 }),
+      createMintIx,
+      initMintIx,
+      createCurveAtaIx,
+      // TODO: Add initCurveIx when contract is deployed
+    ];
+
+    const tx = new Transaction().add(...instructions);
+    tx.feePayer = platform.publicKey;
+    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    tx.partialSign(mintKeypair, platform);
+
+    const sig = await sendAndConfirmTransaction(connection, tx, [mintKeypair, platform], {
+      commitment: "confirmed",
+    });
+
+    // 5. Insert token into database with platform identifier
+    const { data: tokenData, error: upsertErr } = await supa.from("tokens").upsert({
+      creator_wallet: creatorWallet,
       name,
       symbol,
-      description: description || `${name} - A new token created with Moonforge`,
-      imageUrl,
-      rpcUrl,
-      platformKey
-    });
-
-    log('SUCCESS', `[${requestId}] Devnet token creation completed`, {
-      mintAddress: solanaResult.mintAddress,
-      bondingCurve: solanaResult.bondingCurveAddress
-    });
-
-    // Step 2: Store token in database
-    const tokenId = crypto.randomUUID();
+      description: description || `A new token created with Moonforge`,
+      image_url: imageUrl,
+      telegram_url: telegram,
+      x_url: twitter,
+      mint_address: mintKeypair.publicKey.toBase58(),
+      total_supply: totalSupply,
+      bonding_curve_address: bondingCurvePda.toBase58(),
+      platform_signature: sig,
+      signature_expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      platform_identifier: platformIdentifier
+    }, { onConflict: "mint_address" }).select().single();
     
-    log('INFO', `[${requestId}] Storing token in database`, { tokenId });
+    if (upsertErr) {
+      console.error("DB upsert tokens failed", upsertErr.message);
+      throw new Error(`Database error: ${upsertErr.message}`);
+    }
+
+    // 6. Revoke authorities
+    await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.MintTokens, null);
+    await setAuthority(connection, platform, mintKeypair.publicKey, platform.publicKey, AuthorityType.FreezeAccount, null);
+
+    let initialTradeResult = null;
     
-    try {
-      // First check if this mint address already exists
-      const { data: existingToken } = await supabase
-        .from('tokens')
-        .select('id, mint_address')
-        .eq('mint_address', solanaResult.mintAddress)
-        .single();
-
-      if (existingToken) {
-        log('WARNING', `[${requestId}] Token with this mint address already exists`, { 
-          existingTokenId: existingToken.id,
-          mintAddress: solanaResult.mintAddress 
-        });
-        
-        // Return the existing token instead of creating a duplicate
-        return jsonResponse({
-          success: true,
-          message: "Token already exists with this mint address",
-          token: existingToken,
-          mintAddress: solanaResult.mintAddress,
-          bondingCurveAddress: solanaResult.bondingCurveAddress,
-          devMode: true,
-          requestId,
-          existingToken: true
-        });
-      }
-
-      const { data: tokenRecord, error: dbError } = await supabase
-        .from('tokens')
-        .insert({
-          id: tokenId,
-          name,
-          symbol,
-          description: solanaResult.metadata.description,
-          image_url: imageUrl,
-          telegram_url: telegram,
-          x_url: twitter,
-          creator_wallet: creatorWallet,
-          mint_address: solanaResult.mintAddress,
-          bonding_curve_address: solanaResult.bondingCurveAddress,
-          market_cap: solanaResult.metrics.marketCap,
-          price: solanaResult.metrics.price,
-          holder_count: 1,
-          volume_24h: 0,
-          is_graduated: false,
-          sol_raised: solanaResult.metrics.solRaised,
-          tokens_sold: 200000000, // 200M initial tokens sold
-          total_supply: solanaResult.metadata.totalSupply,
-          // Add devnet tracking with unique identifier
-          dev_mode: true,
-          platform_identifier: `devnet_${requestId}_${Date.now()}`
-        })
-        .select()
-        .single();
-
-      if (dbError) {
-        log('ERROR', `[${requestId}] Database insert failed`, { 
-          error: dbError.message, 
-          code: dbError.code,
-          details: dbError.details,
-          mintAddress: solanaResult.mintAddress
-        });
-        
-        // Check if it's a duplicate key error
-        if (dbError.code === '23505' && dbError.message.includes('tokens_mint_address_key')) {
-          log('WARNING', `[${requestId}] Duplicate mint address detected, attempting recovery...`);
-          
-          // Try to find the existing token and return it
-          const { data: existingToken } = await supabase
-            .from('tokens')
-            .select('*')
-            .eq('mint_address', solanaResult.mintAddress)
-            .single();
-            
-          if (existingToken) {
-            return jsonResponse({
-              success: true,
-              message: "Token already exists, returning existing record",
-              token: existingToken,
-              mintAddress: solanaResult.mintAddress,
-              devMode: true,
-              requestId,
-              recovered: true
-            });
+    // 7. Execute initial buy if specified
+    if (initialBuyIn > 0 && tokenData?.id) {
+      console.log(`Executing initial buy of ${initialBuyIn} SOL for creator`);
+      
+      try {
+        // Call the platform trade function for the initial buy
+        const tradeResponse = await supa.functions.invoke('platform-trade', {
+          body: {
+            tokenId: tokenData.id,
+            tradeType: 'buy',
+            amount: initialBuyIn,
+            creatorWallet: creatorWallet
           }
+        });
+
+        if (tradeResponse.error) {
+          console.error("Initial buy failed:", tradeResponse.error);
+          // Don't fail the token creation, just log the error
+          initialTradeResult = { error: tradeResponse.error.message };
+        } else {
+          console.log("Initial buy successful");
+          initialTradeResult = tradeResponse.data;
         }
-        
-        return jsonResponse({ 
-          error: `Database error: ${dbError.message}`,
-          requestId,
-          solanaCreated: true,
-          mintAddress: solanaResult.mintAddress,
-          errorCode: dbError.code
-        }, 500);
+      } catch (tradeError: any) {
+        console.error("Initial buy execution failed:", tradeError);
+        initialTradeResult = { error: tradeError.message };
       }
-
-      log('SUCCESS', `[${requestId}] Token stored successfully in database`);
-
-      // Step 3: Return response for real devnet token
-      const response = {
-        success: true,
-        message: "Token created successfully on Solana devnet!",
-        mintAddress: solanaResult.mintAddress,
-        userTokenAccount: `${solanaResult.mintAddress}_user_account`,
-        transactions: [], // For now, no user transactions required
-        estimatedCost: 0.001,
-        requiresUserSigning: false,
-        devMode: true, // Still in development but using real Solana
-        token: {
-          id: tokenId,
-          name,
-          symbol,
-          creator_wallet: creatorWallet,
-          mint_address: solanaResult.mintAddress,
-          bonding_curve_address: solanaResult.bondingCurveAddress,
-          created_at: new Date().toISOString(),
-        },
-        devnetInfo: {
-          rpcEndpoint: "Helius Devnet",
-          mintAddress: solanaResult.mintAddress,
-          bondingCurve: solanaResult.bondingCurveAddress,
-          initialMarketCap: solanaResult.metrics.marketCap,
-          totalSupply: solanaResult.metadata.totalSupply,
-          realSolanaToken: solanaResult.realSolanaToken
-        },
-        requestId
-      };
-
-    // Step 4: Upload metadata to Solana
-    log('INFO', `[${requestId}] Uploading metadata to Solana...`);
-    try {
-      const { data: metadataResult, error: metadataError } = await supabase.functions.invoke('upload-metadata', {
-        body: {
-          mintAddress: solanaResult.mintAddress,
-          name,
-          symbol,
-          description: solanaResult.metadata.description,
-          imageUrl
-        }
-      });
-
-      if (metadataError) {
-        log('ERROR', `[${requestId}] Metadata upload failed`, { error: metadataError });
-        // Continue without failing - token is created, just missing metadata
-      } else {
-        log('SUCCESS', `[${requestId}] Metadata uploaded successfully`, { signature: metadataResult.signature });
-        response.metadata = {
-          uploaded: true,
-          signature: metadataResult.signature,
-          metadataPDA: metadataResult.metadataPDA
-        };
-      }
-    } catch (metadataError) {
-      log('ERROR', `[${requestId}] Metadata upload error`, { error: metadataError.message });
     }
 
-      log('SUCCESS', `[${requestId}] ========== TOKEN CREATION COMPLETED ==========`);
-      return jsonResponse(response);
-
-    } catch (dbError) {
-      log('ERROR', `[${requestId}] Unexpected database error`, { 
-        error: dbError.message, 
-        stack: dbError.stack 
-      });
-      return jsonResponse({ 
-        error: `Database error: ${dbError.message}`,
-        requestId,
-        solanaCreated: true,
-        mintAddress: solanaResult.mintAddress
-      }, 500);
-    }
-
-  } catch (err: any) {
-    log('ERROR', `[${requestId}] ========== FATAL ERROR ==========`, { 
-      message: err?.message,
-      name: err?.name,
-      stack: err?.stack 
-    });
-    
     return jsonResponse({
-      error: err?.message ?? "Unknown error occurred",
-      errorName: err?.name,
-      requestId,
-      timestamp: new Date().toISOString()
-    }, 500);
+      success: true,
+      token: tokenData,
+      mint: mintKeypair.publicKey.toBase58(),
+      bondingCurvePda: bondingCurvePda.toBase58(),
+      curveAta: curveAta.toBase58(),
+      name,
+      symbol,
+      decimals,
+      totalSupply,
+      curveConfig,
+      txSig: sig,
+      authoritiesRevoked: true,
+      initialBuyIn,
+      initialTradeResult,
+      requiresSignature: false, // Token is created, no additional signature needed
+      platformIdentifier,
+      vanityGeneration
+    });
+  } catch (err: any) {
+    console.error("ERR:create-bonding-curve-token", err?.message, err?.stack, err?.logs);
+    return new Response(JSON.stringify({ error: err?.message ?? "Unknown error" }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 });

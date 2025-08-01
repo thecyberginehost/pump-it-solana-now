@@ -2,11 +2,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { WalletButton } from "@/components/WalletButton";
-import { UserProfileButton } from "@/components/UserProfileButton";
+import { CleanWalletButton } from "@/components/CleanWalletButton";
 import { MoreDropdown } from "@/components/MoreDropdown";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useHybridAuth } from "@/hooks/useHybridAuth";
 import { useChatContext } from "@/contexts/ChatContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { 
@@ -25,7 +23,6 @@ const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { publicKey } = useWallet();
-  const { isAuthenticated } = useHybridAuth();
   const { isChatOpen, toggleChat } = useChatContext();
   const isMobile = useIsMobile();
 
@@ -82,7 +79,7 @@ const Navigation = () => {
               <MoreDropdown />
             </div>
 
-            {/* Desktop Wallet & Profile & Chat */}
+            {/* Desktop Wallet & Chat */}
             <div className="hidden md:flex items-center space-x-4">
               {publicKey && (
                 <Button
@@ -95,12 +92,7 @@ const Navigation = () => {
                   <span>Degen Copilot</span>
                 </Button>
               )}
-              
-              {/* Show profile dropdown for authenticated users */}
-              {isAuthenticated && <UserProfileButton />}
-              
-              {/* Show wallet button for non-authenticated users */}
-              {!isAuthenticated && <WalletButton />}
+              <CleanWalletButton />
             </div>
 
             {/* Mobile menu button */}
@@ -203,7 +195,7 @@ const Navigation = () => {
                     </Button>
                   )}
                   <div className="w-full">
-                    <WalletButton />
+                    <CleanWalletButton />
                   </div>
                 </div>
               </div>
@@ -233,13 +225,6 @@ const Navigation = () => {
                 </Link>
               );
             })}
-            
-            {/* Profile button for authenticated users */}
-            {isAuthenticated && (
-              <div className="flex flex-col items-center justify-center p-2 rounded-lg text-xs font-medium transition-colors min-w-16">
-                <UserProfileButton />
-              </div>
-            )}
             
             {/* More button for mobile */}
             <div className="flex flex-col items-center justify-center min-w-16">

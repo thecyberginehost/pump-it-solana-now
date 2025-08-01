@@ -37,7 +37,7 @@ export const useTrading = () => {
 
   const executeTrade = useMutation({
     mutationFn: async (tradeRequest: TradeRequest): Promise<any> => {
-      const { data, error } = await supabase.functions.invoke('unified-trade', {
+      const { data, error } = await supabase.functions.invoke('bonding-curve-trade', {
         body: {
           tokenId: tradeRequest.tokenId,
           walletAddress: tradeRequest.walletAddress,

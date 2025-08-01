@@ -38,80 +38,106 @@ export const useTokenCreation = () => {
         throw new Error(`Creator limit: ${creatorLimits.reason}`);
       }
 
-      console.log('🚀 Starting token creation with creator controls validated');
-      console.log('📝 Token data:', { 
-        name: tokenData.name, 
-        symbol: tokenData.symbol, 
-        hasImage: !!tokenData.image,
-        initialBuyIn 
+      console.log('Starting token creation with creator controls validated');
+
+      // Step 1: Get transaction from backend
+      const { data, error } = await supabase.functions.invoke('create-bonding-curve-token', {
+        body: {
+          name: tokenData.name,
+          symbol: tokenData.symbol,
+          description: tokenData.description || 'A new token created with Moonforge',
+          imageUrl: tokenData.image,
+          telegram: tokenData.telegram_url,
+          twitter: tokenData.x_url,
+          creatorWallet: walletAddress,
+          initialBuyIn,
+          signedTransaction: null, // Will be updated when we have payment integration
+        },
       });
 
-      try {
-        // Step 1: Get transaction instructions from backend
-        console.log('📡 Calling create-bonding-curve-token edge function...');
-        const { data: txData, error: txError } = await supabase.functions.invoke('create-bonding-curve-token', {
-          body: {
-            name: tokenData.name,
-            symbol: tokenData.symbol,
-            description: tokenData.description || `${tokenData.name} - A new token created with Moonforge`,
-            imageUrl: tokenData.image,
-            creatorWallet: walletAddress,
-          },
-        });
+      if (error) throw error;
 
-        console.log('📡 Edge function response:', { txData, txError });
-
-        if (txError) {
-          console.error('❌ Transaction preparation error:', txError);
-          throw new Error(txError.message || 'Failed to prepare token creation');
+      // Step 2: If backend returns a transaction, sign and send it
+      if (data.requiresSignature && data.transaction) {
+        if (!signTransaction || !sendTransaction) {
+          throw new Error('Wallet not connected for signing');
         }
 
-        if (!txData?.success) {
-          console.error('❌ Transaction preparation failed:', txData);
-          throw new Error(txData?.error || 'Transaction preparation failed');
-        }
-
-        console.log('✅ Token created in development mode:', txData);
-        
-        // The edge function already handled database storage, just return the response
-        if (txData.devMode) {
-          console.log('🧪 Development mode - edge function handled everything');
+        try {
+          console.log('Deserializing transaction...');
+          // Deserialize transaction
+          const transactionBuffer = new Uint8Array(data.transaction);
+          const transaction = Transaction.from(transactionBuffer);
           
-          return {
-            success: true,
-            token: txData.token,
-            signature: `devnet_${Date.now()}`,
-            mintAddress: txData.mintAddress,
-            userTokenAccount: txData.userTokenAccount,
-            estimatedCost: txData.estimatedCost,
-            confirmed: true,
-            devMode: true
-          };
-        }
+          console.log('Signing transaction...');
+          // Sign transaction with user's wallet
+          const signedTransaction = await signTransaction(transaction);
+          
+          console.log('Sending transaction...');
+          // Send transaction
+          const signature = await sendTransaction(signedTransaction, connection);
+          
+          console.log('Transaction sent successfully:', signature);
+          
+          // Wait for confirmation before declaring success
+          console.log('Waiting for transaction confirmation...');
+          const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+          
+          if (confirmation.value.err) {
+            console.error('Transaction failed on blockchain:', confirmation.value.err);
+            throw new Error(`Blockchain transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+          }
 
-        // If we get here, there were transactions but they failed or aren't supported yet
-        throw new Error('Transaction processing not implemented for this mode');
-        
-      } catch (txError: any) {
-        console.error('❌ Transaction error:', txError);
-        throw new Error(`Transaction failed: ${txError.message}`);
+          console.log('Transaction confirmed successfully');
+          
+          // Return the confirmation result along with token data
+          return {
+            ...data,
+            signature,
+            confirmed: true
+          };
+          
+        } catch (txError) {
+          console.error('Transaction error:', txError);
+          // Check if it's a partial success (token created but transaction pending)
+          if (data.token) {
+            console.log('Token was created but transaction may be pending');
+            return {
+              ...data,
+              signature: null,
+              confirmed: false,
+              partialSuccess: true,
+              error: txError.message
+            };
+          }
+          throw txError;
+        }
       }
+
+      // If no transaction required, return the data directly
+      return data;
     },
     onSuccess: (data) => {
-      console.log('🎉 Token creation success response:', data);
-      
       // Consume creator credit after successful creation
       consumeCredit.mutate();
 
-      if (data.confirmed || data.devMode) {
+      if (data.confirmed || data.partialSuccess) {
         let message = data.confirmed 
           ? "Token created successfully! 🎉" 
-          : data.devMode
-          ? "Token created in devnet mode! 🧪"
           : "Token created! Transaction may still be processing...";
           
-        console.log('✅ Success message:', message);
-        toast.success(message);
+        // Add initial investment info if applicable
+        if (data.initialBuyIn > 0) {
+          if (data.initialTradeResult?.error) {
+            message += ` Initial investment of ${data.initialBuyIn} SOL failed: ${data.initialTradeResult.error}`;
+            toast.warning(message);
+          } else {
+            message += ` Initial investment of ${data.initialBuyIn} SOL completed!`;
+            toast.success(message);
+          }
+        } else {
+          toast.success(message);
+        }
         
         // Invalidate related queries
         queryClient.invalidateQueries({ queryKey: ['tokens'] });
@@ -129,22 +155,14 @@ export const useTokenCreation = () => {
         
         // Navigate to token success page
         if (data.token?.id) {
-          console.log('🧭 Navigating to token success page:', data.token.id);
           navigate(`/token-success/${data.token.id}`);
-        } else {
-          console.error('❌ No token ID found in response:', data);
         }
       } else {
         toast.info("Token creation initiated. Please check back in a moment.");
       }
     },
     onError: (error) => {
-      console.error('❌ Token creation error:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        name: error.name,
-        stack: error.stack
-      });
+      console.error('Token creation error:', error);
       toast.error(`Failed to create token: ${error.message}`);
       setIsCreating(false);
     },

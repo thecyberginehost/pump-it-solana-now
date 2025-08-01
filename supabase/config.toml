@@ -88,11 +88,5 @@ verify_jwt = false
 [functions.platform-trade]
 verify_jwt = false
 
-[functions.upload-metadata]
-verify_jwt = false
-
-[functions.unified-trade]
-verify_jwt = false
-
 [functions.create-bonding-curve-token]
 verify_jwt = false

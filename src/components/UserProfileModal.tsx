@@ -5,9 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUserProfile, useUpdateProfile, useCreateProfile } from '@/hooks/useUserProfile';
-import { useHybridAuth } from '@/hooks/useHybridAuth';
-import { useUserRank } from '@/hooks/useUserRanks';
-import { User, Save, Camera, Shield, Crown } from 'lucide-react';
+import { useWalletAuth } from '@/hooks/useWalletAuth';
+import { User, Save, Camera } from 'lucide-react';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -18,8 +17,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { userIdentifier, profile, authType } = useHybridAuth();
-  const { data: userRank } = useUserRank(userIdentifier);
+  const { walletAddress } = useWalletAuth();
+  const { data: profile } = useUserProfile(walletAddress);
   const updateProfile = useUpdateProfile();
   const createProfile = useCreateProfile();
   
@@ -34,28 +33,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   }, [profile]);
 
   const handleSave = async () => {
-    if (!userIdentifier) return;
+    if (!walletAddress) return;
 
-    // Admin accounts cannot edit their username (it's auto-generated)
-    if (profile?.is_admin) {
-      const updates = {
-        avatar_url: avatarUrl.trim() || null,
-      };
+    const updates = {
+      username: username.trim() || null,
+      avatar_url: avatarUrl.trim() || null,
+    };
+
+    if (profile) {
       await updateProfile.mutateAsync(updates);
     } else {
-      const updates = {
-        username: username.trim() || null,
-        avatar_url: avatarUrl.trim() || null,
-      };
-
-      if (profile) {
-        await updateProfile.mutateAsync(updates);
-      } else {
-        await createProfile.mutateAsync({
-          wallet_address: userIdentifier,
-          username: updates.username,
-        });
-      }
+      await createProfile.mutateAsync({
+        wallet_address: walletAddress,
+        username: updates.username,
+      });
     }
     
     onClose();
@@ -70,16 +61,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {profile?.is_admin ? (
-              userRank?.current_rank === 'forgelord' ? (
-                <Crown className="h-5 w-5 text-yellow-500" />
-              ) : (
-                <Shield className="h-5 w-5 text-blue-500" />
-              )
-            ) : (
-              <User className="h-5 w-5" />
-            )}
-            {profile?.is_admin ? 'Admin Profile' : 'Edit Profile'}
+            <User className="h-5 w-5" />
+            Edit Profile
           </DialogTitle>
         </DialogHeader>
         
@@ -91,8 +74,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <AvatarImage src={avatarUrl} />
                 <AvatarFallback className="text-lg">
                   {username ? username.charAt(0).toUpperCase() : 
-                   authType === 'email' ? (userRank?.current_rank === 'forgelord' ? <Crown className="h-6 w-6" /> : <Shield className="h-6 w-6" />) :
-                   userIdentifier ? formatWalletAddress(userIdentifier) : '?'}
+                   walletAddress ? formatWalletAddress(walletAddress) : '?'}
                 </AvatarFallback>
               </Avatar>
               <Button
@@ -111,45 +93,26 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                {authType === 'email' ? 'Admin Account' : `Wallet: ${userIdentifier ? formatWalletAddress(userIdentifier) : 'Not connected'}`}
+                Wallet: {walletAddress ? formatWalletAddress(walletAddress) : 'Not connected'}
               </p>
-              {profile?.is_admin && (
-                <p className="text-xs text-blue-600 font-medium mt-1">
-                  {userRank?.current_rank === 'forgelord' ? 'Forgelord' : 'Forgemaster'} Rank
-                </p>
-              )}
             </div>
           </div>
 
           {/* Form Fields */}
           <div className="space-y-4">
-            {!profile?.is_admin && (
-              <div className="space-y-2">
-                <Label htmlFor="username">Display Name</Label>
-                <Input
-                  id="username"
-                  placeholder="Enter a unique display name"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  maxLength={50}
-                />
-                <p className="text-xs text-muted-foreground">
-                  This will be shown instead of your wallet address in forums and throughout the platform.
-                </p>
-              </div>
-            )}
-            
-            {profile?.is_admin && (
-              <div className="space-y-2">
-                <Label>Admin Username</Label>
-                <div className="p-3 bg-muted rounded-md">
-                  <p className="font-medium">{profile.username}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Admin usernames are automatically assigned and cannot be changed.
-                  </p>
-                </div>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="username">Display Name</Label>
+              <Input
+                id="username"
+                placeholder="Enter a unique display name"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                maxLength={50}
+              />
+              <p className="text-xs text-muted-foreground">
+                This will be shown instead of your wallet address in forums and throughout the platform.
+              </p>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="avatar">Avatar URL (optional)</Label>

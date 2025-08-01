@@ -8,8 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ForumCategoryCard } from '@/components/ForumCategoryCard';
 import { ForumPostCard } from '@/components/ForumPostCard';
 import { CreatePostModal } from '@/components/CreatePostModal';
-import { ForumsSidebar } from '@/components/ForumsSidebar';
-import { useForumCategories, useForumPosts, useCanPostInCategory } from '@/hooks/useForums';
+import { useForumCategories, useForumPosts } from '@/hooks/useForums';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
 import { MessageSquare, Plus, Search, Filter, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,7 +19,6 @@ export const Forums = () => {
   const { walletAddress } = useWalletAuth();
   const { data: categories = [] } = useForumCategories();
   const { data: posts = [] } = useForumPosts(categoryId);
-  const { data: canPost = true } = useCanPostInCategory(categoryId);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
@@ -36,10 +34,6 @@ export const Forums = () => {
   const handleCreatePost = () => {
     if (!walletAddress) {
       toast.error('Please connect your wallet to create a post');
-      return;
-    }
-    if (!canPost) {
-      toast.error('You do not have permission to post in this category');
       return;
     }
     setIsCreatePostOpen(true);
@@ -58,61 +52,66 @@ export const Forums = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <div className="flex">
-        {/* Sidebar */}
-        <ForumsSidebar />
-        
-        {/* Main Content */}
-        <div className="flex-1 p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <div className="flex items-center space-x-3 mb-2">
-                <MessageSquare className="h-8 w-8 text-primary" />
-                <h1 className="text-3xl font-bold">
-                  {selectedCategory ? selectedCategory.name : 'Community Forums'}
-                </h1>
-              </div>
-              <p className="text-muted-foreground">
-                {selectedCategory 
-                  ? selectedCategory.description 
-                  : 'Connect, discuss, and help build the future of meme coin trading'
-                }
-              </p>
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="flex items-center space-x-3 mb-2">
+              <MessageSquare className="h-8 w-8 text-primary" />
+              <h1 className="text-3xl font-bold">
+                {selectedCategory ? selectedCategory.name : 'Community Forums'}
+              </h1>
             </div>
-            <Button 
-              onClick={handleCreatePost} 
-              className="gap-2"
-              disabled={!walletAddress || !canPost}
+            <p className="text-muted-foreground">
+              {selectedCategory 
+                ? selectedCategory.description 
+                : 'Connect, discuss, and help build the future of meme coin trading'
+              }
+            </p>
+          </div>
+          <Button onClick={handleCreatePost} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Post
+          </Button>
+        </div>
+
+        {/* Navigation Breadcrumb */}
+        {selectedCategory && (
+          <div className="mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/forums')}
+              className="text-primary hover:text-primary/80"
             >
-              <Plus className="h-4 w-4" />
-              {selectedCategory?.admin_only_posting && !canPost ? 'Admin Only' : 'New Post'}
+              ← Back to All Categories
             </Button>
           </div>
+        )}
 
-          {!categoryId ? (
-            /* Category Overview */
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {categories.map((category) => {
-                const categoryPosts = posts.filter(p => p.category_id === category.id);
-                const latestPost = categoryPosts[0];
-                
-                return (
-                  <ForumCategoryCard
-                    key={category.id}
-                    category={category}
-                    postCount={categoryPosts.length}
-                    lastActivity={latestPost?.created_at}
-                    onClick={() => navigate(`/forums/${category.id}`)}
-                  />
-                );
-              })}
-            </div>
-          ) : (
-            /* Posts in Category */
-            <div className="space-y-6">
-              {/* Search */}
-              <div className="relative">
+        {!categoryId ? (
+          /* Category Overview */
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {categories.map((category) => {
+              const categoryPosts = posts.filter(p => p.category_id === category.id);
+              const latestPost = categoryPosts[0];
+              
+              return (
+                <ForumCategoryCard
+                  key={category.id}
+                  category={category}
+                  postCount={categoryPosts.length}
+                  lastActivity={latestPost?.created_at}
+                  onClick={() => navigate(`/forums/${category.id}`)}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          /* Posts in Category */
+          <div className="space-y-6">
+            {/* Search and Filters */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search posts..."
@@ -121,44 +120,85 @@ export const Forums = () => {
                   className="pl-10"
                 />
               </div>
-
-              {/* Posts List */}
-              {filteredPosts.length > 0 ? (
-                <div className="space-y-4">
-                  {filteredPosts.map((post) => (
-                    <ForumPostCard
-                      key={post.id}
-                      post={post}
-                      showCategory={false}
-                      onClick={() => navigate(`/forums/${categoryId}/post/${post.id}`)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No posts found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchTerm 
-                      ? 'Try adjusting your search terms'
-                      : 'Be the first to start a discussion in this category!'
-                    }
-                  </p>
-                  <Button onClick={handleCreatePost}>
-                    Create First Post
-                  </Button>
-                </div>
-              )}
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Filter by:</span>
+              </div>
             </div>
-          )}
 
-          {/* Create Post Modal */}
-          <CreatePostModal
-            isOpen={isCreatePostOpen}
-            onClose={() => setIsCreatePostOpen(false)}
-            categoryId={categoryId}
-          />
-        </div>
+            {/* Post Type Tabs */}
+            <Tabs value={selectedPostType} onValueChange={setSelectedPostType}>
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="all" className="gap-1">
+                  All
+                  <Badge variant="secondary" className="text-xs">
+                    {postTypeCounts.all}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="discussion" className="gap-1">
+                  Discussion
+                  <Badge variant="secondary" className="text-xs">
+                    {postTypeCounts.discussion}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="question" className="gap-1">
+                  Questions
+                  <Badge variant="secondary" className="text-xs">
+                    {postTypeCounts.question}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="bug_report" className="gap-1">
+                  Bugs
+                  <Badge variant="secondary" className="text-xs">
+                    {postTypeCounts.bug_report}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="feature_request" className="gap-1">
+                  Features
+                  <Badge variant="secondary" className="text-xs">
+                    {postTypeCounts.feature_request}
+                  </Badge>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value={selectedPostType} className="mt-6">
+                {filteredPosts.length > 0 ? (
+                  <div className="space-y-4">
+                    {filteredPosts.map((post) => (
+                      <ForumPostCard
+                        key={post.id}
+                        post={post}
+                        showCategory={false}
+                        onClick={() => navigate(`/forums/${categoryId}/post/${post.id}`)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No posts found</h3>
+                    <p className="text-muted-foreground mb-4">
+                      {searchTerm 
+                        ? 'Try adjusting your search terms'
+                        : 'Be the first to start a discussion in this category!'
+                      }
+                    </p>
+                    <Button onClick={handleCreatePost}>
+                      Create First Post
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+        )}
+
+        {/* Create Post Modal */}
+        <CreatePostModal
+          isOpen={isCreatePostOpen}
+          onClose={() => setIsCreatePostOpen(false)}
+          categoryId={categoryId}
+        />
       </div>
     </div>
   );

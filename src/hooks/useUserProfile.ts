@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useHybridAuth } from './useHybridAuth';
+import { useWalletAuth } from './useWalletAuth';
 
 export interface UserProfile {
   wallet_address: string;
@@ -34,15 +34,15 @@ export const useUserProfile = (walletAddress?: string) => {
 
 export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
-  const { userIdentifier, profile } = useHybridAuth();
+  const { walletAddress } = useWalletAuth();
 
   return useMutation({
     mutationFn: async (updates: {
       username?: string;
       avatar_url?: string;
     }) => {
-      if (!userIdentifier) {
-        throw new Error('User not authenticated');
+      if (!walletAddress) {
+        throw new Error('Wallet not connected');
       }
 
       // Check if username is already taken
@@ -51,7 +51,7 @@ export const useUpdateProfile = () => {
           .from('profiles')
           .select('wallet_address')
           .eq('username', updates.username)
-          .neq('wallet_address', userIdentifier)
+          .neq('wallet_address', walletAddress)
           .single();
 
         if (existingUser) {
@@ -59,14 +59,13 @@ export const useUpdateProfile = () => {
         }
       }
 
-      // Use UPDATE instead of UPSERT to ensure RLS policies work correctly
       const { data, error } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          wallet_address: walletAddress,
           ...updates,
           last_active: new Date().toISOString(),
         })
-        .eq('wallet_address', userIdentifier)
         .select()
         .single();
 

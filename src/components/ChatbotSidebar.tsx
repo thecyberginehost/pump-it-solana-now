@@ -6,7 +6,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useDegenCoPilot, CoPilotMessage } from "@/hooks/useDegenCoPilot";
 import { toast } from "sonner";
-import DOMPurify from 'dompurify';
 
 interface ChatbotSidebarProps {
   isOpen: boolean;
@@ -112,15 +111,11 @@ const ChatbotSidebar = ({ isOpen, onClose }: ChatbotSidebarProps) => {
     toast.success("Chat history cleared!");
   };
 
-  // Function to format text with basic markdown-like formatting and sanitize
+  // Function to format text with basic markdown-like formatting
   const formatMessage = (content: string) => {
     // Replace **text** with bold styling
     const formatted = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    // Sanitize the HTML to prevent XSS
-    return DOMPurify.sanitize(formatted, { 
-      ALLOWED_TAGS: ['strong', 'em', 'b', 'i'],
-      ALLOWED_ATTR: [] 
-    });
+    return formatted;
   };
 
   if (!isOpen) return null;

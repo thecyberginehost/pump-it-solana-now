@@ -56,42 +56,6 @@ export type Database = {
         }
         Relationships: []
       }
-      banned_wallets: {
-        Row: {
-          ban_reason: string | null
-          banned_at: string
-          banned_by: string
-          created_at: string
-          id: string
-          is_permanent: boolean | null
-          unban_at: string | null
-          updated_at: string
-          wallet_address: string
-        }
-        Insert: {
-          ban_reason?: string | null
-          banned_at?: string
-          banned_by: string
-          created_at?: string
-          id?: string
-          is_permanent?: boolean | null
-          unban_at?: string | null
-          updated_at?: string
-          wallet_address: string
-        }
-        Update: {
-          ban_reason?: string | null
-          banned_at?: string
-          banned_by?: string
-          created_at?: string
-          id?: string
-          is_permanent?: boolean | null
-          unban_at?: string | null
-          updated_at?: string
-          wallet_address?: string
-        }
-        Relationships: []
-      }
       community_rewards: {
         Row: {
           created_at: string
@@ -336,7 +300,6 @@ export type Database = {
       }
       forum_categories: {
         Row: {
-          admin_only_posting: boolean | null
           color: string | null
           created_at: string
           description: string | null
@@ -347,7 +310,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          admin_only_posting?: boolean | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -358,7 +320,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          admin_only_posting?: boolean | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -504,11 +465,8 @@ export type Database = {
       }
       profiles: {
         Row: {
-          auth_type: string | null
           avatar_url: string | null
           created_at: string
-          email: string | null
-          is_admin: boolean | null
           last_active: string
           total_tokens_created: number | null
           total_volume_traded: number | null
@@ -516,11 +474,8 @@ export type Database = {
           wallet_address: string
         }
         Insert: {
-          auth_type?: string | null
           avatar_url?: string | null
           created_at?: string
-          email?: string | null
-          is_admin?: boolean | null
           last_active?: string
           total_tokens_created?: number | null
           total_volume_traded?: number | null
@@ -528,11 +483,8 @@ export type Database = {
           wallet_address: string
         }
         Update: {
-          auth_type?: string | null
           avatar_url?: string | null
           created_at?: string
-          email?: string | null
-          is_admin?: boolean | null
           last_active?: string
           total_tokens_created?: number | null
           total_volume_traded?: number | null
@@ -578,7 +530,6 @@ export type Database = {
           creation_fee: number | null
           creator_wallet: string
           description: string | null
-          dev_mode: boolean | null
           holder_count: number | null
           id: string
           image_url: string | null
@@ -605,7 +556,6 @@ export type Database = {
           creation_fee?: number | null
           creator_wallet: string
           description?: string | null
-          dev_mode?: boolean | null
           holder_count?: number | null
           id?: string
           image_url?: string | null
@@ -632,7 +582,6 @@ export type Database = {
           creation_fee?: number | null
           creator_wallet?: string
           description?: string | null
-          dev_mode?: boolean | null
           holder_count?: number | null
           id?: string
           image_url?: string | null
@@ -853,51 +802,6 @@ export type Database = {
           },
         ]
       }
-      user_ranks: {
-        Row: {
-          achieved_at: string
-          created_at: string
-          current_rank: Database["public"]["Enums"]["user_rank"]
-          id: string
-          rank_level: number
-          show_title: boolean | null
-          tokens_created: number | null
-          tokens_graduated: number | null
-          total_trades: number | null
-          total_volume_traded: number | null
-          updated_at: string
-          user_wallet: string
-        }
-        Insert: {
-          achieved_at?: string
-          created_at?: string
-          current_rank?: Database["public"]["Enums"]["user_rank"]
-          id?: string
-          rank_level?: number
-          show_title?: boolean | null
-          tokens_created?: number | null
-          tokens_graduated?: number | null
-          total_trades?: number | null
-          total_volume_traded?: number | null
-          updated_at?: string
-          user_wallet: string
-        }
-        Update: {
-          achieved_at?: string
-          created_at?: string
-          current_rank?: Database["public"]["Enums"]["user_rank"]
-          id?: string
-          rank_level?: number
-          show_title?: boolean | null
-          tokens_created?: number | null
-          tokens_graduated?: number | null
-          total_trades?: number | null
-          total_volume_traded?: number | null
-          updated_at?: string
-          user_wallet?: string
-        }
-        Relationships: []
-      }
       wallet_config: {
         Row: {
           created_at: string | null
@@ -934,18 +838,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
-      calculate_user_rank: {
-        Args: { p_user_wallet: string }
-        Returns: Database["public"]["Enums"]["user_rank"]
-      }
-      can_post_in_category: {
-        Args: { p_user_wallet: string; p_category_id: string }
-        Returns: boolean
-      }
-      can_reply_to_post: {
-        Args: { p_user_wallet: string; p_post_id: string }
-        Returns: boolean
-      }
       check_and_award_achievements: {
         Args: {
           p_user_wallet: string
@@ -962,14 +854,6 @@ export type Database = {
           tokens_created_today: number
           daily_limit: number
         }[]
-      }
-      create_admin_profile: {
-        Args: { p_user_id: string; p_email: string; p_rank_type?: string }
-        Returns: string
-      }
-      generate_admin_username: {
-        Args: { rank_type: string }
-        Returns: string
       }
       get_active_fee_config: {
         Args: Record<PropertyKey, never>
@@ -997,15 +881,6 @@ export type Database = {
           reserves_fee_bps: number
         }[]
       }
-      get_rank_info: {
-        Args: { p_rank: Database["public"]["Enums"]["user_rank"] }
-        Returns: {
-          rank_name: string
-          rank_level: number
-          theme_line: string
-          rank_color: string
-        }[]
-      }
       get_user_credits: {
         Args: { user_wallet: string }
         Returns: number
@@ -1021,10 +896,6 @@ export type Database = {
       initialize_creator_credits: {
         Args: { p_user_wallet: string }
         Returns: undefined
-      }
-      is_wallet_banned: {
-        Args: { p_wallet_address: string }
-        Returns: boolean
       }
       reset_daily_credits: {
         Args: Record<PropertyKey, never>
@@ -1044,16 +915,7 @@ export type Database = {
       }
     }
     Enums: {
-      user_rank:
-        | "acolyte"
-        | "apprentice"
-        | "journeyman"
-        | "adept"
-        | "artificer"
-        | "magister"
-        | "arch_forgemaster"
-        | "forgemaster"
-        | "forgelord"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1180,18 +1042,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      user_rank: [
-        "acolyte",
-        "apprentice",
-        "journeyman",
-        "adept",
-        "artificer",
-        "magister",
-        "arch_forgemaster",
-        "forgemaster",
-        "forgelord",
-      ],
-    },
+    Enums: {},
   },
 } as const

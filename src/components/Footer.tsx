@@ -1,11 +1,7 @@
 import { Link } from "react-router-dom";
-import { Shield, ExternalLink, UserCog } from "lucide-react";
-import { useState } from "react";
-import { AdminAuthModal } from "./AdminAuthModal";
+import { Shield, ExternalLink } from "lucide-react";
 
 const Footer = () => {
-  const [showAdminModal, setShowAdminModal] = useState(false);
-
   return (
     <footer className="border-t border-border bg-background/95 backdrop-blur-md mt-16">
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -24,13 +20,6 @@ const Footer = () => {
               <Shield className="w-4 h-4" />
               <span>Legal Disclaimer</span>
             </Link>
-            <button
-              onClick={() => setShowAdminModal(true)}
-              className="flex items-center space-x-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <UserCog className="w-4 h-4" />
-              <span>Employee Login</span>
-            </button>
             <span className="text-sm text-destructive font-medium">
               Not Financial Advice
             </span>
@@ -44,11 +33,6 @@ const Footer = () => {
           </p>
         </div>
       </div>
-      
-      <AdminAuthModal 
-        isOpen={showAdminModal} 
-        onClose={() => setShowAdminModal(false)} 
-      />
     </footer>
   );
 };

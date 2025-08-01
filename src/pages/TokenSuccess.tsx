@@ -13,30 +13,20 @@ const TokenSuccess = () => {
   const [copied, setCopied] = useState(false);
   
   // Fetch token data from database
-  const { data: token, isLoading, error: tokenError } = useQuery({
+  const { data: token, isLoading } = useQuery({
     queryKey: ['token', tokenId],
     queryFn: async () => {
       if (!tokenId) return null;
-      
-      console.log('🔍 Fetching token from database:', tokenId);
-      
       const { data, error } = await supabase
         .from('tokens')
         .select('*')
         .eq('id', tokenId)
         .single();
       
-      console.log('🔍 Database query result:', { data, error });
-      
-      if (error) {
-        console.error('❌ Database error when fetching token:', error);
-        throw error;
-      }
+      if (error) throw error;
       return data;
     },
     enabled: !!tokenId,
-    retry: 3, // Retry 3 times in case of temporary issues
-    retryDelay: 1000, // Wait 1 second between retries
   });
 
   useEffect(() => {
@@ -46,20 +36,13 @@ const TokenSuccess = () => {
     }
   }, [tokenId, navigate]);
 
-  useEffect(() => {
-    // If query completed and no token found, redirect to home
-    if (!isLoading && !token && tokenId) {
-      console.log('Token not found in database, redirecting to home');
-      navigate('/');
-    }
-  }, [isLoading, token, tokenId, navigate]);
-
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
   if (!token) {
-    return <div>Loading...</div>; // Show loading instead of null to prevent render issues
+    navigate('/');
+    return null;
   }
 
   const handleCopyAddress = async () => {

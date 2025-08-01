@@ -12,11 +12,8 @@ import Navigation from '@/components/Navigation';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useWalletAuth } from '@/hooks/useWalletAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Edit2, Trophy, Coins, Activity, Calendar, Eye, EyeOff } from 'lucide-react';
+import { User, Edit2, Trophy, Coins, Activity, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
-import { UserRankBadge } from '@/components/UserRankBadge';
-import { useUserRank, useToggleTitleDisplay } from '@/hooks/useUserRanks';
-import { Switch } from '@/components/ui/switch';
 
 export const Profile = () => {
   const { walletAddress: urlWalletAddress } = useParams();
@@ -30,8 +27,6 @@ export const Profile = () => {
   // Use URL wallet address or current user's wallet
   const profileWallet = urlWalletAddress || currentUserWallet;
   const { data: profile, refetch } = useUserProfile(profileWallet);
-  const { data: userRank } = useUserRank(profileWallet);
-  const toggleTitleDisplay = useToggleTitleDisplay();
   
   const isOwnProfile = currentUserWallet === profileWallet;
 
@@ -69,20 +64,6 @@ export const Profile = () => {
       toast.error('Failed to update profile');
     }
   };
-
-  const handleToggleTitle = async (showTitle: boolean) => {
-    if (!profileWallet) return;
-    
-    try {
-      await toggleTitleDisplay.mutateAsync({ 
-        walletAddress: profileWallet, 
-        showTitle 
-      });
-    } catch (error) {
-      console.error('Error toggling title display:', error);
-    }
-  };
-
 
   const formatWalletAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-6)}`;
@@ -153,14 +134,11 @@ export const Profile = () => {
                           </Button>
                         </div>
                       </div>
-                     ) : (
+                    ) : (
                       <>
-                        <div className="flex items-center gap-3 mb-2">
-                          <h1 className="text-2xl font-bold">
-                            {profile?.username || formatWalletAddress(profileWallet)}
-                          </h1>
-                          <UserRankBadge walletAddress={profileWallet} size="lg" />
-                        </div>
+                        <h1 className="text-2xl font-bold">
+                          {profile?.username || formatWalletAddress(profileWallet)}
+                        </h1>
                         <p className="text-muted-foreground font-mono text-sm">
                           {formatWalletAddress(profileWallet)}
                         </p>
@@ -175,27 +153,12 @@ export const Profile = () => {
                   </div>
                 </div>
                 
-                <div className="flex flex-col gap-2">
-                  {isOwnProfile && !isEditing && (
-                    <>
-                      <Button onClick={handleEditClick} variant="outline" size="sm">
-                        <Edit2 className="h-4 w-4 mr-2" />
-                        Edit Profile
-                      </Button>
-                      
-                      {/* Rank Controls - Only show title toggle */}
-                      <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/20">
-                        <Label htmlFor="show-title" className="text-sm">Show Rank Title</Label>
-                        <Switch
-                          id="show-title"
-                          checked={userRank?.show_title ?? true}
-                          onCheckedChange={handleToggleTitle}
-                          disabled={toggleTitleDisplay.isPending}
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
+                {isOwnProfile && !isEditing && (
+                  <Button onClick={handleEditClick} variant="outline" size="sm">
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                )}
               </div>
             </CardHeader>
           </Card>
