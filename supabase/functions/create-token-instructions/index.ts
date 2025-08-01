@@ -3,6 +3,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Polyfill Buffer for Solana libraries
+import { Buffer } from "https://deno.land/std@0.168.0/node/buffer.ts";
+(globalThis as any).Buffer = Buffer;
+
 import {
   Connection,
   Keypair,
@@ -11,7 +15,7 @@ import {
   ComputeBudgetProgram,
   LAMPORTS_PER_SOL,
   PublicKey,
-} from 'https://esm.sh/@solana/web3.js@1.87.6?target=deno';
+} from 'https://esm.sh/@solana/web3.js@1.87.6';
 import {
   createInitializeMint2Instruction,
   createAssociatedTokenAccountInstruction,
@@ -20,7 +24,7 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getMinimumBalanceForRentExemptMint,
-} from 'https://esm.sh/@solana/spl-token@0.3.9?target=deno';
+} from 'https://esm.sh/@solana/spl-token@0.3.9';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
