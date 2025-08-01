@@ -3,12 +3,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Add Buffer polyfill for Deno
-if (typeof Buffer === 'undefined') {
-  const { Buffer: BufferPolyfill } = await import('https://deno.land/std@0.168.0/node/buffer.ts');
-  (globalThis as any).Buffer = BufferPolyfill;
-}
-
 import {
   Connection,
   Keypair,
@@ -17,7 +11,7 @@ import {
   ComputeBudgetProgram,
   LAMPORTS_PER_SOL,
   PublicKey,
-} from 'https://esm.sh/@solana/web3.js@1.87.6';
+} from 'https://esm.sh/@solana/web3.js@1.87.6?target=deno';
 import {
   createInitializeMint2Instruction,
   createAssociatedTokenAccountInstruction,
@@ -26,7 +20,7 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getMinimumBalanceForRentExemptMint,
-} from 'https://esm.sh/@solana/spl-token@0.3.9';
+} from 'https://esm.sh/@solana/spl-token@0.3.9?target=deno';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
