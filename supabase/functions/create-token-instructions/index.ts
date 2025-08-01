@@ -4,9 +4,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Add Buffer polyfill for Deno
-const { Buffer } = globalThis as any;
-if (!Buffer) {
-  const { Buffer: BufferPolyfill } = await import('https://deno.land/std@0.200.0/node/buffer.ts');
+if (typeof Buffer === 'undefined') {
+  const { Buffer: BufferPolyfill } = await import('https://deno.land/std@0.168.0/node/buffer.ts');
   (globalThis as any).Buffer = BufferPolyfill;
 }
 
