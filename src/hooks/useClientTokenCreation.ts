@@ -71,7 +71,7 @@ export const useClientTokenCreation = () => {
         const signatures = [];
         for (let i = 0; i < instructions.transactions.length; i++) {
           const serializedTx = instructions.transactions[i];
-          const transaction = Transaction.from(Buffer.from(serializedTx, 'base64'));
+          const transaction = Transaction.from(Uint8Array.from(atob(serializedTx), c => c.charCodeAt(0)));
           
           console.log(`📝 Sending transaction ${i + 1}/${instructions.transactions.length}...`);
           toast.info(`Please sign transaction ${i + 1} of ${instructions.transactions.length}`);
